@@ -1,0 +1,285 @@
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.csproj.AssemblyReference.cache
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PersonalAutomationTool.exe
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PersonalAutomationTool.deps.json
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PersonalAutomationTool.runtimeconfig.json
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PersonalAutomationTool.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PersonalAutomationTool.pdb
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\MaterialDesignColors.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\MaterialDesignThemes.Wpf.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\Microsoft.Data.Sqlite.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\Microsoft.Extensions.Logging.Abstractions.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\Microsoft.Xaml.Behaviors.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.BarCodes.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.Charting.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.Cryptography.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.Quality.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.Shared.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.Snippets.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.System.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.WPFonts.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\SQLitePCLRaw.batteries_v2.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\SQLitePCLRaw.core.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\SQLitePCLRaw.provider.e_sqlite3.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\browser-wasm\nativeassets\net9.0\e_sqlite3.a
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-arm\native\libe_sqlite3.so
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-arm64\native\libe_sqlite3.so
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-armel\native\libe_sqlite3.so
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-mips64\native\libe_sqlite3.so
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-musl-arm\native\libe_sqlite3.so
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-musl-arm64\native\libe_sqlite3.so
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-musl-riscv64\native\libe_sqlite3.so
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-musl-s390x\native\libe_sqlite3.so
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-musl-x64\native\libe_sqlite3.so
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-ppc64le\native\libe_sqlite3.so
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-riscv64\native\libe_sqlite3.so
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-s390x\native\libe_sqlite3.so
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-x64\native\libe_sqlite3.so
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-x86\native\libe_sqlite3.so
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\maccatalyst-arm64\native\libe_sqlite3.dylib
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\maccatalyst-x64\native\libe_sqlite3.dylib
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\osx-arm64\native\libe_sqlite3.dylib
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\osx-x64\native\libe_sqlite3.dylib
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\win-arm\native\e_sqlite3.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\win-arm64\native\e_sqlite3.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\win-x64\native\e_sqlite3.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\win-x86\native\e_sqlite3.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\main\MainWindow.baml
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\cartelle\CartelleView.baml
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\database\DatabaseView.baml
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\EmailView.baml
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\E404PView.baml
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR1000FHView.baml
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR1000IFView.baml
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR1000View.baml
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR421View.baml
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR521View.baml
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR522View.baml
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR700View.baml
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\excel\ExcelView.baml
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\home\HomeView.baml
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\main\MainWindow.g.cs
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\cartelle\CartelleView.g.cs
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\database\DatabaseView.g.cs
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\EmailView.g.cs
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\E404PView.g.cs
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR1000FHView.g.cs
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR1000IFView.g.cs
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR1000View.g.cs
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR421View.g.cs
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR521View.g.cs
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR522View.g.cs
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR700View.g.cs
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\excel\ExcelView.g.cs
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\home\HomeView.g.cs
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\pdf\PdfView.g.cs
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\main\App.g.cs
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\GeneratedInternalTypeHelper.g.cs
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool_MarkupCompile.cache
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool_MarkupCompile.lref
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\main\App.baml
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\pdf\PdfView.baml
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.g.resources
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.AssemblyInfoInputs.cache
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.AssemblyInfo.cs
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.csproj.CoreCompileInputs.cache
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\Personal.8C663C3B.Up2Date
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\refint\PersonalAutomationTool.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.pdb
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.genruntimeconfig.cache
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\ref\PersonalAutomationTool.dll
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\RecipientDialog.baml
+C:\Users\peli\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\RecipientDialog.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PersonalAutomationTool.exe
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PersonalAutomationTool.deps.json
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PersonalAutomationTool.runtimeconfig.json
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PersonalAutomationTool.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PersonalAutomationTool.pdb
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\MaterialDesignColors.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\MaterialDesignThemes.Wpf.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\Microsoft.Data.Sqlite.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\Microsoft.Extensions.Logging.Abstractions.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\Microsoft.Xaml.Behaviors.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.BarCodes.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.Charting.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.Cryptography.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.Quality.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.Shared.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.Snippets.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.System.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.WPFonts.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\SQLitePCLRaw.batteries_v2.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\SQLitePCLRaw.core.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\SQLitePCLRaw.provider.e_sqlite3.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\browser-wasm\nativeassets\net9.0\e_sqlite3.a
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-arm\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-arm64\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-armel\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-mips64\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-musl-arm\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-musl-arm64\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-musl-riscv64\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-musl-s390x\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-musl-x64\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-ppc64le\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-riscv64\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-s390x\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-x64\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-x86\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\maccatalyst-arm64\native\libe_sqlite3.dylib
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\maccatalyst-x64\native\libe_sqlite3.dylib
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\osx-arm64\native\libe_sqlite3.dylib
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\osx-x64\native\libe_sqlite3.dylib
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\win-arm\native\e_sqlite3.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\win-arm64\native\e_sqlite3.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\win-x64\native\e_sqlite3.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\win-x86\native\e_sqlite3.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.csproj.AssemblyReference.cache
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\main\MainWindow.baml
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\cartelle\CartelleView.baml
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\database\DatabaseView.baml
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\EmailView.baml
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\RecipientDialog.baml
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\E404PView.baml
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR1000FHView.baml
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR1000IFView.baml
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR1000View.baml
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR421View.baml
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR521View.baml
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR522View.baml
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR700View.baml
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\excel\ExcelView.baml
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\home\HomeView.baml
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\main\MainWindow.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\cartelle\CartelleView.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\database\DatabaseView.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\EmailView.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\RecipientDialog.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\E404PView.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR1000FHView.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR1000IFView.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR1000View.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR421View.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR521View.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR522View.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR700View.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\excel\ExcelView.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\home\HomeView.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\pdf\PdfView.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\main\App.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\GeneratedInternalTypeHelper.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool_MarkupCompile.cache
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool_MarkupCompile.lref
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\main\App.baml
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\pdf\PdfView.baml
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.g.resources
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.AssemblyInfoInputs.cache
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.AssemblyInfo.cs
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.csproj.CoreCompileInputs.cache
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\Personal.8C663C3B.Up2Date
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\refint\PersonalAutomationTool.dll
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.pdb
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.genruntimeconfig.cache
+C:\Users\Bassetto Alessio\OneDrive - Isman s.r.l\test\PersonalAutomationTool\obj\Debug\net10.0-windows\ref\PersonalAutomationTool.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\MaterialDesignColors.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\MaterialDesignThemes.Wpf.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\Microsoft.Data.Sqlite.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\Microsoft.Extensions.Logging.Abstractions.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\Microsoft.Xaml.Behaviors.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.BarCodes.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.Charting.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.Cryptography.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.Quality.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.Shared.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.Snippets.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.System.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.WPFonts.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PdfSharp.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\SQLitePCLRaw.batteries_v2.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\SQLitePCLRaw.core.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\SQLitePCLRaw.provider.e_sqlite3.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\browser-wasm\nativeassets\net9.0\e_sqlite3.a
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-arm\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-arm64\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-armel\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-mips64\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-musl-arm\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-musl-arm64\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-musl-riscv64\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-musl-s390x\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-musl-x64\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-ppc64le\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-riscv64\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-s390x\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-x64\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\linux-x86\native\libe_sqlite3.so
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\maccatalyst-arm64\native\libe_sqlite3.dylib
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\maccatalyst-x64\native\libe_sqlite3.dylib
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\osx-arm64\native\libe_sqlite3.dylib
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\osx-x64\native\libe_sqlite3.dylib
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\win-arm\native\e_sqlite3.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\win-arm64\native\e_sqlite3.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\win-x64\native\e_sqlite3.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\win-x86\native\e_sqlite3.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.csproj.AssemblyReference.cache
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\main\MainWindow.baml
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\cartelle\CartelleView.baml
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\database\DatabaseView.baml
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\EmailView.baml
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\RecipientDialog.baml
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\E404PView.baml
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR1000FHView.baml
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR1000IFView.baml
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR1000View.baml
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR421View.baml
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR521View.baml
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR522View.baml
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR700View.baml
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\excel\ExcelView.baml
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\home\HomeView.baml
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\main\MainWindow.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\cartelle\CartelleView.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\database\DatabaseView.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\EmailView.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\RecipientDialog.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\E404PView.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR1000FHView.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR1000IFView.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR1000View.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR421View.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR521View.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR522View.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR700View.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\excel\ExcelView.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\home\HomeView.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\pdf\PdfView.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\main\App.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\GeneratedInternalTypeHelper.g.cs
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool_MarkupCompile.cache
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool_MarkupCompile.lref
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\main\App.baml
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\pdf\PdfView.baml
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.g.resources
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.AssemblyInfoInputs.cache
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.AssemblyInfo.cs
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.csproj.CoreCompileInputs.cache
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\refint\PersonalAutomationTool.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.pdb
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PersonalAutomationTool.exe
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PersonalAutomationTool.deps.json
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PersonalAutomationTool.runtimeconfig.json
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PersonalAutomationTool.dll
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\bin\Debug\net10.0-windows\PersonalAutomationTool.pdb
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\Personal.8C663C3B.Up2Date
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.genruntimeconfig.cache
+C:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\ref\PersonalAutomationTool.dll
