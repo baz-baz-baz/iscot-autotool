@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Bassetto Alessio\\OneDrive - Iscot Italia S.p.A\\test\\PersonalAutomationTool\\PersonalAutomationTool.csproj": {}
+    "C:\\Users\\peli\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Bassetto Alessio\\OneDrive - Iscot Italia S.p.A\\test\\PersonalAutomationTool\\PersonalAutomationTool.csproj": {
+    "C:\\Users\\peli\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Bassetto Alessio\\OneDrive - Iscot Italia S.p.A\\test\\PersonalAutomationTool\\PersonalAutomationTool.csproj",
+        "projectUniqueName": "C:\\Users\\peli\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj",
         "projectName": "PersonalAutomationTool",
-        "projectPath": "C:\\Users\\Bassetto Alessio\\OneDrive - Iscot Italia S.p.A\\test\\PersonalAutomationTool\\PersonalAutomationTool.csproj",
-        "packagesPath": "C:\\Users\\Bassetto Alessio\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Bassetto Alessio\\OneDrive - Iscot Italia S.p.A\\test\\PersonalAutomationTool\\obj\\",
+        "projectPath": "C:\\Users\\peli\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj",
+        "packagesPath": "C:\\Users\\peli\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\peli\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\Bassetto Alessio\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "C:\\Users\\peli\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net10.0-windows"
@@ -76,7 +76,7 @@
               "privateAssets": "none"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.103/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.107/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.CSharp": "(,4.7.32767]",
             "Microsoft.VisualBasic": "(,10.4.32767]",

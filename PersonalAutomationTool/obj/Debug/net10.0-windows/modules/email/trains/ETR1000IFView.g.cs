@@ -45,14 +45,13 @@ namespace PersonalAutomationTool.Modules.Email.Trains {
         /// InitializeComponent
         /// </summary>
         [System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [System.CodeDom.Compiler.GeneratedCodeAttribute("PresentationBuildTasks", "10.0.3.0")]
+        [System.CodeDom.Compiler.GeneratedCodeAttribute("PresentationBuildTasks", "10.0.7.0")]
         public void InitializeComponent() {
             if (_contentLoaded) {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri(("/PersonalAutomationTool;V1.0.0.0;component/modules/email/trains/etr1000ifview.xam" +
-                    "l"), System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/PersonalAutomationTool;component/modules/email/trains/etr1000ifview.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\..\..\modules\email\trains\ETR1000IFView.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);
@@ -62,7 +61,7 @@ namespace PersonalAutomationTool.Modules.Email.Trains {
         }
         
         [System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [System.CodeDom.Compiler.GeneratedCodeAttribute("PresentationBuildTasks", "10.0.3.0")]
+        [System.CodeDom.Compiler.GeneratedCodeAttribute("PresentationBuildTasks", "10.0.7.0")]
         [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Never)]
         [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Design", "CA1033:InterfaceMethodsShouldBeCallableByChildTypes")]
         [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Maintainability", "CA1502:AvoidExcessiveComplexity")]
