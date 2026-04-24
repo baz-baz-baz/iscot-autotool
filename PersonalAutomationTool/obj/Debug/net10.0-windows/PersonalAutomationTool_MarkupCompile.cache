@@ -1,0 +1,20 @@
+﻿PersonalAutomationTool
+1.0.0.0
+
+winexe
+C#
+.cs
+c:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\obj\Debug\net10.0-windows\
+PersonalAutomationTool
+none
+false
+TRACE;DEBUG;NET;NET10_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR_GREATER;NET7_0_OR_GREATER;NET8_0_OR_GREATER;NET9_0_OR_GREATER;NET10_0_OR_GREATER;NETCOREAPP3_0_OR_GREATER;NETCOREAPP3_1_OR_GREATER;WINDOWS7_0_OR_GREATER
+c:\Users\Bassetto Alessio\OneDrive - Iscot Italia S.p.A\test\PersonalAutomationTool\main\App.xaml
+16-1744533497
+
+271617980948
+22495355117
+main\MainWindow.xaml;modules\cartelle\CartelleView.xaml;modules\database\DatabaseView.xaml;modules\email\EmailView.xaml;modules\email\RecipientDialog.xaml;modules\email\trains\E404PView.xaml;modules\email\trains\ETR1000FHView.xaml;modules\email\trains\ETR1000IFView.xaml;modules\email\trains\ETR1000View.xaml;modules\email\trains\ETR421View.xaml;modules\email\trains\ETR521View.xaml;modules\email\trains\ETR522View.xaml;modules\email\trains\ETR700View.xaml;modules\excel\ExcelView.xaml;modules\home\HomeView.xaml;modules\pdf\PdfView.xaml;
+
+True
+
