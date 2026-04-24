@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -9,6 +10,8 @@ namespace PersonalAutomationTool.Modules.Database
     {
         private DatabaseManager? _dbManager;
         private string? _dbPath;
+        private string _dbDirectory = "";
+        private bool _isInitializing = true;
 
         public DatabaseView()
         {
@@ -20,11 +23,7 @@ namespace PersonalAutomationTool.Modules.Database
         {
             try
             {
-                // Il database è stato inserito dall'utente nella cartella corrente del modulo (modules/database/train_software.db)
-                // Costruiamo il percorso assoluto partendo dalla directory base dell'eseguibile / progetto
                 string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                // L'eseguibile di VisualStudio è in bin/Debug/net..., noi vogliamo risalire al progetto e cercare in modules/database
-                // (Approccio locale, per ora cerchiamo di puntare al vero path in cui si trova)
                 DirectoryInfo? dir = new(baseDir);
                 while (dir != null && dir.Name != "PersonalAutomationTool")
                 {
@@ -37,16 +36,22 @@ namespace PersonalAutomationTool.Modules.Database
                     return;
                 }
 
-                _dbPath = Path.Combine(dir.FullName, "modules", "database", "train_software.db");
-
-                if (!File.Exists(_dbPath))
+                _dbDirectory = Path.Combine(dir.FullName, "modules", "database");
+                if (!Directory.Exists(_dbDirectory))
                 {
-                    MessageBox.Show($"File database non trovato in:\n{_dbPath}", "Errore Database", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
+                    Directory.CreateDirectory(_dbDirectory);
                 }
 
-                _dbManager = new DatabaseManager(_dbPath);
-                LoadTables();
+                // Ensure the emails.db database exists with a table
+                EnsureEmailsDatabase();
+
+                LoadDatabases();
+                _isInitializing = false;
+                
+                if (CmbDatabases.Items.Count > 0)
+                {
+                    CmbDatabases.SelectedIndex = 0;
+                }
             }
             catch (Exception ex)
             {
@@ -54,11 +59,73 @@ namespace PersonalAutomationTool.Modules.Database
             }
         }
 
+        private void EnsureEmailsDatabase()
+        {
+            try
+            {
+                string emailsDbPath = Path.Combine(_dbDirectory, "emails.db");
+                using var tempManager = new DatabaseManager(emailsDbPath);
+                tempManager.ExecuteNonQuery("CREATE TABLE IF NOT EXISTS indirizzi_email (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, email TEXT, categoria TEXT)");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Errore creazione emails.db: " + ex.Message);
+            }
+        }
+
+        private void LoadDatabases()
+        {
+            CmbDatabases.Items.Clear();
+            if (Directory.Exists(_dbDirectory))
+            {
+                var files = Directory.GetFiles(_dbDirectory, "*.db");
+                foreach (var file in files)
+                {
+                    CmbDatabases.Items.Add(Path.GetFileName(file));
+                }
+            }
+        }
+
+        private void CmbDatabases_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isInitializing || CmbDatabases.SelectedItem == null) return;
+
+            string selectedDb = CmbDatabases.SelectedItem.ToString()!;
+            _dbPath = Path.Combine(_dbDirectory, selectedDb);
+
+            _dbManager?.Dispose();
+            _dbManager = new DatabaseManager(_dbPath);
+
+            LoadTables();
+        }
+
         private void LoadTables()
         {
             if (_dbManager == null) return;
+            
+            CmbTables.Items.Clear();
+            var tables = _dbManager.GetTableNames();
+            foreach (var t in tables)
+            {
+                CmbTables.Items.Add(t);
+            }
 
-            LoadDataForTable("flotte");
+            if (CmbTables.Items.Count > 0)
+            {
+                CmbTables.SelectedIndex = 0;
+            }
+            else
+            {
+                MainDataGrid.ItemsSource = null;
+            }
+        }
+
+        private void CmbTables_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isInitializing || CmbTables.SelectedItem == null) return;
+            
+            string selectedTable = CmbTables.SelectedItem.ToString()!;
+            LoadDataForTable(selectedTable);
         }
 
         private void LoadDataForTable(string tableName)
@@ -71,18 +138,19 @@ namespace PersonalAutomationTool.Modules.Database
 
         private void BtnReload_Click(object sender, RoutedEventArgs e)
         {
-            LoadTables();
+            if (CmbTables.SelectedItem != null)
+            {
+                LoadDataForTable(CmbTables.SelectedItem.ToString()!);
+            }
         }
 
         private void BtnAddRow_Click(object sender, RoutedEventArgs e)
         {
-            if (_dbManager == null) return;
-            string tableName = "flotte";
+            if (_dbManager == null || CmbTables.SelectedItem == null) return;
+            string tableName = CmbTables.SelectedItem.ToString()!;
 
             try
             {
-                // A seconda della tabella aggiunge una riga vuota
-                // Cerchiamo di dedurre la chiave primaria.
                 string primaryKeyCol = "";
                 if (MainDataGrid.ItemsSource is System.Data.DataView dataView && dataView.Table != null)
                 {
@@ -96,11 +164,6 @@ namespace PersonalAutomationTool.Modules.Database
                     return;
                 }
 
-                // Inseriamo un record "vuoto" nel db.
-                // SQLite per le chiavi primarie incrementali gestisce un INSERT INTO tableName DEFAULT VALUES (se tutte libere)
-                // Nel caso del nostro schema 'id' è autoincrement in flotte e config, ma log ha timestamp ecc.
-                // Per semplificare, usiamo una query che definisce valori di default generici.
-
                 string query = "";
                 if (tableName == "flotte")
                     query = "INSERT INTO flotte (tipo, treno, loco, software) VALUES ('Nuovo', 0, 0, 'Da definire')";
@@ -110,12 +173,14 @@ namespace PersonalAutomationTool.Modules.Database
                     query = "INSERT INTO renamer_queue (file_sig, current_path, proposed_name, state, last_template, added_at) VALUES ('" + Guid.NewGuid().ToString()[..8] + "', 'Percorso', 'Nuovo', 'pending', '', '" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "')";
                 else if (tableName == "renamer_log")
                     query = "INSERT INTO renamer_log (ts, file_sig, old_path, new_path, template, result) VALUES ('" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "', 'sig', 'old', 'new', 'temp', 'ok')";
+                else if (tableName == "indirizzi_email")
+                    query = "INSERT INTO indirizzi_email (nome, email, categoria) VALUES ('Nuovo Contatto', 'email@esempio.com', 'Generale')";
                 else
                     query = $"INSERT INTO {tableName} DEFAULT VALUES";
 
                 if (_dbManager.ExecuteNonQuery(query) > 0)
                 {
-                    LoadDataForTable(tableName); // Ricarica mostrandola nella griglia
+                    LoadDataForTable(tableName); 
                 }
             }
             catch (Exception ex)
@@ -126,22 +191,19 @@ namespace PersonalAutomationTool.Modules.Database
 
         private void BtnDeleteRow_Click(object sender, RoutedEventArgs e)
         {
-            if (MainDataGrid.SelectedItem == null)
+            if (MainDataGrid.SelectedItem == null || CmbTables.SelectedItem == null)
             {
                 MessageBox.Show("Seleziona una riga da eliminare.", "Errore", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             if (_dbManager == null) return;
-            string tableName = "flotte";
+            string tableName = CmbTables.SelectedItem.ToString()!;
 
             try
             {
-                // Estrarre ID dalla riga selezionata per eliminarla
                 if (MainDataGrid.SelectedItem is System.Data.DataRowView rowView)
                 {
-                    // L'assunto base per le tabelle estratte è avere un identificatore univoco. 
-                    // 'id' per flotte, config, log e 'file_sig' per queue. 
                     string primaryKeyCol = rowView.Row.Table.Columns.Contains("id") ? "id" :
                                          (rowView.Row.Table.Columns.Contains("file_sig") ? "file_sig" : "");
 
@@ -158,7 +220,7 @@ namespace PersonalAutomationTool.Modules.Database
 
                     if (_dbManager.ExecuteNonQuery(query, param) > 0)
                     {
-                        LoadDataForTable(tableName); // ricarica la tabella dopo eliminazione
+                        LoadDataForTable(tableName); 
                     }
                 }
             }
@@ -170,24 +232,20 @@ namespace PersonalAutomationTool.Modules.Database
 
         private void MainDataGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
         {
-            // La modifica delle celle verrà colta al salvataggio
-            // Potremmo intercettare qui il cambiamento per update immediato row per row.
         }
 
         private void BtnSaveChanges_Click(object sender, RoutedEventArgs e)
         {
-            if (_dbManager == null) return;
-            string tableName = "flotte";
+            if (_dbManager == null || CmbTables.SelectedItem == null) return;
+            string tableName = CmbTables.SelectedItem.ToString()!;
 
             try
             {
-                // Estraiamo il DataTable associato al DataGrid
                 if (MainDataGrid.ItemsSource is not System.Data.DataView dataView) return;
 
                 var dataTable = dataView.Table;
                 if (dataTable == null) return;
 
-                // Controlliamo righe modificate
                 var modifiedRows = dataTable.GetChanges(System.Data.DataRowState.Modified);
                 if (modifiedRows != null)
                 {

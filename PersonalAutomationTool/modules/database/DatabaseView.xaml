@@ -15,7 +15,13 @@
         <TextBlock Grid.Row="0" Text="Esploratore Database SQLite" FontSize="28" FontWeight="SemiBold" Margin="20,20,20,10" Foreground="#2D3436"/>
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="20,0,20,10">
-            <Button Content="Ricarica DB" Margin="0,0,0,0" Padding="15,5" Click="BtnReload_Click" Background="#0984E3" Foreground="White" BorderThickness="0" Cursor="Hand" />
+            <TextBlock Text="Database:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <ComboBox x:Name="CmbDatabases" Width="150" Margin="0,0,15,0" SelectionChanged="CmbDatabases_SelectionChanged"/>
+
+            <TextBlock Text="Tabella:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <ComboBox x:Name="CmbTables" Width="150" Margin="0,0,15,0" SelectionChanged="CmbTables_SelectionChanged"/>
+
+            <Button Content="Ricarica Dati" Margin="0,0,0,0" Padding="15,5" Click="BtnReload_Click" Background="#0984E3" Foreground="White" BorderThickness="0" Cursor="Hand" />
             
             <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="15,0,15,0" />
             
