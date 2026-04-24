@@ -51,7 +51,7 @@ namespace PersonalAutomationTool.Modules.Email.Trains {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/PersonalAutomationTool;component/modules/email/trains/etr522view.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/PersonalAutomationTool;V1.0.0.0;component/modules/email/trains/etr522view.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\..\..\modules\email\trains\ETR522View.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);

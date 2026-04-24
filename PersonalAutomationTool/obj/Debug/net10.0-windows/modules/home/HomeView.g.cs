@@ -51,7 +51,7 @@ namespace PersonalAutomationTool.Modules.Home {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/PersonalAutomationTool;component/modules/home/homeview.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/PersonalAutomationTool;V1.0.0.0;component/modules/home/homeview.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\..\modules\home\HomeView.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);
