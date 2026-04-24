@@ -182,7 +182,7 @@ namespace PersonalAutomationTool.Modules.Pdf
                         string currentNcName = baseNcName;
                         if (i > 0)
                         {
-                            currentNcName = System.Text.RegularExpressions.Regex.Replace(currentNcName, @"SR(\d+)", m =>
+                            currentNcName = SrTicketRegex().Replace(currentNcName, m =>
                             {
                                 if (long.TryParse(m.Groups[1].Value, out long tic))
                                 {
@@ -201,25 +201,25 @@ namespace PersonalAutomationTool.Modules.Pdf
                         return;
                     }
 
-                    foreach (var op in moveOperations)
+                    foreach (var (oldPath, newPath) in moveOperations)
                     {
-                        if (!string.Equals(op.OldPath, op.NewPath, StringComparison.OrdinalIgnoreCase) && File.Exists(op.NewPath))
+                        if (!string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase) && File.Exists(newPath))
                         {
-                            bool isOneOfOriginals = moveOperations.Any(m => string.Equals(m.OldPath, op.NewPath, StringComparison.OrdinalIgnoreCase));
+                            bool isOneOfOriginals = moveOperations.Any(m => string.Equals(m.OldPath, newPath, StringComparison.OrdinalIgnoreCase));
                             if (!isOneOfOriginals)
                             {
-                                MessageBox.Show("Esiste già un altro file di destinazione nel percorso:\n" + Path.GetFileName(op.NewPath), "Attenzione", MessageBoxButton.OK, MessageBoxImage.Warning);
+                                MessageBox.Show("Esiste già un altro file di destinazione nel percorso:\n" + Path.GetFileName(newPath), "Attenzione", MessageBoxButton.OK, MessageBoxImage.Warning);
                                 return;
                             }
                         }
                     }
 
                     var tempOps = new System.Collections.Generic.List<(string Old, string Temp, string New)>();
-                    foreach (var op in moveOperations)
+                    foreach (var (oldPath, newPath) in moveOperations)
                     {
-                        if (string.Equals(op.OldPath, op.NewPath, StringComparison.Ordinal)) continue;
-                        string tempPath = op.NewPath + ".tmp" + Guid.NewGuid().ToString().Substring(0, 8);
-                        tempOps.Add((op.OldPath, tempPath, op.NewPath));
+                        if (string.Equals(oldPath, newPath, StringComparison.Ordinal)) continue;
+                        string tempPath = string.Concat(newPath, ".tmp", Guid.NewGuid().ToString().AsSpan(0, 8));
+                        tempOps.Add((oldPath, tempPath, newPath));
                     }
 
                     if (tempOps.Count == 0)
@@ -228,11 +228,11 @@ namespace PersonalAutomationTool.Modules.Pdf
                         return;
                     }
 
-                    foreach (var op in tempOps) File.Move(op.Old, op.Temp);
-                    foreach (var op in tempOps)
+                    foreach (var (oldPath, tempPath, newPath) in tempOps) File.Move(oldPath, tempPath);
+                    foreach (var (oldPath, tempPath, newPath) in tempOps)
                     {
-                        if (File.Exists(op.New)) File.Delete(op.New);
-                        File.Move(op.Temp, op.New);
+                        if (File.Exists(newPath)) File.Delete(newPath);
+                        File.Move(tempPath, newPath);
                     }
 
                     string successMsg = "File rinominati con successo:\n\n" + string.Join("\n", tempOps.Select(o => Path.GetFileName(o.New)));
@@ -310,6 +310,9 @@ namespace PersonalAutomationTool.Modules.Pdf
 
         [System.Text.RegularExpressions.GeneratedRegex(@"\s(?<data>\d{6})\s(?<utente>.*)$")]
         private static partial System.Text.RegularExpressions.Regex LogDateRegex();
+
+        [System.Text.RegularExpressions.GeneratedRegex(@"SR(\d+)")]
+        private static partial System.Text.RegularExpressions.Regex SrTicketRegex();
 
         private static ParsedFolderInfo? ParseLogFolderName(string folderName, System.Collections.Generic.List<string> tipi)
         {
