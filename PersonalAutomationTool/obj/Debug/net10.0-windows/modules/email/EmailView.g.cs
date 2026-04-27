@@ -51,7 +51,7 @@ namespace PersonalAutomationTool.Modules.Email {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/PersonalAutomationTool;component/modules/email/emailview.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/PersonalAutomationTool;V1.0.0.0;component/modules/email/emailview.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\..\modules\email\EmailView.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);

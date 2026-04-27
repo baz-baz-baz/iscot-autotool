@@ -187,7 +187,7 @@ namespace PersonalAutomationTool.Modules.Cartelle {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/PersonalAutomationTool;component/modules/cartelle/cartelleview.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/PersonalAutomationTool;V1.0.0.0;component/modules/cartelle/cartelleview.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\..\modules\cartelle\CartelleView.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);

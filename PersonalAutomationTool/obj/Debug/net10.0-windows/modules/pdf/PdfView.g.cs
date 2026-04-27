@@ -60,7 +60,7 @@ namespace PersonalAutomationTool.Modules.Pdf {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/PersonalAutomationTool;component/modules/pdf/pdfview.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/PersonalAutomationTool;V1.0.0.0;component/modules/pdf/pdfview.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\..\modules\pdf\PdfView.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);
