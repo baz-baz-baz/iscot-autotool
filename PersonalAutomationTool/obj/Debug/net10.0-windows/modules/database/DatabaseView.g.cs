@@ -75,7 +75,7 @@ namespace PersonalAutomationTool.Modules.Database {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/PersonalAutomationTool;V1.0.0.0;component/modules/database/databaseview.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/PersonalAutomationTool;component/modules/database/databaseview.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\..\modules\database\DatabaseView.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);

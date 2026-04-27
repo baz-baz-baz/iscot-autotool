@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "NayKA6xDfXE=",
+  "dgSpecHash": "1Yw4hV6F6w0=",
   "success": true,
-  "projectFilePath": "C:\\Users\\Bassetto Alessio\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj",
+  "projectFilePath": "c:\\Users\\Bassetto Alessio\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Bassetto Alessio\\.nuget\\packages\\materialdesigncolors\\2.1.4\\materialdesigncolors.2.1.4.nupkg.sha512",
     "C:\\Users\\Bassetto Alessio\\.nuget\\packages\\materialdesignthemes\\4.9.0\\materialdesignthemes.4.9.0.nupkg.sha512",

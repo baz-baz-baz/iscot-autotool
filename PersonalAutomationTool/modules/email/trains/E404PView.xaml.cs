@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -19,13 +19,12 @@ namespace PersonalAutomationTool.Modules.Email.Trains
             }
         }
 
-        private void BtnSettings_Click(object sender, RoutedEventArgs e)
-        {
-            var dialog = new RecipientDialog("E404P")
-            {
-                Owner = Application.Current.MainWindow
-            };
-            dialog.ShowDialog();
-        }
+        private void BtnChiusuraTicket_Click(object sender, RoutedEventArgs e) { }
+        private void BtnLogDump_Click(object sender, RoutedEventArgs e) { }
+        private void BtnScadenza6Mesi_Click(object sender, RoutedEventArgs e) { }
+        private void BtnScadenza12Mesi_Click(object sender, RoutedEventArgs e) { }
+        private void BtnScadenzaVI_Click(object sender, RoutedEventArgs e) { }
+        private void BtnScadenzaVT_Click(object sender, RoutedEventArgs e) { }
+        private void BtnR2_Click(object sender, RoutedEventArgs e) { }
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -17,15 +17,6 @@ namespace PersonalAutomationTool.Modules.Email.Trains
             {
                 mainWindow.MainContentControl.Content = new EmailView();
             }
-        }
-
-        private void BtnSettings_Click(object sender, RoutedEventArgs e)
-        {
-            var dialog = new RecipientDialog("ETR522")
-            {
-                Owner = Application.Current.MainWindow
-            };
-            dialog.ShowDialog();
         }
     }
 }

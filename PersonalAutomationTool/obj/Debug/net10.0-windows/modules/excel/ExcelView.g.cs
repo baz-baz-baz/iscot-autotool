@@ -51,7 +51,7 @@ namespace PersonalAutomationTool.Modules.Excel {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/PersonalAutomationTool;V1.0.0.0;component/modules/excel/excelview.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/PersonalAutomationTool;component/modules/excel/excelview.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\..\modules\excel\ExcelView.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);

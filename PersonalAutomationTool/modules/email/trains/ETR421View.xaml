@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="PersonalAutomationTool.Modules.Email.Trains.ETR421View"
+<UserControl x:Class="PersonalAutomationTool.Modules.Email.Trains.ETR421View"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
@@ -18,18 +18,11 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Content="← Indietro" Width="100" Height="40" Click="BtnBack_Click" 
+            <Button Grid.Column="0" Content="? Indietro" Width="100" Height="40" Click="BtnBack_Click" 
                     Background="Transparent" BorderBrush="#E2E8F0" BorderThickness="1" 
                     Foreground="#34495E" FontSize="14" FontWeight="SemiBold" Cursor="Hand"/>
             <TextBlock Grid.Column="1" Text="Generazione Email ETR421" FontSize="24" FontWeight="Bold" Foreground="#2C3E50" Margin="20,0,0,0" VerticalAlignment="Center"/>
-            <Button Grid.Column="2" Content="⚙ Destinatari" Width="120" Height="40" Click="BtnSettings_Click"
-                    Background="#34495E" Foreground="White" BorderThickness="0" Cursor="Hand">
-                <Button.Resources>
-                    <Style TargetType="Border">
-                        <Setter Property="CornerRadius" Value="6"/>
-                    </Style>
-                </Button.Resources>
-            </Button>
+            
         </Grid>
 
         <!-- Contenuto principale -->

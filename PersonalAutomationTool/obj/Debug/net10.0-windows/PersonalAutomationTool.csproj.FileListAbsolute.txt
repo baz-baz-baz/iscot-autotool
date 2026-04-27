@@ -430,7 +430,6 @@ C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\cartelle\CartelleView.baml
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\database\DatabaseView.baml
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\EmailView.baml
-C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\RecipientDialog.baml
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\E404PView.baml
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR1000FHView.baml
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR1000IFView.baml
@@ -445,7 +444,6 @@ C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\cartelle\CartelleView.g.cs
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\database\DatabaseView.g.cs
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\EmailView.g.cs
-C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\RecipientDialog.g.cs
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\E404PView.g.cs
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR1000FHView.g.cs
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\trains\ETR1000IFView.g.cs
