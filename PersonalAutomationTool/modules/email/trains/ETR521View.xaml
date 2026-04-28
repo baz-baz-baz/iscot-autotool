@@ -18,7 +18,7 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Content="? Indietro" Width="100" Height="40" Click="BtnBack_Click" 
+            <Button Grid.Column="0" Content="Indietro" Width="100" Height="40" Click="BtnBack_Click" 
                     Background="Transparent" BorderBrush="#E2E8F0" BorderThickness="1" 
                     Foreground="#34495E" FontSize="14" FontWeight="SemiBold" Cursor="Hand"/>
             <TextBlock Grid.Column="1" Text="Generazione Email ETR521" FontSize="24" FontWeight="Bold" Foreground="#2C3E50" Margin="20,0,0,0" VerticalAlignment="Center"/>
@@ -27,7 +27,17 @@
 
         <!-- Contenuto principale -->
         <Border Grid.Row="1" Background="#F8FAFC" CornerRadius="16" Margin="20,0,20,20" Padding="20">
-            <TextBlock Text="Work in progress per ETR521..." FontSize="16" Foreground="#7F8C8D" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <StackPanel Grid.Row="0" Margin="20,20,20,0">
+                    <TextBlock Text="Seleziona Cartella:" FontWeight="SemiBold" Foreground="#34495E" Margin="0,0,0,5" FontSize="16"/>
+                    <ComboBox x:Name="CmbCartelle" Height="40" FontSize="14" VerticalContentAlignment="Center" Padding="10,0"/>
+                </StackPanel>
+                <TextBlock Grid.Row="1" Text="Work in progress per ETR521..." FontSize="16" Foreground="#7F8C8D" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Grid>
         </Border>
     </Grid>
 </UserControl>

@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "c:\\Users\\Bassetto Alessio\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj": {}
+    "C:\\Users\\Bassetto Alessio\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj": {}
   },
   "projects": {
-    "c:\\Users\\Bassetto Alessio\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj": {
+    "C:\\Users\\Bassetto Alessio\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\Bassetto Alessio\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj",
+        "projectUniqueName": "C:\\Users\\Bassetto Alessio\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj",
         "projectName": "PersonalAutomationTool",
-        "projectPath": "c:\\Users\\Bassetto Alessio\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj",
+        "projectPath": "C:\\Users\\Bassetto Alessio\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj",
         "packagesPath": "C:\\Users\\Bassetto Alessio\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\Bassetto Alessio\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\obj\\",
+        "outputPath": "C:\\Users\\Bassetto Alessio\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Bassetto Alessio\\AppData\\Roaming\\NuGet\\NuGet.Config"

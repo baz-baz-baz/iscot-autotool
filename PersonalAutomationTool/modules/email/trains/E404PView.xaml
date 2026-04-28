@@ -18,7 +18,7 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Content="? Indietro" Width="100" Height="40" Click="BtnBack_Click" 
+            <Button Grid.Column="0" Content="Indietro" Width="100" Height="40" Click="BtnBack_Click" 
                     Background="Transparent" BorderBrush="#E2E8F0" BorderThickness="1" 
                     Foreground="#34495E" FontSize="14" FontWeight="SemiBold" Cursor="Hand"/>
             <TextBlock Grid.Column="1" Text="Generazione Email E404P" FontSize="24" FontWeight="Bold" Foreground="#2C3E50" Margin="20,0,0,0" VerticalAlignment="Center"/>
@@ -60,7 +60,12 @@
                 </Style>
             </Border.Resources>
             
-            <Grid VerticalAlignment="Top" Margin="20">
+            <StackPanel Margin="20">
+                <StackPanel Margin="0,0,0,20">
+                    <TextBlock Text="Seleziona Cartella:" FontWeight="SemiBold" Foreground="#34495E" Margin="0,0,0,5" FontSize="16"/>
+                    <ComboBox x:Name="CmbCartelle" Height="40" FontSize="14" VerticalContentAlignment="Center" Padding="10,0"/>
+                </StackPanel>
+                <Grid VerticalAlignment="Top">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -85,6 +90,7 @@
                 <!-- Row 2 -->
                 <Button Grid.Row="2" Grid.Column="0" Content="R2" Style="{StaticResource EmailActionBtn}" Click="BtnR2_Click"/>
             </Grid>
+            </StackPanel>
         </Border>
     </Grid>
 </UserControl>

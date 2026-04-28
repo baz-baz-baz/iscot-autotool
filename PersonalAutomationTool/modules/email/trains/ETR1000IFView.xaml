@@ -18,7 +18,7 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Content="? Indietro" Width="100" Height="40" Click="BtnBack_Click" 
+            <Button Grid.Column="0" Content="Indietro" Width="100" Height="40" Click="BtnBack_Click" 
                     Background="Transparent" BorderBrush="#E2E8F0" BorderThickness="1" 
                     Foreground="#34495E" FontSize="14" FontWeight="SemiBold" Cursor="Hand"/>
             <TextBlock Grid.Column="1" Text="Generazione Email ETR1000IF" FontSize="24" FontWeight="Bold" Foreground="#2C3E50" Margin="20,0,0,0" VerticalAlignment="Center"/>

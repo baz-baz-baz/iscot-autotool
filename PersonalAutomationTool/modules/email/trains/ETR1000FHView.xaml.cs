@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -9,6 +11,22 @@ namespace PersonalAutomationTool.Modules.Email.Trains
         public ETR1000FHView()
         {
             InitializeComponent();
+            LoadCartelle();
+        }
+
+        private void LoadCartelle()
+        {
+            string baseLogDump = PersonalAutomationTool.Core.AppConfig.LogAndDumpFolder;
+            if (Directory.Exists(baseLogDump))
+            {
+                var directories = Directory.GetDirectories(baseLogDump);
+                var filtered = directories
+                    .Select(d => Path.GetFileName(d))
+                    .Where(n => n != null && n.StartsWith("ETR1000FH", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                CmbCartelle.ItemsSource = filtered;
+            }
         }
 
         private void BtnBack_Click(object sender, RoutedEventArgs e)
