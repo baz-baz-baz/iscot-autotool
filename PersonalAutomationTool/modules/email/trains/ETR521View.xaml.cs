@@ -19,13 +19,19 @@ namespace PersonalAutomationTool.Modules.Email.Trains
             string baseLogDump = PersonalAutomationTool.Core.AppConfig.LogAndDumpFolder;
             if (Directory.Exists(baseLogDump))
             {
-                var directories = Directory.GetDirectories(baseLogDump);
-                var filtered = directories
-                    .Select(d => Path.GetFileName(d))
-                    .Where(n => n != null && n.StartsWith("ETR521", StringComparison.OrdinalIgnoreCase))
+                var directoryInfo = new DirectoryInfo(baseLogDump);
+                var directories = directoryInfo.GetDirectories()
+                    .Where(d => d.Name.StartsWith("ETR521", StringComparison.OrdinalIgnoreCase))
                     .ToList();
 
-                CmbCartelle.ItemsSource = filtered;
+                var filteredNames = directories.Select(d => d.Name).ToList();
+                CmbCartelle.ItemsSource = filteredNames;
+
+                var lastCreated = directories.OrderByDescending(d => d.CreationTime).FirstOrDefault();
+                if (lastCreated != null)
+                {
+                    CmbCartelle.SelectedItem = lastCreated.Name;
+                }
             }
         }
 

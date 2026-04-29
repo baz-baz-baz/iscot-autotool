@@ -473,3 +473,5 @@ C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.pdb
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\PersonalAutomationTool.genruntimeconfig.cache
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\ref\PersonalAutomationTool.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\dialogs\ChiusuraTicketDialog.baml
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\dialogs\ChiusuraTicketDialog.g.cs

@@ -24,12 +24,85 @@
                 <TextBlock Text="Generazione Email ETR1000FH" FontSize="24" FontWeight="Bold" Foreground="#2C3E50" VerticalAlignment="Center"/>
                 <TextBlock Text="Cartella selezionata:" FontSize="14" Foreground="#7F8C8D" VerticalAlignment="Center" Margin="40,0,10,0" FontWeight="SemiBold"/>
                 <ComboBox x:Name="CmbCartelle" Width="250" Height="35" FontSize="14" VerticalContentAlignment="Center" Padding="10,0"/>
+                <Border BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="15" Padding="10,5" Background="White" Margin="40,0,0,0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Prefisso ND" FontSize="14" Foreground="#2C3E50" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="TxtPrefissoND" Text="OFF" FontSize="14" Foreground="#7F8C8D" Margin="0,0,10,0" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                        <CheckBox x:Name="ChkPrefissoND" Checked="ChkPrefissoND_Checked" Unchecked="ChkPrefissoND_Unchecked" Cursor="Hand">
+                            <CheckBox.Template>
+                                <ControlTemplate TargetType="CheckBox">
+                                    <Border x:Name="Border" Width="40" Height="22" CornerRadius="11" Background="#E2E8F0" BorderBrush="#CBD5E1" BorderThickness="1">
+                                        <Ellipse x:Name="Knob" Width="18" Height="18" Fill="White" HorizontalAlignment="Left" Margin="1">
+                                            <Ellipse.Effect>
+                                                <DropShadowEffect ShadowDepth="1" BlurRadius="2" Opacity="0.2"/>
+                                            </Ellipse.Effect>
+                                        </Ellipse>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter TargetName="Border" Property="Background" Value="#3B82F6"/>
+                                            <Setter TargetName="Border" Property="BorderBrush" Value="#3B82F6"/>
+                                            <Setter TargetName="Knob" Property="HorizontalAlignment" Value="Right"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </CheckBox.Template>
+                        </CheckBox>
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </Grid>
 
         <!-- Contenuto principale -->
         <Border Grid.Row="1" Background="#F8FAFC" CornerRadius="16" Margin="20,0,20,20" Padding="20">
-            <TextBlock Text="Work in progress per ETR1000FH..." FontSize="16" Foreground="#7F8C8D" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <Border.Resources>
+                <Style TargetType="Button" x:Key="EmailActionBtn">
+                    <Setter Property="Background" Value="White"/>
+                    <Setter Property="Foreground" Value="Black"/>
+                    <Setter Property="FontSize" Value="16"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="Margin" Value="10"/>
+                    <Setter Property="Height" Value="80"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}" CornerRadius="8">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="Black" Opacity="0.05" BlurRadius="10" Direction="270" ShadowDepth="4"/>
+                                    </Border.Effect>
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                    <Style.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="#F1F5F9"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter Property="Background" Value="#E2E8F0"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Resources>
+            
+            <Grid VerticalAlignment="Top" Margin="20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Row 0 -->
+                <Button Grid.Row="0" Grid.Column="0" Content="Chiusura Ticket" Style="{StaticResource EmailActionBtn}" Click="BtnChiusuraTicket_Click"/>
+                <Button Grid.Row="0" Grid.Column="1" Content="Scadenza 6 mesi" Style="{StaticResource EmailActionBtn}" Click="BtnScadenza6Mesi_Click"/>
+                <Button Grid.Row="0" Grid.Column="2" Content="Scadenza 12 mesi" Style="{StaticResource EmailActionBtn}" Click="BtnScadenza12Mesi_Click"/>
+            </Grid>
         </Border>
     </Grid>
 </UserControl>

@@ -10,11 +10,11 @@ none
 false
 TRACE;DEBUG;NET;NET10_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR_GREATER;NET7_0_OR_GREATER;NET8_0_OR_GREATER;NET9_0_OR_GREATER;NET10_0_OR_GREATER;NETCOREAPP3_0_OR_GREATER;NETCOREAPP3_1_OR_GREATER;WINDOWS7_0_OR_GREATER
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\main\App.xaml
-151259321850
+161436826087
 
-231226491573
+241678080666
 22495355117
-main\MainWindow.xaml;modules\cartelle\CartelleView.xaml;modules\database\DatabaseView.xaml;modules\email\EmailView.xaml;modules\email\trains\E404PView.xaml;modules\email\trains\ETR1000FHView.xaml;modules\email\trains\ETR1000IFView.xaml;modules\email\trains\ETR1000View.xaml;modules\email\trains\ETR421View.xaml;modules\email\trains\ETR521View.xaml;modules\email\trains\ETR522View.xaml;modules\email\trains\ETR700View.xaml;modules\excel\ExcelView.xaml;modules\home\HomeView.xaml;modules\pdf\PdfView.xaml;
+main\MainWindow.xaml;modules\cartelle\CartelleView.xaml;modules\database\DatabaseView.xaml;modules\email\dialogs\ChiusuraTicketDialog.xaml;modules\email\EmailView.xaml;modules\email\trains\E404PView.xaml;modules\email\trains\ETR1000FHView.xaml;modules\email\trains\ETR1000IFView.xaml;modules\email\trains\ETR1000View.xaml;modules\email\trains\ETR421View.xaml;modules\email\trains\ETR521View.xaml;modules\email\trains\ETR522View.xaml;modules\email\trains\ETR700View.xaml;modules\excel\ExcelView.xaml;modules\home\HomeView.xaml;modules\pdf\PdfView.xaml;
 
 False
 

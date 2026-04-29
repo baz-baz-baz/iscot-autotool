@@ -1,0 +1,204 @@
+<Window x:Class="PersonalAutomationTool.Modules.Email.Dialogs.ChiusuraTicketDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Anteprima Chiusura Ticket" Height="650" Width="1050"
+        WindowStartupLocation="CenterOwner"
+        Background="#F8FAFC"
+        TextOptions.TextFormattingMode="Ideal"
+        TextOptions.TextRenderingMode="ClearType"
+        RenderOptions.BitmapScalingMode="HighQuality"
+        SnapsToDevicePixels="True"
+        UseLayoutRounding="True">
+    
+    <Window.Resources>
+        <Style x:Key="ModernLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Foreground" Value="#1E293B"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+
+        <Style x:Key="ModernTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Background" Value="#F8FAFC"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="15,10"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Foreground" Value="#475569"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Top"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <Grid>
+                                <!-- WPF internal offset is roughly 2px horizontal for PART_ContentHost -->
+                                <TextBlock x:Name="PlaceholderText"
+                                           Text="{TemplateBinding Tag}"
+                                           Foreground="#94A3B8"
+                                           FontSize="{TemplateBinding FontSize}"
+                                           Margin="3,1,0,0"
+                                           IsHitTestVisible="False"
+                                           Visibility="Hidden"/>
+                                <ScrollViewer x:Name="PART_ContentHost" Margin="0"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Text" Value="">
+                                <Setter TargetName="PlaceholderText" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter Property="BorderBrush" Value="#3B82F6"/>
+                                <Setter Property="Background" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PlaceholderStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#94A3B8"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Margin" Value="16,11,0,0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+            <Setter Property="Visibility" Value="Hidden"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="30">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="300"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Left Side: Blue Box + Add Button -->
+        <Grid Grid.Row="0" Grid.Column="0" Margin="0,0,30,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            
+            <!-- Blue Border Box -->
+            <Border Grid.Row="0" Background="#F8FAFC" BorderBrush="#3B82F6" BorderThickness="2" CornerRadius="12" Padding="25">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/> <!-- Top Labels -->
+                        <RowDefinition Height="Auto"/> <!-- Top TextBoxes -->
+                        <RowDefinition Height="20"/>   <!-- Spacing -->
+                        <RowDefinition Height="Auto"/> <!-- Bottom Labels -->
+                        <RowDefinition Height="*"/>    <!-- Bottom TextBoxes (Stretch) -->
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Row 0: Top Labels -->
+                    <Grid Grid.Row="0" Grid.Column="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Loco" Style="{StaticResource ModernLabelStyle}"/>
+                        <TextBlock Grid.Column="2" Text="Avviso #1" Style="{StaticResource ModernLabelStyle}"/>
+                    </Grid>
+                    
+                    <TextBlock Grid.Row="0" Grid.Column="2" Text="Data e Ora" Style="{StaticResource ModernLabelStyle}"/>
+
+                    <!-- Row 1: Top TextBoxes -->
+                    <Grid Grid.Row="1" Grid.Column="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <ComboBox Grid.Column="0" x:Name="CmbLoco" Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" FontSize="16" Foreground="#475569" Padding="10,10" IsEditable="True"/>
+                        <TextBox Grid.Column="2" x:Name="TxtAvviso" Style="{StaticResource ModernTextBoxStyle}" Tag="Inserisci avviso..."/>
+                    </Grid>
+                    
+                    <TextBox Grid.Row="1" Grid.Column="2" x:Name="TxtDataOra" Style="{StaticResource ModernTextBoxStyle}" Tag="yyyy-mm-dd hh:mm"/>
+
+                    <!-- Row 3: Bottom Labels -->
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Avaria Segnalata" Style="{StaticResource ModernLabelStyle}"/>
+                    <TextBlock Grid.Row="3" Grid.Column="2" Text="Descrizione Intervento" Style="{StaticResource ModernLabelStyle}"/>
+
+                    <!-- Row 4: Bottom TextBoxes (Stretch) -->
+                    <TextBox Grid.Row="4" Grid.Column="0" x:Name="TxtAvaria" Style="{StaticResource ModernTextBoxStyle}" AcceptsReturn="True" TextWrapping="Wrap" VerticalAlignment="Stretch" Tag="Descrizione avaria..."/>
+                    <TextBox Grid.Row="4" Grid.Column="2" x:Name="TxtIntervento" Style="{StaticResource ModernTextBoxStyle}" AcceptsReturn="True" TextWrapping="Wrap" VerticalAlignment="Stretch" Tag="Dettagli intervento..."/>
+                </Grid>
+            </Border>
+
+            <!-- Plus Button under the box -->
+            <Button Grid.Row="1" Width="40" Height="40" HorizontalAlignment="Center" Margin="0,20,0,0"
+                    Background="#F1F5F9" BorderThickness="1" BorderBrush="#CBD5E1" Cursor="Hand" Foreground="#1E293B" FontSize="24" FontWeight="Bold" Content="+">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="20">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0"/>
+                        </Border>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+        </Grid>
+
+        <!-- Right Side: Radio Buttons -->
+        <Grid Grid.Row="0" Grid.Column="1" VerticalAlignment="Top">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" Text="Seleziona Intervento" Style="{StaticResource ModernLabelStyle}" Margin="0,0,0,15" FontSize="18"/>
+            <Border Grid.Row="1" Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="15">
+                <StackPanel>
+                    <StackPanel.Resources>
+                        <Style TargetType="RadioButton">
+                            <Setter Property="Margin" Value="0,12"/>
+                            <Setter Property="FontSize" Value="16"/>
+                            <Setter Property="Foreground" Value="#475569"/>
+                        </Style>
+                    </StackPanel.Resources>
+                    
+                    <RadioButton x:Name="RbNulla" Content="Nulla Riscontrato"/>
+                    <RadioButton x:Name="RbNullaDati" Content="Nulla Riscontrato Dati"/>
+                    <RadioButton x:Name="RbSostComponente" Content="Sost. Componente"/>
+                    <RadioButton x:Name="RbSimGit" Content="SIM-GIT"/>
+                    <RadioButton x:Name="RbSimGitDati" Content="SIM-GIT con Dati"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Bottom Buttons -->
+        <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+            <Button Content="Conferma e Apri Outlook" Width="200" Height="42" Margin="0,0,15,0" Background="#3B82F6" Foreground="White" FontSize="14" FontWeight="SemiBold" BorderThickness="0" Cursor="Hand" Click="BtnConferma_Click">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+            
+            <Button Content="Annulla" Width="100" Height="42" Background="White" Foreground="#475569" FontSize="14" FontWeight="SemiBold" BorderBrush="#CBD5E1" BorderThickness="1" Cursor="Hand" Click="BtnAnnulla_Click">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+        </StackPanel>
+    </Grid>
+</Window>
