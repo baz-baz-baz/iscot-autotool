@@ -477,3 +477,5 @@ C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\dialogs\ChiusuraTicketDialog.g.cs
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\destinatari_mail\DestinatariMailView.baml
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\destinatari_mail\DestinatariMailView.g.cs
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\destinatari_mail\RubricaDialog.baml
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\destinatari_mail\RubricaDialog.g.cs

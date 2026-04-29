@@ -4,8 +4,155 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
-    <Grid>
-        <TextBlock Text="Modulo Destinatari Mail in costruzione..." FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+             d:DesignHeight="800" d:DesignWidth="1000">
+    <UserControl.Resources>
+        <!-- Modern Label Style -->
+        <Style TargetType="TextBlock" x:Key="ModernLabelStyle">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#64748B"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <!-- Modern TextBox Style -->
+        <Style TargetType="TextBox" x:Key="ModernTextBoxStyle">
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="Background" Value="#F8FAFC"/>
+            <Setter Property="BorderBrush" Value="#E2E8F0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="#1E293B"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                CornerRadius="8">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="0"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsKeyboardFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="#3B82F6"/>
+                    <Setter Property="Background" Value="White"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="#F1F5F9">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="White" Padding="30,20" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1">
+            <StackPanel>
+                <TextBlock Text="Configurazione Destinatari Mail" FontSize="28" FontWeight="Bold" Foreground="#1E293B"/>
+                <TextBlock Text="Imposta gli indirizzi email predefiniti (separati da punto e virgola) per ogni azione di ogni treno." FontSize="14" Foreground="#64748B" Margin="0,5,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Main Content -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="20">
+            <ItemsControl ItemsSource="{Binding TrainConfigs}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <!-- Card per ogni treno -->
+                        <Border Background="White" CornerRadius="12" Margin="10,10,10,20" Padding="25">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" Opacity="0.04" BlurRadius="10" ShadowDepth="2" Direction="270"/>
+                            </Border.Effect>
+                            <StackPanel>
+                                <!-- Intestazione Treno -->
+                                <TextBlock Text="{Binding TrainName}" FontSize="20" FontWeight="Bold" Foreground="#3B82F6" Margin="0,0,0,20"/>
+
+                                <!-- Lista Azioni del Treno -->
+                                <ItemsControl ItemsSource="{Binding Actions}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,0,0,15">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="200"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="20"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Nome Azione -->
+                                                <TextBlock Grid.Column="0" Text="{Binding ActionName}" FontSize="15" FontWeight="SemiBold" Foreground="#334155" VerticalAlignment="Center" Margin="0,0,10,0" TextWrapping="Wrap"/>
+
+                                                <!-- Casella Destinatari A -->
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock Text="A:" Style="{StaticResource ModernLabelStyle}"/>
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBox Grid.Column="0" Text="{Binding ToRecipients, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" ToolTip="Inserisci qui i destinatari (separati da ;)"/>
+                                                        <Button Grid.Column="1" Content="Rubrica" Tag="To" Click="BtnApriRubrica_Click" Width="70" Margin="5,0,0,0"
+                                                                Background="#E2E8F0" Foreground="#334155" BorderThickness="0" Cursor="Hand" ToolTip="Seleziona contatti dal Database">
+                                                            <Button.Template>
+                                                                <ControlTemplate TargetType="Button">
+                                                                    <Border Background="{TemplateBinding Background}" CornerRadius="6">
+                                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="5"/>
+                                                                    </Border>
+                                                                </ControlTemplate>
+                                                            </Button.Template>
+                                                        </Button>
+                                                    </Grid>
+                                                </StackPanel>
+
+                                                <!-- Casella Destinatari Cc -->
+                                                <StackPanel Grid.Column="3">
+                                                    <TextBlock Text="Cc:" Style="{StaticResource ModernLabelStyle}"/>
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBox Grid.Column="0" Text="{Binding CcRecipients, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" ToolTip="Inserisci qui i destinatari in copia (separati da ;)"/>
+                                                        <Button Grid.Column="1" Content="Rubrica" Tag="Cc" Click="BtnApriRubrica_Click" Width="70" Margin="5,0,0,0"
+                                                                Background="#E2E8F0" Foreground="#334155" BorderThickness="0" Cursor="Hand" ToolTip="Seleziona contatti dal Database">
+                                                            <Button.Template>
+                                                                <ControlTemplate TargetType="Button">
+                                                                    <Border Background="{TemplateBinding Background}" CornerRadius="6">
+                                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="5"/>
+                                                                    </Border>
+                                                                </ControlTemplate>
+                                                            </Button.Template>
+                                                        </Button>
+                                                    </Grid>
+                                                </StackPanel>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- Footer con tasto salva -->
+        <Border Grid.Row="2" Background="White" Padding="20" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0">
+            <Button Content="Salva Modifiche" Click="BtnSalva_Click" HorizontalAlignment="Right"
+                    Background="#3B82F6" Foreground="White" FontSize="16" FontWeight="SemiBold" Padding="30,12" BorderThickness="0" Cursor="Hand">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+        </Border>
     </Grid>
 </UserControl>
