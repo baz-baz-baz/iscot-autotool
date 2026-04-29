@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Anteprima Chiusura Ticket" Height="750" Width="1050"
         WindowStartupLocation="CenterOwner"
+        WindowState="Maximized"
         Background="#F8FAFC"
         TextOptions.TextFormattingMode="Ideal"
         TextOptions.TextRenderingMode="ClearType"
@@ -70,117 +71,232 @@
         </Style>
     </Window.Resources>
 
-    <Grid Margin="30">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+    <Grid Margin="30,30,30,15">
+        <Grid.LayoutTransform>
+            <ScaleTransform ScaleX="0.9" ScaleY="0.9" />
+        </Grid.LayoutTransform>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="300"/>
+            <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
         <!-- Left Side: Blue Box + Add Button -->
-        <Grid Grid.Row="0" Grid.Column="0" Margin="0,0,30,0">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-            
-            <!-- Blue Border Box -->
-            <Border Grid.Row="0" Background="#F8FAFC" BorderBrush="#3B82F6" BorderThickness="2" CornerRadius="12" Padding="25">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/> <!-- Top Labels -->
-                        <RowDefinition Height="Auto"/> <!-- Top TextBoxes -->
-                        <RowDefinition Height="20"/>   <!-- Spacing -->
-                        <RowDefinition Height="Auto"/> <!-- Bottom Labels -->
-                        <RowDefinition Height="*"/>    <!-- Bottom TextBoxes (Stretch) -->
-                        <RowDefinition Height="*"/>    <!-- Empty Space to keep size reduced -->
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="20"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+        <Grid Grid.Column="0" Margin="0,0,30,0">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly" Padding="0,0,15,0">
+                <!-- Outer ItemsControl for Groups -->
+                <ItemsControl ItemsSource="{Binding LocoGroups}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,0,0,30">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/> <!-- Group Title -->
+                                    <RowDefinition Height="Auto"/> <!-- ScrollViewer holding inputs + Add Button -->
+                                </Grid.RowDefinitions>
+                                
+                                <TextBlock Text="{Binding GroupLocoName, StringFormat='Locomotiva: {0}'}" FontSize="18" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,10"/>
+                                
+                                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" PanningMode="HorizontalOnly" PreviewMouseWheel="InnerScrollViewer_PreviewMouseWheel" Padding="0,0,0,15">
+                                    <StackPanel Orientation="Horizontal">
+                                        <!-- Inner ItemsControl for the Blue Boxes -->
+                                        <ItemsControl ItemsSource="{Binding Inputs}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <!-- Blue Border Box -> Now Red/Green Box -->
+                                                    <Border Width="650" Margin="0,0,20,0" BorderThickness="2" CornerRadius="12" Padding="25">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Background" Value="#FEF2F2"/>
+                                                                <Setter Property="BorderBrush" Value="#EF4444"/>
+                                                                <Style.Triggers>
+                                                                    <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                                                        <Setter Property="Background" Value="#F0FDF4"/>
+                                                                        <Setter Property="BorderBrush" Value="#22C55E"/>
+                                                                    </Trigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+                                                        <Grid>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="Auto"/> <!-- Top Labels -->
+                                                                <RowDefinition Height="Auto"/> <!-- Top TextBoxes -->
+                                                                <RowDefinition Height="20"/>   <!-- Spacing -->
+                                                                <RowDefinition Height="Auto"/> <!-- Bottom Labels -->
+                                                                <RowDefinition Height="Auto"/> <!-- Bottom TextBoxes -->
+                                                            </Grid.RowDefinitions>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="20"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                            </Grid.ColumnDefinitions>
 
-                    <!-- Row 0: Top Labels -->
-                    <Grid Grid.Row="0" Grid.Column="0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="10"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Loco" Style="{StaticResource ModernLabelStyle}"/>
-                        <TextBlock Grid.Column="2" Text="Avviso #1" Style="{StaticResource ModernLabelStyle}"/>
-                    </Grid>
-                    
-                    <TextBlock Grid.Row="0" Grid.Column="2" Text="Data e Ora" Style="{StaticResource ModernLabelStyle}"/>
+                                                            <!-- Row 0: Top Labels -->
+                                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Avviso #1" Style="{StaticResource ModernLabelStyle}"/>
+                                                            <TextBlock Grid.Row="0" Grid.Column="2" Text="Data e Ora" Style="{StaticResource ModernLabelStyle}"/>
 
-                    <!-- Row 1: Top TextBoxes -->
-                    <Grid Grid.Row="1" Grid.Column="0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="10"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <ComboBox Grid.Column="0" x:Name="CmbLoco" Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" FontSize="16" Foreground="#475569" Padding="10,10" IsEditable="True"/>
-                        <TextBox Grid.Column="2" x:Name="TxtAvviso" Style="{StaticResource ModernTextBoxStyle}" Tag="Inserisci avviso..."/>
-                    </Grid>
-                    
-                    <TextBox Grid.Row="1" Grid.Column="2" x:Name="TxtDataOra" Style="{StaticResource ModernTextBoxStyle}" Tag="yyyy-mm-dd hh:mm"/>
+                                                            <!-- Remove Button -->
+                                                            <Button Grid.Row="0" Grid.Column="2" Grid.RowSpan="2" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-15,-15,0"
+                                                                    Click="BtnRemoveSection_Click" Width="30" Height="30" Cursor="Hand" Foreground="#EF4444" FontSize="18" FontWeight="Bold" Content="✕" ToolTip="Rimuovi questo avviso">
+                                                                <Button.Style>
+                                                                    <Style TargetType="Button">
+                                                                        <Setter Property="Background" Value="Transparent"/>
+                                                                        <Setter Property="Template">
+                                                                            <Setter.Value>
+                                                                                <ControlTemplate TargetType="Button">
+                                                                                    <Border Background="{TemplateBinding Background}" CornerRadius="15">
+                                                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0"/>
+                                                                                    </Border>
+                                                                                </ControlTemplate>
+                                                                            </Setter.Value>
+                                                                        </Setter>
+                                                                        <Style.Triggers>
+                                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                                <Setter Property="Background" Value="#FEE2E2"/>
+                                                                            </Trigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Button.Style>
+                                                            </Button>
 
-                    <!-- Row 3: Bottom Labels -->
-                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Avaria Segnalata" Style="{StaticResource ModernLabelStyle}"/>
-                    <TextBlock Grid.Row="3" Grid.Column="2" Text="Descrizione Intervento" Style="{StaticResource ModernLabelStyle}"/>
+                                                            <!-- Row 1: Top TextBoxes -->
+                                                            <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding Avviso, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" Tag="Inserisci avviso..."/>
+                                                            <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding DataOra, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" Tag="yyyy-mm-dd hh:mm"/>
 
-                    <!-- Row 4: Bottom TextBoxes (Stretch) -->
-                    <TextBox Grid.Row="4" Grid.Column="0" x:Name="TxtAvaria" Style="{StaticResource ModernTextBoxStyle}" AcceptsReturn="True" TextWrapping="Wrap" VerticalAlignment="Stretch" Tag="Descrizione avaria..."/>
-                    <TextBox Grid.Row="4" Grid.Column="2" x:Name="TxtIntervento" Style="{StaticResource ModernTextBoxStyle}" AcceptsReturn="True" TextWrapping="Wrap" VerticalAlignment="Stretch" Tag="Dettagli intervento..."/>
-                </Grid>
-            </Border>
+                                                            <!-- Row 3: Bottom Labels -->
+                                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Avaria Segnalata" Style="{StaticResource ModernLabelStyle}"/>
+                                                            <TextBlock Grid.Row="3" Grid.Column="2" Text="Descrizione Intervento" Style="{StaticResource ModernLabelStyle}"/>
 
-            <!-- Plus Button under the box -->
-            <Button Grid.Row="1" Width="40" Height="40" HorizontalAlignment="Center" Margin="0,20,0,0"
-                    Background="#F1F5F9" BorderThickness="1" BorderBrush="#CBD5E1" Cursor="Hand" Foreground="#1E293B" FontSize="24" FontWeight="Bold" Content="+">
-                <Button.Template>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="20">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0"/>
-                        </Border>
-                    </ControlTemplate>
-                </Button.Template>
-            </Button>
+                                                            <!-- Row 4: Bottom TextBoxes (Stretch) -->
+                                                            <TextBox Grid.Row="4" Grid.Column="0" Text="{Binding Avaria, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" AcceptsReturn="True" TextWrapping="Wrap" VerticalAlignment="Stretch" Height="150" Tag="Descrizione avaria..."/>
+                                                            <TextBox Grid.Row="4" Grid.Column="2" Text="{Binding Intervento, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" AcceptsReturn="True" TextWrapping="Wrap" VerticalAlignment="Stretch" Height="150" Tag="Dettagli intervento..."/>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        
+                                        <!-- Plus Button on the right -->
+                                        <Button Click="BtnAddSpecificSection_Click" Width="40" Height="40" VerticalAlignment="Center" Margin="0,0,20,0"
+                                                Background="#F1F5F9" BorderThickness="1" BorderBrush="#CBD5E1" Cursor="Hand" Foreground="#1E293B" FontSize="24" FontWeight="Bold" Content="+">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="20">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
         </Grid>
 
         <!-- Right Side: Radio Buttons -->
-        <Grid Grid.Row="0" Grid.Column="1" VerticalAlignment="Top">
+        <Grid Grid.Column="1" VerticalAlignment="Center" Margin="10,0,0,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            <TextBlock Grid.Row="0" Text="Seleziona Intervento" Style="{StaticResource ModernLabelStyle}" Margin="0,0,0,15" FontSize="18"/>
-            <Border Grid.Row="1" Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="15">
-                <StackPanel>
-                    <StackPanel.Resources>
-                        <Style TargetType="RadioButton">
-                            <Setter Property="Margin" Value="0,12"/>
-                            <Setter Property="FontSize" Value="16"/>
-                            <Setter Property="Foreground" Value="#475569"/>
-                        </Style>
-                    </StackPanel.Resources>
-                    
-                    <RadioButton x:Name="RbNulla" Content="Nulla Riscontrato"/>
-                    <RadioButton x:Name="RbNullaDati" Content="Nulla Riscontrato Dati"/>
-                    <RadioButton x:Name="RbSostComponente" Content="Sost. Componente"/>
-                    <RadioButton x:Name="RbSimGit" Content="SIM-GIT"/>
-                    <RadioButton x:Name="RbSimGitDati" Content="SIM-GIT con Dati"/>
-                </StackPanel>
-            </Border>
+            <TextBlock Grid.Row="0" Text="Descrizione Intervento" Style="{StaticResource ModernLabelStyle}" Margin="0,0,0,20" FontSize="18"/>
+            <StackPanel Grid.Row="1">
+                <StackPanel.Resources>
+                    <Style TargetType="Grid" x:Key="InterventoRowStyle">
+                        <Setter Property="Margin" Value="0,12"/>
+                    </Style>
+                    <Style TargetType="TextBlock" x:Key="InterventoTextStyle">
+                        <Setter Property="FontSize" Value="15"/>
+                        <Setter Property="Foreground" Value="#475569"/>
+                        <Setter Property="VerticalAlignment" Value="Center"/>
+                    </Style>
+                    <Style TargetType="Button" x:Key="InserisciBtnStyle">
+                        <Setter Property="Margin" Value="15,0,0,0"/>
+                        <Setter Property="Padding" Value="12,6"/>
+                        <Setter Property="Background" Value="#E2E8F0"/>
+                        <Setter Property="Foreground" Value="#475569"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Cursor" Value="Hand"/>
+                        <Setter Property="FontSize" Value="12"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="Focusable" Value="False"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#CBD5E1"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#94A3B8"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Resources>
+                
+                <Grid Style="{StaticResource InterventoRowStyle}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Nulla Riscontrato" Style="{StaticResource InterventoTextStyle}"/>
+                    <Button Grid.Column="1" Content="Inserisci" Tag="Nulla Riscontrato" Style="{StaticResource InserisciBtnStyle}" Click="BtnInserisciIntervento_Click"/>
+                </Grid>
+                
+                <Grid Style="{StaticResource InterventoRowStyle}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Nulla Riscontrato Dati" Style="{StaticResource InterventoTextStyle}"/>
+                    <Button Grid.Column="1" Content="Inserisci" Tag="Nulla Riscontrato Dati" Style="{StaticResource InserisciBtnStyle}" Click="BtnInserisciIntervento_Click"/>
+                </Grid>
+
+                <Grid Style="{StaticResource InterventoRowStyle}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Sost. Componente" Style="{StaticResource InterventoTextStyle}"/>
+                    <Button Grid.Column="1" Content="Inserisci" Tag="Sostituzione Componente" Style="{StaticResource InserisciBtnStyle}" Click="BtnInserisciIntervento_Click"/>
+                </Grid>
+
+                <Grid Style="{StaticResource InterventoRowStyle}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="SIM-GIT" Style="{StaticResource InterventoTextStyle}"/>
+                    <Button Grid.Column="1" Content="Inserisci" Tag="SIM-GIT" Style="{StaticResource InserisciBtnStyle}" Click="BtnInserisciIntervento_Click"/>
+                </Grid>
+
+                <Grid Style="{StaticResource InterventoRowStyle}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="SIM-GIT con Dati" Style="{StaticResource InterventoTextStyle}"/>
+                    <Button Grid.Column="1" Content="Inserisci" Tag="SIM-GIT con Dati" Style="{StaticResource InserisciBtnStyle}" Click="BtnInserisciIntervento_Click"/>
+                </Grid>
+            </StackPanel>
         </Grid>
 
         <!-- Bottom Buttons -->
-        <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom">
             <Button Content="Conferma e Apri Outlook" Width="200" Height="42" Margin="0,0,15,0" Background="#3B82F6" Foreground="White" FontSize="14" FontWeight="SemiBold" BorderThickness="0" Cursor="Hand" Click="BtnConferma_Click">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">

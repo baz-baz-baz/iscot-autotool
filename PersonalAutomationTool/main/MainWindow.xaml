@@ -58,6 +58,7 @@
                 
                 <Rectangle Width="2" Fill="#E2E8F0" Margin="15,10,15,10" RadiusX="1" RadiusY="1"/>
                 
+                <Button x:Name="BtnDestinatariMail" Content="DESTINATARI MAIL" Style="{StaticResource NavButtonStyle}" Click="Nav_DestinatariMail" />
                 <Button x:Name="BtnDatabase" Content="DATABASE" Style="{StaticResource NavButtonStyle}" Click="Nav_Database" />
             </StackPanel>
         </Border>

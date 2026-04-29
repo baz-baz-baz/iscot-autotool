@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -15,6 +15,7 @@ using PersonalAutomationTool.Modules.Pdf;
 using PersonalAutomationTool.Modules.Email;
 using PersonalAutomationTool.Modules.Excel;
 using PersonalAutomationTool.Modules.Database;
+using PersonalAutomationTool.Modules.DestinatariMail;
 
 namespace PersonalAutomationTool
 {
@@ -39,6 +40,7 @@ namespace PersonalAutomationTool
         private void Nav_Pdf(object sender, RoutedEventArgs e) => MainContentControl.Content = new PdfView();
         private void Nav_Email(object sender, RoutedEventArgs e) => MainContentControl.Content = new EmailView();
         private void Nav_Excel(object sender, RoutedEventArgs e) => MainContentControl.Content = new ExcelView();
+        private void Nav_DestinatariMail(object sender, RoutedEventArgs e) => MainContentControl.Content = new DestinatariMailView();
         private void Nav_Database(object sender, RoutedEventArgs e) => MainContentControl.Content = new DatabaseView();
     }
 }
