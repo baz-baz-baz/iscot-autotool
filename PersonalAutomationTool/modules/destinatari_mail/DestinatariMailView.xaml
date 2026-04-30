@@ -47,15 +47,31 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Header -->
         <Border Grid.Row="0" Background="White" Padding="30,20" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1">
-            <StackPanel>
-                <TextBlock Text="Configurazione Destinatari Mail" FontSize="28" FontWeight="Bold" Foreground="#1E293B"/>
-                <TextBlock Text="Imposta gli indirizzi email predefiniti (separati da punto e virgola) per ogni azione di ogni treno." FontSize="14" Foreground="#64748B" Margin="0,5,0,0"/>
-            </StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="Configurazione Destinatari Mail" FontSize="28" FontWeight="Bold" Foreground="#1E293B"/>
+                    <TextBlock Text="Imposta gli indirizzi email predefiniti (separati da punto e virgola) per ogni azione di ogni treno." FontSize="14" Foreground="#64748B" Margin="0,5,0,0"/>
+                </StackPanel>
+                
+                <Button Grid.Column="1" Content="Salva Modifiche" Click="BtnSalva_Click" VerticalAlignment="Center" Width="160" Height="42"
+                        Background="#3B82F6" Foreground="White" FontSize="16" FontWeight="SemiBold" BorderThickness="0" Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="8">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
         </Border>
 
         <!-- Main Content -->
@@ -140,19 +156,5 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
-
-        <!-- Footer con tasto salva -->
-        <Border Grid.Row="2" Background="White" Padding="20" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0">
-            <Button Content="Salva Modifiche" Click="BtnSalva_Click" HorizontalAlignment="Right"
-                    Background="#3B82F6" Foreground="White" FontSize="16" FontWeight="SemiBold" Padding="30,12" BorderThickness="0" Cursor="Hand">
-                <Button.Template>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </ControlTemplate>
-                </Button.Template>
-            </Button>
-        </Border>
     </Grid>
 </UserControl>
