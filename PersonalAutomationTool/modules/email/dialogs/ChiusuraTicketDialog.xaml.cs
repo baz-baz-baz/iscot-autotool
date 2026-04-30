@@ -69,6 +69,13 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
             set { _groupLocoName = value; OnPropertyChanged(nameof(GroupLocoName)); }
         }
 
+        private bool _isCopyFromFirstVisible = false;
+        public bool IsCopyFromFirstVisible
+        {
+            get => _isCopyFromFirstVisible;
+            set { _isCopyFromFirstVisible = value; OnPropertyChanged(nameof(IsCopyFromFirstVisible)); }
+        }
+
         private ObservableCollection<TicketInputModel> _inputs = new ObservableCollection<TicketInputModel>();
         public ObservableCollection<TicketInputModel> Inputs
         {
@@ -154,9 +161,14 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
 
             if (list.Count > 0)
             {
+                bool isFirst = true;
                 foreach (var loco in list)
                 {
-                    var group = new LocoGroupModel { GroupLocoName = loco };
+                    var group = new LocoGroupModel { 
+                        GroupLocoName = loco,
+                        IsCopyFromFirstVisible = !isFirst
+                    };
+                    isFirst = false;
                     var model = new TicketInputModel
                     {
                         AvailableLocos = new ObservableCollection<string>(list),
@@ -188,6 +200,31 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
                     SelectedLoco = groupModel.GroupLocoName
                 };
                 groupModel.Inputs.Add(newModel);
+            }
+        }
+
+        private void BtnCopyFromFirst_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement element && element.DataContext is LocoGroupModel currentGroup)
+            {
+                var firstGroup = LocoGroups.FirstOrDefault();
+                if (firstGroup != null && firstGroup != currentGroup)
+                {
+                    currentGroup.Inputs.Clear();
+                    foreach (var input in firstGroup.Inputs)
+                    {
+                        var newModel = new TicketInputModel
+                        {
+                            AvailableLocos = input.AvailableLocos,
+                            SelectedLoco = currentGroup.GroupLocoName,
+                            Avviso = input.Avviso,
+                            DataOra = input.DataOra,
+                            Avaria = input.Avaria,
+                            Intervento = input.Intervento
+                        };
+                        currentGroup.Inputs.Add(newModel);
+                    }
+                }
             }
         }
 

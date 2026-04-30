@@ -97,5 +97,34 @@ namespace PersonalAutomationTool.Modules.DestinatariMail
             DialogResult = false;
             Close();
         }
+
+        private void SearchTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        {
+            if (ContactsGrid.ItemsSource != null)
+            {
+                var view = System.Windows.Data.CollectionViewSource.GetDefaultView(ContactsGrid.ItemsSource);
+                if (view != null)
+                {
+                    string filterText = SearchTextBox.Text.Trim().ToLower();
+                    if (string.IsNullOrEmpty(filterText))
+                    {
+                        view.Filter = null;
+                    }
+                    else
+                    {
+                        view.Filter = item =>
+                        {
+                            if (item is RubricaContact contact)
+                            {
+                                return (contact.Nome?.ToLower().Contains(filterText) == true) ||
+                                       (contact.Email?.ToLower().Contains(filterText) == true) ||
+                                       (contact.Categoria?.ToLower().Contains(filterText) == true);
+                            }
+                            return false;
+                        };
+                    }
+                }
+            }
+        }
     }
 }

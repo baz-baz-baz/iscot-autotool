@@ -93,7 +93,41 @@
                                     <RowDefinition Height="Auto"/> <!-- ScrollViewer holding inputs + Add Button -->
                                 </Grid.RowDefinitions>
                                 
-                                <TextBlock Text="{Binding GroupLocoName, StringFormat='Locomotiva: {0}'}" FontSize="18" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,10"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                    <TextBlock Text="{Binding GroupLocoName, StringFormat='Locomotiva: {0}'}" FontSize="18" FontWeight="Bold" Foreground="#1E293B" VerticalAlignment="Center"/>
+                                    <Button Content="Copia dalla 1ª Locomotiva" Click="BtnCopyFromFirst_Click" 
+                                            Margin="15,0,0,0" Padding="12,4" Cursor="Hand" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" ToolTip="Copia tutti gli avvisi della prima locomotiva">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Background" Value="#E2E8F0"/>
+                                                <Setter Property="Foreground" Value="#475569"/>
+                                                <Setter Property="BorderThickness" Value="0"/>
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsCopyFromFirstVisible}" Value="False">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" Value="#CBD5E1"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsPressed" Value="True">
+                                                        <Setter Property="Background" Value="#94A3B8"/>
+                                                        <Setter Property="Foreground" Value="White"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </StackPanel>
                                 
                                 <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" PanningMode="HorizontalOnly" PreviewMouseWheel="InnerScrollViewer_PreviewMouseWheel" Padding="0,0,0,15">
                                     <StackPanel Orientation="Horizontal">
