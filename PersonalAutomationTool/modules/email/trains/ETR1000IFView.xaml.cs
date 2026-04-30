@@ -22,8 +22,10 @@ namespace PersonalAutomationTool.Modules.Email.Trains
         private void BtnChiusuraTicket_Click(object sender, RoutedEventArgs e)
         {
             string cartella = "";
-            var dialog = new PersonalAutomationTool.Modules.Email.Dialogs.ChiusuraTicketDialog(cartella);
-            dialog.Owner = Application.Current.MainWindow;
+            var dialog = new PersonalAutomationTool.Modules.Email.Dialogs.ChiusuraTicketDialog(cartella, "ETR1000IF")
+            {
+                Owner = Application.Current.MainWindow
+            };
             
             if (dialog.ShowDialog() == true)
             {

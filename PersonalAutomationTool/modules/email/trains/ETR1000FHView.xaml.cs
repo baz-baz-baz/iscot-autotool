@@ -46,7 +46,7 @@ namespace PersonalAutomationTool.Modules.Email.Trains
         private void BtnChiusuraTicket_Click(object sender, RoutedEventArgs e)
         {
             string cartella = CmbCartelle.SelectedItem?.ToString() ?? "";
-            var dialog = new PersonalAutomationTool.Modules.Email.Dialogs.ChiusuraTicketDialog(cartella)
+            var dialog = new PersonalAutomationTool.Modules.Email.Dialogs.ChiusuraTicketDialog(cartella, "ETR1000FH")
             {
                 Owner = Application.Current.MainWindow
             };

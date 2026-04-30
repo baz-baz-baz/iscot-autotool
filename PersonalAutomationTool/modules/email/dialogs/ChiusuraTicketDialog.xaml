@@ -282,50 +282,20 @@
                     </Style>
                 </StackPanel.Resources>
                 
-                <Grid Style="{StaticResource InterventoRowStyle}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Nulla Riscontrato" Style="{StaticResource InterventoTextStyle}"/>
-                    <Button Grid.Column="1" Content="Inserisci" Tag="Nulla Riscontrato" Style="{StaticResource InserisciBtnStyle}" Click="BtnInserisciIntervento_Click"/>
-                </Grid>
-                
-                <Grid Style="{StaticResource InterventoRowStyle}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Nulla Riscontrato Dati" Style="{StaticResource InterventoTextStyle}"/>
-                    <Button Grid.Column="1" Content="Inserisci" Tag="Nulla Riscontrato Dati" Style="{StaticResource InserisciBtnStyle}" Click="BtnInserisciIntervento_Click"/>
-                </Grid>
-
-                <Grid Style="{StaticResource InterventoRowStyle}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Sost. Componente" Style="{StaticResource InterventoTextStyle}"/>
-                    <Button Grid.Column="1" Content="Inserisci" Tag="Sostituzione Componente" Style="{StaticResource InserisciBtnStyle}" Click="BtnInserisciIntervento_Click"/>
-                </Grid>
-
-                <Grid Style="{StaticResource InterventoRowStyle}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="SIM-GIT" Style="{StaticResource InterventoTextStyle}"/>
-                    <Button Grid.Column="1" Content="Inserisci" Tag="SIM-GIT" Style="{StaticResource InserisciBtnStyle}" Click="BtnInserisciIntervento_Click"/>
-                </Grid>
-
-                <Grid Style="{StaticResource InterventoRowStyle}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="SIM-GIT con Dati" Style="{StaticResource InterventoTextStyle}"/>
-                    <Button Grid.Column="1" Content="Inserisci" Tag="SIM-GIT con Dati" Style="{StaticResource InserisciBtnStyle}" Click="BtnInserisciIntervento_Click"/>
-                </Grid>
+                <ItemsControl ItemsSource="{Binding TrainShortcuts}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Style="{StaticResource InterventoRowStyle}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding}" Style="{StaticResource InterventoTextStyle}" TextWrapping="Wrap"/>
+                                <Button Grid.Column="1" Content="Inserisci" Style="{StaticResource InserisciBtnStyle}" Click="BtnInserisciIntervento_Click"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </StackPanel>
         </Grid>
 

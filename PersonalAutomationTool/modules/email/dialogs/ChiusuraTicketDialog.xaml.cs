@@ -93,13 +93,29 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
     public partial class ChiusuraTicketDialog : Window
     {
         public ObservableCollection<LocoGroupModel> LocoGroups { get; set; } = new ObservableCollection<LocoGroupModel>();
+        public ObservableCollection<string> TrainShortcuts { get; set; } = new ObservableCollection<string>();
         public string TipoInterventoSelezionato { get; private set; } = string.Empty;
+        private string _cartella;
+        private string _trainType;
 
-        public ChiusuraTicketDialog(string cartella = "")
+        public ChiusuraTicketDialog(string cartella = "", string trainType = "")
         {
             InitializeComponent();
             DataContext = this;
+            _cartella = cartella;
+            _trainType = trainType;
             PopulateLocos(cartella);
+            PopulateShortcuts(trainType);
+        }
+
+        private void PopulateShortcuts(string trainType)
+        {
+            var shortcuts = ShortcutsManager.GetShortcutsForTrain(trainType);
+            TrainShortcuts.Clear();
+            foreach (var s in shortcuts)
+            {
+                TrainShortcuts.Add(s);
+            }
         }
 
         private void PopulateLocos(string cartella)
@@ -230,7 +246,21 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
 
         private void BtnInserisciIntervento_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button btn && btn.Tag is string textToInsert)
+            // Il bottone ora ha come DataContext direttamente la stringa (grazie all'ItemsControl)
+            string textToInsert = "";
+            if (sender is Button btn)
+            {
+                if (btn.Tag is string t)
+                {
+                    textToInsert = t;
+                }
+                else if (btn.DataContext is string d)
+                {
+                    textToInsert = d;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(textToInsert))
             {
                 var focusedElement = System.Windows.Input.Keyboard.FocusedElement as TextBox;
                 if (focusedElement != null && focusedElement.Tag is string tagString && tagString.Contains("Dettagli intervento"))
@@ -325,6 +355,7 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
 
         private void BtnConferma_Click(object sender, RoutedEventArgs e)
         {
+            PersonalAutomationTool.Modules.Email.EmailService.GenerateChiusuraTicketEmail(_cartella, _trainType, LocoGroups);
             DialogResult = true;
             Close();
         }
