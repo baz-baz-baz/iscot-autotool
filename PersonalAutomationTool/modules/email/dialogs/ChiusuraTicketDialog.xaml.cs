@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -97,15 +98,45 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
         public string TipoInterventoSelezionato { get; private set; } = string.Empty;
         private string _cartella;
         private string _trainType;
+        private bool _isNd;
+        private string _actionType;
 
-        public ChiusuraTicketDialog(string cartella = "", string trainType = "")
+        public ChiusuraTicketDialog(string cartella = "", string trainType = "", bool isNd = false, string actionType = "Chiusura Ticket")
         {
             InitializeComponent();
-            DataContext = this;
             _cartella = cartella;
             _trainType = trainType;
-            PopulateLocos(cartella);
+            _isNd = isNd;
+            _actionType = actionType;
+            
+            LoadCacheOrPopulate(cartella);
+            
+            DataContext = this;
             PopulateShortcuts(trainType);
+        }
+
+        private void LoadCacheOrPopulate(string cartella)
+        {
+            try
+            {
+                string baseLogDump = PersonalAutomationTool.Core.AppConfig.LogAndDumpFolder;
+                string fullPath = Path.Combine(baseLogDump, cartella);
+                string cacheFile = Path.Combine(fullPath, "info_ticket.json");
+
+                if (File.Exists(cacheFile))
+                {
+                    string json = File.ReadAllText(cacheFile);
+                    var cachedGroups = JsonSerializer.Deserialize<ObservableCollection<LocoGroupModel>>(json);
+                    if (cachedGroups != null && cachedGroups.Count > 0)
+                    {
+                        LocoGroups = cachedGroups;
+                        return;
+                    }
+                }
+            }
+            catch { }
+            
+            PopulateLocos(cartella);
         }
 
         private void PopulateShortcuts(string trainType)
@@ -355,9 +386,24 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
 
         private void BtnConferma_Click(object sender, RoutedEventArgs e)
         {
-            PersonalAutomationTool.Modules.Email.EmailService.GenerateChiusuraTicketEmail(_cartella, _trainType, LocoGroups);
+            SaveCache();
+            PersonalAutomationTool.Modules.Email.EmailService.GenerateChiusuraTicketEmail(_cartella, _trainType, LocoGroups, _isNd, _actionType);
             DialogResult = true;
             Close();
+        }
+
+        private void SaveCache()
+        {
+            try
+            {
+                string baseLogDump = PersonalAutomationTool.Core.AppConfig.LogAndDumpFolder;
+                string fullPath = Path.Combine(baseLogDump, _cartella);
+                string cacheFile = Path.Combine(fullPath, "info_ticket.json");
+
+                string json = JsonSerializer.Serialize(LocoGroups);
+                File.WriteAllText(cacheFile, json);
+            }
+            catch { }
         }
 
         private void BtnAnnulla_Click(object sender, RoutedEventArgs e)

@@ -10,9 +10,12 @@ using PersonalAutomationTool.Modules.Email.Dialogs;
 
 namespace PersonalAutomationTool.Modules.Email
 {
-    public static class EmailService
+    public static partial class EmailService
     {
-        public static void GenerateChiusuraTicketEmail(string cartella, string trainType, ObservableCollection<LocoGroupModel> locoGroups)
+        [System.Text.RegularExpressions.GeneratedRegex(@"\s+")]
+        private static partial System.Text.RegularExpressions.Regex MultipleSpacesRegex();
+
+        public static void GenerateChiusuraTicketEmail(string cartella, string trainType, ObservableCollection<LocoGroupModel> locoGroups, bool isNdPrefix = false, string actionType = "Chiusura Ticket")
         {
             try
             {
@@ -34,11 +37,13 @@ namespace PersonalAutomationTool.Modules.Email
                 string folderPath = Path.Combine(baseLogDump, cartella);
                 
                 string subject = $"CHIUSURA TICKET {cartella}"; // fallback
+                List<string> logFolders = [];
+                List<string> dumpFolders = [];
 
                 if (Directory.Exists(folderPath))
                 {
-                    List<string> tickets = new List<string>();
-                    List<string> locos = new List<string>();
+                    List<string> tickets = [];
+                    List<string> locos = [];
                     string extractedDate = "";
                     string extractedUser = "";
 
@@ -46,6 +51,9 @@ namespace PersonalAutomationTool.Modules.Email
                     foreach (var dir in dirs)
                     {
                         string dirName = new DirectoryInfo(dir).Name;
+                        if (dirName.Contains(" LOG ")) logFolders.Add(dirName);
+                        if (dirName.Contains(" DUMP ")) dumpFolders.Add(dirName);
+
                         var parts = dirName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                         if (parts.Length >= 7 && parts[0].StartsWith("SR", StringComparison.OrdinalIgnoreCase))
                         {
@@ -64,7 +72,14 @@ namespace PersonalAutomationTool.Modules.Email
                         string ticketsStr = string.Join(" - ", tickets);
                         string locosStr = string.Join(" - ", locos);
 
-                        subject = $"CHIUSURA TICKET {ticketsStr} {trainType} {locosStr} IMC AV Milano {extractedDate} {extractedUser}".Trim();
+                        if (actionType == "Log Dump" && trainType == "E404P")
+                        {
+                            subject = $"{ticketsStr} LOG E DUMP in rete {trainType} {locosStr} IMC AV Milano {extractedDate} {extractedUser}".Trim();
+                        }
+                        else
+                        {
+                            subject = $"CHIUSURA TICKET {ticketsStr} {trainType} {locosStr} IMC AV Milano {extractedDate} {extractedUser}".Trim();
+                        }
                     }
                     else
                     {
@@ -72,12 +87,12 @@ namespace PersonalAutomationTool.Modules.Email
                         if (pdfFiles.Length > 0)
                         {
                             string pdfName = Path.GetFileNameWithoutExtension(pdfFiles[0]);
-                            string[] prefixesToRemove = new[] { "FL ", "NC ", "NdL " };
+                            string[] prefixesToRemove = ["FL ", "NC ", "NdL "];
                             foreach (var prefix in prefixesToRemove)
                             {
                                 if (pdfName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                                 {
-                                    pdfName = pdfName.Substring(prefix.Length).Trim();
+                                    pdfName = pdfName[prefix.Length..].Trim();
                                     break;
                                 }
                             }
@@ -86,7 +101,11 @@ namespace PersonalAutomationTool.Modules.Email
                     }
                 }
 
-                subject = System.Text.RegularExpressions.Regex.Replace(subject, @"\s+", " ");
+                subject = MultipleSpacesRegex().Replace(subject, " ");
+                if (isNdPrefix)
+                {
+                    subject = "ND " + subject;
+                }
                 mailItem.Subject = subject;
 
                 // Ottieni Destinatari
@@ -94,7 +113,7 @@ namespace PersonalAutomationTool.Modules.Email
                 var trainConfig = destinatariConfig.FirstOrDefault(t => t.TrainName.Equals(trainType, StringComparison.OrdinalIgnoreCase));
                 if (trainConfig != null)
                 {
-                    var actionConfig = trainConfig.Actions.FirstOrDefault(a => a.ActionName.Equals("Chiusura Ticket", StringComparison.OrdinalIgnoreCase));
+                    var actionConfig = trainConfig.Actions.FirstOrDefault(a => a.ActionName.Equals(actionType, StringComparison.OrdinalIgnoreCase));
                     if (actionConfig != null)
                     {
                         mailItem.To = actionConfig.ToRecipients;
@@ -121,8 +140,58 @@ namespace PersonalAutomationTool.Modules.Email
                 StringBuilder htmlBuilder = new StringBuilder();
                 htmlBuilder.Append("<div style='font-family: Calibri, sans-serif; font-size: 11pt; color: black;'>");
                 htmlBuilder.Append($"<p style='font-size: 14pt;'>{saluto}</p>");
-                htmlBuilder.Append("<p style='font-size: 14pt;'>con la presente vi invio la chiusura del ticket in oggetto.</p>");
-                htmlBuilder.Append("<p style='font-size: 14pt;'>Di seguito la descrizione delle avarie segnalate dal PdC e dell'intervento effettuato:</p>");
+                
+                var allFolders = logFolders.Concat(dumpFolders).ToList();
+                allFolders.Sort((a, b) =>
+                {
+                    static string GetSuffix(string f)
+                    {
+                        string[] tokens = [" NVRAM DUMP ", " DUMP ", " LOG "];
+                        foreach (var t in tokens)
+                        {
+                            int idx = f.IndexOf(t, StringComparison.OrdinalIgnoreCase);
+                            if (idx != -1) return f[(idx + t.Length)..].Trim();
+                        }
+                        return f;
+                    }
+
+                    int cmp = string.Compare(GetSuffix(a), GetSuffix(b), StringComparison.OrdinalIgnoreCase);
+                    if (cmp != 0) return cmp;
+                    
+                    bool isLogA = a.Contains(" LOG ");
+                    bool isLogB = b.Contains(" LOG ");
+                    if (isLogA && !isLogB) return -1;
+                    if (!isLogA && isLogB) return 1;
+                    
+                    return string.Compare(a, b, StringComparison.OrdinalIgnoreCase);
+                });
+
+                if (actionType == "Log Dump" && trainType == "E404P")
+                {
+                    htmlBuilder.Append("<p style='font-size: 14pt;'>Con la presente comunica l'inserimento in rete, in data odierna, dei seguenti Files:</p>");
+                    htmlBuilder.Append("<ul>");
+                    foreach(var f in allFolders) {
+                        htmlBuilder.Append($"<li style='font-size: 14pt;'><b>{WebUtility.HtmlEncode(f)}</b></li>");
+                    }
+                    htmlBuilder.Append("</ul><br>");
+                }
+                else
+                {
+                    htmlBuilder.Append("<p style='font-size: 14pt;'>con la presente vi invio la chiusura del ticket in oggetto.</p>");
+                    
+                    string[] targetTrains = ["ETR700", "ETR1000", "ETR1000I-F", "ETR1000FH"];
+                    if (targetTrains.Contains(trainType, StringComparer.OrdinalIgnoreCase))
+                    {
+                        htmlBuilder.Append("<p style='font-size: 14pt;'>Confermo l'inserimento in rete dei seguenti files:</p>");
+                        if (allFolders.Count > 0)
+                        {
+                            string foldersHtml = string.Join("<br>", allFolders.Select(f => $"<b>{WebUtility.HtmlEncode(f)}</b>"));
+                            htmlBuilder.Append($"<p style='font-size: 14pt;'>{foldersHtml}</p>");
+                        }
+                    }
+
+                    htmlBuilder.Append("<p style='font-size: 14pt;'>Di seguito la descrizione delle avarie segnalate dal PdC e dell'intervento effettuato:</p>");
+                }
 
                 // Le tabelle verranno generate singolarmente per ogni avviso all'interno del ciclo
 
@@ -132,7 +201,12 @@ namespace PersonalAutomationTool.Modules.Email
                     {
                         string treno = string.Empty;
                         string loco = group.GroupLocoName ?? string.Empty;
+                        string avviso = input.Avviso ?? string.Empty;
+                        string dataOra = input.DataOra ?? string.Empty;
                         string avaria = input.Avaria ?? string.Empty;
+                        
+                        string combinedAvaria = $"Avviso={avviso} Data={dataOra}\n\n{avaria}".Trim();
+                        
                         string intervento = input.Intervento ?? string.Empty;
                         string versioneSW = string.Empty;
 
@@ -182,7 +256,7 @@ namespace PersonalAutomationTool.Modules.Email
                         htmlBuilder.Append("<tr style='text-align: center; vertical-align: middle; border: 1px solid #ddd;'>");
                         htmlBuilder.Append($"<td style='border: 1px solid #ddd; padding: 10px; font-weight: bold;'>{WebUtility.HtmlEncode(treno)}</td>");
                         htmlBuilder.Append($"<td style='border: 1px solid #ddd; padding: 10px; font-weight: bold;'>{WebUtility.HtmlEncode(loco)}</td>");
-                        htmlBuilder.Append($"<td style='border: 1px solid #ddd; padding: 10px; font-size: 14pt;'>{WebUtility.HtmlEncode(avaria).Replace("\n", "<br>").Replace("\r", "")}</td>");
+                        htmlBuilder.Append($"<td style='border: 1px solid #ddd; padding: 10px; font-size: 14pt;'>{WebUtility.HtmlEncode(combinedAvaria).Replace("\n", "<br>").Replace("\r", "")}</td>");
                         htmlBuilder.Append($"<td style='border: 1px solid #ddd; padding: 10px; font-size: 14pt;'>{WebUtility.HtmlEncode(intervento).Replace("\n", "<br>").Replace("\r", "")}</td>");
                         htmlBuilder.Append($"<td style='border: 1px solid #ddd; padding: 10px; font-weight: bold;'>{WebUtility.HtmlEncode(versioneSW)}</td>");
                         htmlBuilder.Append("</tr>");
@@ -193,8 +267,8 @@ namespace PersonalAutomationTool.Modules.Email
                     }
                 }
 
-                htmlBuilder.Append("<p style='margin-top: 20px; font-size: 14pt;'>Cordiali saluti,</p>");
-                htmlBuilder.Append("<br><br></div>");
+                htmlBuilder.Append("<p style='margin-top: 20px; font-size: 14pt; margin-bottom: 5px;'>Cordiali saluti,</p>");
+                htmlBuilder.Append("</div>");
 
                 string bodyContent = htmlBuilder.ToString();
 
@@ -203,7 +277,7 @@ namespace PersonalAutomationTool.Modules.Email
                     int bodyIdx = signatureHtml.IndexOf("<body", StringComparison.OrdinalIgnoreCase);
                     if (bodyIdx != -1)
                     {
-                        int closingIdx = signatureHtml.IndexOf(">", bodyIdx);
+                        int closingIdx = signatureHtml.IndexOf('>', bodyIdx);
                         if (closingIdx != -1)
                         {
                             signatureHtml = signatureHtml.Insert(closingIdx + 1, bodyContent);
@@ -227,7 +301,7 @@ namespace PersonalAutomationTool.Modules.Email
                 // Cerca allegato
                 // Utilizza le variabili baseLogDump e folderPath già definite in precedenza
                 
-                if (Directory.Exists(folderPath))
+                if (actionType != "Log Dump" && Directory.Exists(folderPath))
                 {
                     var pdfFiles = Directory.GetFiles(folderPath, "*.pdf");
                     foreach (var pdf in pdfFiles)

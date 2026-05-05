@@ -177,8 +177,8 @@ namespace PersonalAutomationTool.Modules.Cartelle
                 string treno1 = await GetTrenoFromDbAsync(tipo, loco1);
                 string parentName1 = !string.IsNullOrWhiteSpace(treno1) ? $"{tipo} {treno1}".Trim() : $"{tipo} {loco1}".Trim();
 
-                TxtPreviewLog1.Text = $@"{parentName1}\SR{ticket1} LOG {tipo} {loco1} {software} {data} {utente}".Trim();
-                TxtPreviewDump1.Text = $@"{parentName1}\SR{ticket1} DUMP {tipo} {loco1} {software} {data} {utente}".Trim();
+                TxtPreviewLog1.Text = $"SR{ticket1} LOG {tipo} {loco1} {software} {data} {utente}".Trim();
+                TxtPreviewDump1.Text = $"SR{ticket1} DUMP {tipo} {loco1} {software} {data} {utente}".Trim();
             }
             else
             {
@@ -192,8 +192,8 @@ namespace PersonalAutomationTool.Modules.Cartelle
                 string treno2 = await GetTrenoFromDbAsync(tipo, l2);
                 string parentName2 = !string.IsNullOrWhiteSpace(treno2) ? $"{tipo} {treno2}".Trim() : $"{tipo} {l2}".Trim();
 
-                TxtPreviewLog2.Text = $@"{parentName2}\SR{ticket2} LOG {tipo} {l2} {software} {data} {utente}".Trim();
-                TxtPreviewDump2.Text = $@"{parentName2}\SR{ticket2} DUMP {tipo} {l2} {software} {data} {utente}".Trim();
+                TxtPreviewLog2.Text = $"SR{ticket2} LOG {tipo} {l2} {software} {data} {utente}".Trim();
+                TxtPreviewDump2.Text = $"SR{ticket2} DUMP {tipo} {l2} {software} {data} {utente}".Trim();
                 if (SectionPreviewLog2 != null) SectionPreviewLog2.Visibility = Visibility.Visible;
                 if (SectionPreviewDump2 != null) SectionPreviewDump2.Visibility = Visibility.Visible;
             }

@@ -56,7 +56,18 @@ namespace PersonalAutomationTool.Modules.Email.Trains
                 MessageBox.Show("Dati confermati! Implementare la generazione email.", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
-        private void BtnLogDump_Click(object sender, RoutedEventArgs e) { }
+        private void BtnLogDump_Click(object sender, RoutedEventArgs e)
+        {
+            string cartella = CmbCartelle.SelectedItem?.ToString() ?? "";
+            var dialog = new PersonalAutomationTool.Modules.Email.Dialogs.ChiusuraTicketDialog(cartella, "E404P", false, "Log Dump")
+            {
+                Owner = Application.Current.MainWindow
+            };
+            
+            if (dialog.ShowDialog() == true)
+            {
+            }
+        }
         private void BtnScadenza6Mesi_Click(object sender, RoutedEventArgs e) { }
         private void BtnScadenza12Mesi_Click(object sender, RoutedEventArgs e) { }
         private void BtnScadenzaVI_Click(object sender, RoutedEventArgs e) { }
