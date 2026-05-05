@@ -68,10 +68,119 @@ namespace PersonalAutomationTool.Modules.Email.Trains
             {
             }
         }
-        private void BtnScadenza6Mesi_Click(object sender, RoutedEventArgs e) { }
-        private void BtnScadenza12Mesi_Click(object sender, RoutedEventArgs e) { }
-        private void BtnScadenzaVI_Click(object sender, RoutedEventArgs e) { }
-        private void BtnScadenzaVT_Click(object sender, RoutedEventArgs e) { }
+        private void BtnScadenza6Mesi_Click(object sender, RoutedEventArgs e)
+        {
+            string cartella = CmbCartelle.SelectedItem?.ToString() ?? "";
+            if (string.IsNullOrEmpty(cartella))
+            {
+                MessageBox.Show("Selezionare una cartella.", "Attenzione", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // Inizializza il dialog per sfruttare il suo parsing delle locomotive, senza mostrarlo
+            var dialog = new PersonalAutomationTool.Modules.Email.Dialogs.ChiusuraTicketDialog(cartella, "E404P", false, "Scadenza 6 Mesi");
+
+            foreach (var group in dialog.LocoGroups)
+            {
+                foreach (var input in group.Inputs)
+                {
+                    input.Avviso = "";
+                    input.DataOra = "";
+                    input.Avaria = "STB operazioni alle motrici indicate a scadenza 6 mesi come da PM ETR500 AV documento di riferimento PM 203/E/F-L/P edizione vigente";
+                    input.Intervento = "Eseguita scadenza 6 mesi con esito positivo come da manuale MR20A";
+                }
+            }
+
+            // Salva in cache in modo che la successiva mail "Log Dump" trovi i dati precompilati
+            dialog.SaveCache();
+            PersonalAutomationTool.Modules.Email.EmailService.GenerateChiusuraTicketEmail(cartella, "E404P", dialog.LocoGroups, false, "Scadenza 6 Mesi");
+        }
+
+        private void BtnScadenza12Mesi_Click(object sender, RoutedEventArgs e)
+        {
+            string cartella = CmbCartelle.SelectedItem?.ToString() ?? "";
+            if (string.IsNullOrEmpty(cartella))
+            {
+                MessageBox.Show("Selezionare una cartella.", "Attenzione", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // Inizializza il dialog per sfruttare il suo parsing delle locomotive, senza mostrarlo
+            var dialog = new PersonalAutomationTool.Modules.Email.Dialogs.ChiusuraTicketDialog(cartella, "E404P", false, "Scadenza 12 Mesi");
+
+            foreach (var group in dialog.LocoGroups)
+            {
+                foreach (var input in group.Inputs)
+                {
+                    input.Avviso = "";
+                    input.DataOra = "";
+                    input.Avaria = "STB operazioni alle motrici indicate a scadenza 12 mesi come da PM ETR500 AV documento di riferimento PM 203/E/F-L/P edizione vigente.";
+                    input.Intervento = "Eseguita scadenza 12 mesi con esito positivo come da manuale MR20A";
+                }
+            }
+
+            // Salva in cache in modo che la successiva mail "Log Dump" trovi i dati precompilati
+            dialog.SaveCache();
+            PersonalAutomationTool.Modules.Email.EmailService.GenerateChiusuraTicketEmail(cartella, "E404P", dialog.LocoGroups, false, "Scadenza 12 Mesi");
+        }
+
+        private void BtnScadenzaVI_Click(object sender, RoutedEventArgs e)
+        {
+            string cartella = CmbCartelle.SelectedItem?.ToString() ?? "";
+            if (string.IsNullOrEmpty(cartella))
+            {
+                MessageBox.Show("Selezionare una cartella.", "Attenzione", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // Inizializza il dialog per sfruttare il parsing, senza mostrarlo
+            var dialog = new PersonalAutomationTool.Modules.Email.Dialogs.ChiusuraTicketDialog(cartella, "E404P", false, "Scadenza V.I");
+
+            foreach (var group in dialog.LocoGroups)
+            {
+                foreach (var input in group.Inputs)
+                {
+                    input.Avviso = "";
+                    input.DataOra = "";
+                    input.Avaria = "Eseguire scadenza VI";
+                    input.Intervento = "Effettuati controlli di VI come da checklist con esito positivo.";
+                }
+            }
+
+            // Salva in cache in modo che la successiva mail "Log Dump" trovi i dati precompilati
+            dialog.SaveCache();
+            PersonalAutomationTool.Modules.Email.EmailService.GenerateChiusuraTicketEmail(cartella, "E404P", dialog.LocoGroups, false, "Scadenza V.I");
+        }
+        
+        private void BtnScadenzaVT_Click(object sender, RoutedEventArgs e)
+        {
+            string cartella = CmbCartelle.SelectedItem?.ToString() ?? "";
+            if (string.IsNullOrEmpty(cartella))
+            {
+                MessageBox.Show("Selezionare una cartella.", "Attenzione", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // Inizializza il dialog per sfruttare il parsing, senza mostrarlo
+            var dialog = new PersonalAutomationTool.Modules.Email.Dialogs.ChiusuraTicketDialog(cartella, "E404P", false, "Scadenza V.T");
+
+            foreach (var group in dialog.LocoGroups)
+            {
+                foreach (var input in group.Inputs)
+                {
+                    input.Avviso = "";
+                    input.DataOra = "";
+                    input.Avaria = "Eseguire scadenza VT";
+                    input.Intervento = "Effettuati controlli di VT come da checklist con esito positivo.";
+                }
+            }
+
+            // NOTA: Non salviamo la cache (dialog.SaveCache()) come richiesto, così non sovrascrive
+            // i log e dump preesistenti per questa cartella.
+
+            PersonalAutomationTool.Modules.Email.EmailService.GenerateChiusuraTicketEmail(cartella, "E404P", dialog.LocoGroups, false, "Scadenza V.T");
+        }
+
         private void BtnR2_Click(object sender, RoutedEventArgs e) { }
     }
 }

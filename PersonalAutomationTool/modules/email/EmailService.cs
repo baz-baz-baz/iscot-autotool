@@ -205,7 +205,11 @@ namespace PersonalAutomationTool.Modules.Email
                         string dataOra = input.DataOra ?? string.Empty;
                         string avaria = input.Avaria ?? string.Empty;
                         
-                        string combinedAvaria = $"Avviso={avviso} Data={dataOra}\n\n{avaria}".Trim();
+                        string combinedAvaria = avaria;
+                        if (actionType.Equals("Chiusura Ticket", StringComparison.OrdinalIgnoreCase))
+                        {
+                            combinedAvaria = $"Avviso={avviso} Data={dataOra}\n\n{avaria}".Trim();
+                        }
                         
                         string intervento = input.Intervento ?? string.Empty;
                         string versioneSW = string.Empty;

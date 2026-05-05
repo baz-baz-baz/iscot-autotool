@@ -392,7 +392,7 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
             Close();
         }
 
-        private void SaveCache()
+        public void SaveCache()
         {
             try
             {
