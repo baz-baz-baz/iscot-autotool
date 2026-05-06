@@ -210,6 +210,13 @@ namespace PersonalAutomationTool.Modules.Email
                         {
                             combinedAvaria = $"Avviso={avviso} Data={dataOra}\n\n{avaria}".Trim();
                         }
+                        else if (actionType.Equals("Log Dump", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (!string.IsNullOrWhiteSpace(avviso) || !string.IsNullOrWhiteSpace(dataOra))
+                            {
+                                combinedAvaria = $"Avviso={avviso} Data={dataOra}\n\n{avaria}".Trim();
+                            }
+                        }
                         
                         string intervento = input.Intervento ?? string.Empty;
                         string versioneSW = string.Empty;

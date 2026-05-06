@@ -117,24 +117,27 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
 
         private void LoadCacheOrPopulate(string cartella)
         {
-            try
+            if (_actionType == "Log Dump")
             {
-                string baseLogDump = PersonalAutomationTool.Core.AppConfig.LogAndDumpFolder;
-                string fullPath = Path.Combine(baseLogDump, cartella);
-                string cacheFile = Path.Combine(fullPath, "info_ticket.json");
-
-                if (File.Exists(cacheFile))
+                try
                 {
-                    string json = File.ReadAllText(cacheFile);
-                    var cachedGroups = JsonSerializer.Deserialize<ObservableCollection<LocoGroupModel>>(json);
-                    if (cachedGroups != null && cachedGroups.Count > 0)
+                    string baseLogDump = PersonalAutomationTool.Core.AppConfig.LogAndDumpFolder;
+                    string fullPath = Path.Combine(baseLogDump, cartella);
+                    string cacheFile = Path.Combine(fullPath, "info_ticket.json");
+
+                    if (File.Exists(cacheFile))
                     {
-                        LocoGroups = cachedGroups;
-                        return;
+                        string json = File.ReadAllText(cacheFile);
+                        var cachedGroups = JsonSerializer.Deserialize<ObservableCollection<LocoGroupModel>>(json);
+                        if (cachedGroups != null && cachedGroups.Count > 0)
+                        {
+                            LocoGroups = cachedGroups;
+                            return;
+                        }
                     }
                 }
+                catch { }
             }
-            catch { }
             
             PopulateLocos(cartella);
         }

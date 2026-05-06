@@ -142,8 +142,8 @@ namespace PersonalAutomationTool.Modules.Email.Trains
                 {
                     input.Avviso = "";
                     input.DataOra = "";
-                    input.Avaria = "Eseguire scadenza VI";
-                    input.Intervento = "Effettuati controlli di VI come da checklist con esito positivo.";
+                    input.Avaria = "Eseguire controlli come da checklist AV-VI";
+                    input.Intervento = "Effettuati controlli come da checklist AV-VI senza riscontrare anomalie al SSB/ETCS4. Eseguito scarico dati per analisi dell’Ingegneria Hitachi Rail STS.";
                 }
             }
 
