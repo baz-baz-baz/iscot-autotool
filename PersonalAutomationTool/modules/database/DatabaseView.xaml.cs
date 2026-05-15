@@ -23,20 +23,8 @@ namespace PersonalAutomationTool.Modules.Database
         {
             try
             {
-                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                DirectoryInfo? dir = new(baseDir);
-                while (dir != null && dir.Name != "PersonalAutomationTool")
-                {
-                    dir = dir.Parent;
-                }
-
-                if (dir == null)
-                {
-                    MessageBox.Show("Impossibile trovare la cartella di base del progetto.", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
-
-                _dbDirectory = Path.Combine(dir.FullName, "modules", "database");
+                string baseDir = Path.GetDirectoryName(Environment.ProcessPath) ?? AppDomain.CurrentDomain.BaseDirectory;
+                _dbDirectory = Path.Combine(baseDir, "modules", "database");
                 if (!Directory.Exists(_dbDirectory))
                 {
                     Directory.CreateDirectory(_dbDirectory);

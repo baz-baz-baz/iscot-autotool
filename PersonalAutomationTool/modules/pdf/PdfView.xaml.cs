@@ -269,25 +269,16 @@ namespace PersonalAutomationTool.Modules.Pdf
                 var tipi = new System.Collections.Generic.List<string>();
                 try
                 {
-                    string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                    DirectoryInfo? dir = new(baseDir);
-                    while (dir != null && dir.Name != "PersonalAutomationTool")
+                    string baseDir = Path.GetDirectoryName(Environment.ProcessPath) ?? AppDomain.CurrentDomain.BaseDirectory;
+                    string dbPath = Path.Combine(baseDir, "modules", "database", "train_software.db");
+                    if (File.Exists(dbPath))
                     {
-                        dir = dir.Parent;
-                    }
-
-                    if (dir != null)
-                    {
-                        string dbPath = Path.Combine(dir.FullName, "modules", "database", "train_software.db");
-                        if (File.Exists(dbPath))
+                        using var db = new PersonalAutomationTool.Modules.Database.DatabaseManager(dbPath);
+                        var dt = db.ExecuteQuery("SELECT DISTINCT tipo FROM flotte ORDER BY LENGTH(tipo) DESC;");
+                        foreach (System.Data.DataRow row in dt.Rows)
                         {
-                            using var db = new PersonalAutomationTool.Modules.Database.DatabaseManager(dbPath);
-                            var dt = db.ExecuteQuery("SELECT DISTINCT tipo FROM flotte ORDER BY LENGTH(tipo) DESC;");
-                            foreach (System.Data.DataRow row in dt.Rows)
-                            {
-                                if (row["tipo"] != DBNull.Value)
-                                    tipi.Add(row["tipo"].ToString()!);
-                            }
+                            if (row["tipo"] != DBNull.Value)
+                                tipi.Add(row["tipo"].ToString()!);
                         }
                     }
                 }

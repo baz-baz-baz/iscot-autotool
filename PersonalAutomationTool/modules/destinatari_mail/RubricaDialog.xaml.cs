@@ -38,32 +38,23 @@ namespace PersonalAutomationTool.Modules.DestinatariMail
         {
             try
             {
-                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                DirectoryInfo? dir = new(baseDir);
-                while (dir != null && dir.Name != "PersonalAutomationTool")
+                string baseDir = Path.GetDirectoryName(Environment.ProcessPath) ?? AppDomain.CurrentDomain.BaseDirectory;
+                string dbPath = Path.Combine(baseDir, "modules", "database", "emails.db");
+                if (File.Exists(dbPath))
                 {
-                    dir = dir.Parent;
-                }
-
-                if (dir != null)
-                {
-                    string dbPath = Path.Combine(dir.FullName, "modules", "database", "emails.db");
-                    if (File.Exists(dbPath))
+                    using var dbManager = new DatabaseManager(dbPath);
+                    var data = dbManager.ExecuteQuery("SELECT nome, email, categoria FROM indirizzi_email");
+                    foreach (System.Data.DataRow row in data.Rows)
                     {
-                        using var dbManager = new DatabaseManager(dbPath);
-                        var data = dbManager.ExecuteQuery("SELECT nome, email, categoria FROM indirizzi_email");
-                        foreach (System.Data.DataRow row in data.Rows)
-                        {
-                            if (data.Columns.Contains("Errore") && row["Errore"] != DBNull.Value)
-                                continue;
+                        if (data.Columns.Contains("Errore") && row["Errore"] != DBNull.Value)
+                            continue;
 
-                            Contacts.Add(new RubricaContact
-                            {
-                                Nome = row["nome"]?.ToString() ?? "",
-                                Email = row["email"]?.ToString() ?? "",
-                                Categoria = row["categoria"]?.ToString() ?? ""
-                            });
-                        }
+                        Contacts.Add(new RubricaContact
+                        {
+                            Nome = row["nome"]?.ToString() ?? "",
+                            Email = row["email"]?.ToString() ?? "",
+                            Categoria = row["categoria"]?.ToString() ?? ""
+                        });
                     }
                 }
             }

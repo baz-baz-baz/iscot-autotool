@@ -14,8 +14,7 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
 
     public static class ShortcutsManager
     {
-        private static readonly string ConfigFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PersonalAutomationTool", "Config");
-        private static readonly string ConfigFilePath = Path.Combine(ConfigFolder, "shortcuts.json");
+        private static string ConfigFilePath => Path.Combine(Path.GetDirectoryName(Environment.ProcessPath) ?? AppDomain.CurrentDomain.BaseDirectory, "shortcuts.json");
 
         public static List<TrainShortcutsModel> LoadConfig()
         {
@@ -43,11 +42,6 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
         {
             try
             {
-                if (!Directory.Exists(ConfigFolder))
-                {
-                    Directory.CreateDirectory(ConfigFolder);
-                }
-
                 var options = new JsonSerializerOptions { WriteIndented = true };
                 string json = JsonSerializer.Serialize(config, options);
                 File.WriteAllText(ConfigFilePath, json);

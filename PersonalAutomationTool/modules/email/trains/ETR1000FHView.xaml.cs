@@ -54,12 +54,6 @@ namespace PersonalAutomationTool.Modules.Email.Trains
             
             if (dialog.ShowDialog() == true)
             {
-                // TODO: Logic to generate email with the data
-                // string avviso = dialog.Avviso;
-                // string dataOra = dialog.DataOra;
-                // string avaria = dialog.Avaria;
-                // string intervento = dialog.Intervento;
-                
                 MessageBox.Show("Dati confermati! Implementare la generazione email.", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }

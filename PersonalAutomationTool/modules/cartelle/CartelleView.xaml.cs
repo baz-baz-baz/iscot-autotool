@@ -39,16 +39,8 @@ namespace PersonalAutomationTool.Modules.Cartelle
         {
             try
             {
-                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                DirectoryInfo? dir = new(baseDir);
-                while (dir != null && dir.Name != "PersonalAutomationTool")
-                {
-                    dir = dir.Parent;
-                }
-
-                if (dir == null) return;
-
-                string dbPath = Path.Combine(dir.FullName, "modules", "database", "train_software.db");
+                string baseDir = Path.GetDirectoryName(Environment.ProcessPath) ?? AppDomain.CurrentDomain.BaseDirectory;
+                string dbPath = Path.Combine(baseDir, "modules", "database", "train_software.db");
 
                 if (File.Exists(dbPath))
                 {

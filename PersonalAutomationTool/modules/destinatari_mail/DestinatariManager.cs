@@ -58,12 +58,7 @@ namespace PersonalAutomationTool.Modules.DestinatariMail
     {
         private static string GetConfigPath()
         {
-            string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            string folder = Path.Combine(appData, "PersonalAutomationTool");
-            if (!Directory.Exists(folder))
-            {
-                Directory.CreateDirectory(folder);
-            }
+            string folder = Path.GetDirectoryName(Environment.ProcessPath) ?? AppDomain.CurrentDomain.BaseDirectory;
             return Path.Combine(folder, "destinatari.json");
         }
 

@@ -224,26 +224,18 @@ namespace PersonalAutomationTool.Modules.Email
                         // Ottieni treno e versione SW dal database
                         try
                         {
-                            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                            DirectoryInfo? dir = new(baseDir);
-                            while (dir != null && dir.Name != "PersonalAutomationTool")
+                            string baseDir = Path.GetDirectoryName(Environment.ProcessPath) ?? AppDomain.CurrentDomain.BaseDirectory;
+                            string dbPath = Path.Combine(baseDir, "modules", "database", "train_software.db");
+                            if (File.Exists(dbPath))
                             {
-                                dir = dir.Parent;
-                            }
-                            if (dir != null)
-                            {
-                                string dbPath = Path.Combine(dir.FullName, "modules", "database", "train_software.db");
-                                if (File.Exists(dbPath))
+                                using var dbManager = new PersonalAutomationTool.Modules.Database.DatabaseManager(dbPath);
+                                string locoSafe = loco.Replace("'", "''");
+                                string trainTypeSafe = trainType.Replace("'", "''");
+                                var dt = dbManager.ExecuteQuery($"SELECT treno, software FROM flotte WHERE tipo = '{trainTypeSafe}' AND loco = '{locoSafe}'");
+                                if (dt.Rows.Count > 0)
                                 {
-                                    using var dbManager = new PersonalAutomationTool.Modules.Database.DatabaseManager(dbPath);
-                                    string locoSafe = loco.Replace("'", "''");
-                                    string trainTypeSafe = trainType.Replace("'", "''");
-                                    var dt = dbManager.ExecuteQuery($"SELECT treno, software FROM flotte WHERE tipo = '{trainTypeSafe}' AND loco = '{locoSafe}'");
-                                    if (dt.Rows.Count > 0)
-                                    {
-                                        treno = dt.Rows[0]["treno"]?.ToString() ?? string.Empty;
-                                        versioneSW = dt.Rows[0]["software"]?.ToString() ?? string.Empty;
-                                    }
+                                    treno = dt.Rows[0]["treno"]?.ToString() ?? string.Empty;
+                                    versioneSW = dt.Rows[0]["software"]?.ToString() ?? string.Empty;
                                 }
                             }
                         }
