@@ -278,6 +278,21 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
             }
         }
 
+        private string GetMacroText(string macroName, string trainType)
+        {
+            if (trainType == "E404P")
+            {
+                switch (macroName)
+                {
+                    case "Nulla Riscontrato":
+                        return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguite prove con esito positivo come da check-list allegata.";
+                    case "Nulla Riscontrato Dati":
+                        return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguito scarico dati diagnostici per analisi da parte dell'ingegneria. Eseguite prove con esito positivo come da check-list allegata.";
+                }
+            }
+            return macroName;
+        }
+
         private void BtnInserisciIntervento_Click(object sender, RoutedEventArgs e)
         {
             // Il bottone ora ha come DataContext direttamente la stringa (grazie all'ItemsControl)
@@ -290,7 +305,7 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
                 }
                 else if (btn.DataContext is string d)
                 {
-                    textToInsert = d;
+                    textToInsert = GetMacroText(d, _trainType);
                 }
             }
 

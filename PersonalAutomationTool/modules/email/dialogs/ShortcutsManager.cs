@@ -14,7 +14,7 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
 
     public static class ShortcutsManager
     {
-        private static string ConfigFilePath => Path.Combine(Path.GetDirectoryName(Environment.ProcessPath) ?? AppDomain.CurrentDomain.BaseDirectory, "shortcuts.json");
+        private static string ConfigFilePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "shortcuts.json");
 
         public static List<TrainShortcutsModel> LoadConfig()
         {

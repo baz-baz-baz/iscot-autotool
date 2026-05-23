@@ -39,7 +39,7 @@ namespace PersonalAutomationTool.Modules.Cartelle
         {
             try
             {
-                string baseDir = Path.GetDirectoryName(Environment.ProcessPath) ?? AppDomain.CurrentDomain.BaseDirectory;
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
                 string dbPath = Path.Combine(baseDir, "modules", "database", "train_software.db");
 
                 if (File.Exists(dbPath))
