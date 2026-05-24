@@ -101,6 +101,27 @@ namespace PersonalAutomationTool.Modules.Email
                     }
                 }
 
+                if (actionType == "Scadenza 6 Mesi" || actionType == "Scadenza 12 Mesi")
+                {
+                    var cParts = cartella.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    string tNum = cParts.Length > 1 ? cParts[1] : "";
+                    
+                    string dateStr = "";
+                    var dateMatch = System.Text.RegularExpressions.Regex.Match(cartella, @"\b\d{6}\b");
+                    if (dateMatch.Success) 
+                    {
+                        dateStr = dateMatch.Value;
+                    }
+                    else if (logFolders.Count > 0)
+                    {
+                        dateMatch = System.Text.RegularExpressions.Regex.Match(logFolders[0], @"\b\d{6}\b");
+                        if (dateMatch.Success) dateStr = dateMatch.Value;
+                    }
+                    
+                    string periodo = actionType == "Scadenza 6 Mesi" ? "semestrale" : "annuale";
+                    subject = $"Revisione {periodo} {trainType} - {tNum} {dateStr}".Trim();
+                }
+
                 subject = MultipleSpacesRegex().Replace(subject, " ");
                 if (isNdPrefix)
                 {
@@ -134,6 +155,26 @@ namespace PersonalAutomationTool.Modules.Email
                 else
                 {
                     saluto = "Buonanotte,";
+                }
+
+                List<string> bottomTickets = new List<string>();
+                if (Directory.Exists(folderPath))
+                {
+                    try
+                    {
+                        var allEntries = Directory.GetFileSystemEntries(folderPath);
+                        foreach (var entry in allEntries)
+                        {
+                            string name = Path.GetFileNameWithoutExtension(entry);
+                            var match = System.Text.RegularExpressions.Regex.Match(name, @"(?<!\d)\d{7,8}(?!\d)");
+                            if (match.Success)
+                            {
+                                bottomTickets.Add(match.Value);
+                            }
+                        }
+                        bottomTickets = bottomTickets.Distinct().ToList();
+                    }
+                    catch { }
                 }
 
                 // Genera Corpo HTML
@@ -271,6 +312,13 @@ namespace PersonalAutomationTool.Modules.Email
                 }
 
                 htmlBuilder.Append("<p style='margin-top: 20px; font-size: 14pt; margin-bottom: 5px;'>Cordiali saluti,</p>");
+                
+                if (bottomTickets.Count > 0)
+                {
+                    string joinedTickets = string.Join(", ", bottomTickets);
+                    htmlBuilder.Append($"<p style='font-family: \"Calibri Light\", Calibri, sans-serif; font-size: 14pt; color: #A6A6A6; font-weight: 300; margin-top: 0px;'>Ticket: {joinedTickets}</p>");
+                }
+
                 htmlBuilder.Append("</div>");
 
                 string bodyContent = htmlBuilder.ToString();

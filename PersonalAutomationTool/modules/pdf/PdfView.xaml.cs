@@ -224,7 +224,7 @@ namespace PersonalAutomationTool.Modules.Pdf
 
                     if (tempOps.Count == 0)
                     {
-                        MessageBox.Show("I file hanno già i nomi corretti.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+                        // MessageBox.Show("I file hanno già i nomi corretti.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
                         return;
                     }
 
@@ -236,7 +236,7 @@ namespace PersonalAutomationTool.Modules.Pdf
                     }
 
                     string successMsg = "File rinominati con successo:\n\n" + string.Join("\n", tempOps.Select(o => Path.GetFileName(o.New)));
-                    MessageBox.Show(successMsg, "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
+                    // MessageBox.Show(successMsg, "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 
                 // L'aggiornamento UI avverrà automaticamente tramite AppWatcher

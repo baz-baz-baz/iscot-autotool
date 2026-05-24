@@ -54,7 +54,7 @@ namespace PersonalAutomationTool.Modules.Email.Trains
             
             if (dialog.ShowDialog() == true)
             {
-                MessageBox.Show("Dati confermati! Implementare la generazione email.", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
+                // MessageBox.Show("Dati confermati! Implementare la generazione email.", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
 

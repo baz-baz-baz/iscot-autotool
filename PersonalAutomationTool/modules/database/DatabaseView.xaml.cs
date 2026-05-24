@@ -270,7 +270,7 @@ namespace PersonalAutomationTool.Modules.Database
                 }
 
                 dataTable.AcceptChanges();
-                MessageBox.Show("Salvataggio completato con successo.", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
+                // MessageBox.Show("Salvataggio completato con successo.", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {

@@ -313,7 +313,7 @@ namespace PersonalAutomationTool.Modules.Cartelle
                     }
                 }
 
-                MessageBox.Show("Cartelle create con successo in LOG & DUMP!", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
+                // MessageBox.Show("Cartelle create con successo in LOG & DUMP!", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {

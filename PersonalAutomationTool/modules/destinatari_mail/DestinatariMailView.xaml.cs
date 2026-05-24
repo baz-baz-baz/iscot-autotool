@@ -20,7 +20,7 @@ namespace PersonalAutomationTool.Modules.DestinatariMail
             try
             {
                 DestinatariManager.SaveConfig(TrainConfigs);
-                MessageBox.Show("Modifiche ai destinatari salvate con successo!", "Salvataggio", MessageBoxButton.OK, MessageBoxImage.Information);
+                // MessageBox.Show("Modifiche ai destinatari salvate con successo!", "Salvataggio", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (System.Exception ex)
             {
