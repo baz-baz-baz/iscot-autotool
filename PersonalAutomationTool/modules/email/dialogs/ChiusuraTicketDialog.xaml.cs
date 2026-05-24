@@ -93,6 +93,9 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
 
     public partial class ChiusuraTicketDialog : Window
     {
+        [System.Text.RegularExpressions.GeneratedRegex(@"\b\d{6}\b")]
+        private static partial System.Text.RegularExpressions.Regex SixDigitsRegex();
+
         public ObservableCollection<LocoGroupModel> LocoGroups { get; set; } = [];
         public ObservableCollection<string> TrainShortcuts { get; set; } = [];
         public string TipoInterventoSelezionato { get; private set; } = string.Empty;
@@ -174,7 +177,7 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
                                 var parts = dirName.Split(" LOG ", StringSplitOptions.None);
                                 if (parts.Length > 1)
                                 {
-                                var dateMatch = System.Text.RegularExpressions.Regex.Match(dirName, @"\b\d{6}\b");
+                                var dateMatch = SixDigitsRegex().Match(dirName);
                                 var infoParts = dirName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                                 if (dateMatch.Success)
                                 {
@@ -208,7 +211,7 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
                     if (locos.Count == 0)
                     {
                         var parts = cartella.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                        var dateMatch = System.Text.RegularExpressions.Regex.Match(cartella, @"\b\d{6}\b");
+                        var dateMatch = SixDigitsRegex().Match(cartella);
                         string trainNumber = "";
                         
                         if (dateMatch.Success)

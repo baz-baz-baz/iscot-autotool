@@ -151,7 +151,7 @@ namespace PersonalAutomationTool.Modules.Cartelle
             });
         }
 
-        private async void UpdatePreviews()
+        private void UpdatePreviews()
         {
             if (TxtPreviewLog1 == null || TxtTicket1 == null) return; // Se l'interfaccia non è ancora inizializzata
 
