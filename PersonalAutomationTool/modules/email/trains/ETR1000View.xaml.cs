@@ -21,7 +21,9 @@ namespace PersonalAutomationTool.Modules.Email.Trains
             {
                 var directoryInfo = new DirectoryInfo(baseLogDump);
                 var directories = directoryInfo.GetDirectories()
-                    .Where(d => d.Name.StartsWith("ETR1000 ", StringComparison.OrdinalIgnoreCase))
+                    .Where(d => d.Name.StartsWith("ETR1000 ", StringComparison.OrdinalIgnoreCase) &&
+                                !d.Name.StartsWith("ETR1000 I-F", StringComparison.OrdinalIgnoreCase) &&
+                                !d.Name.StartsWith("ETR1000 FH", StringComparison.OrdinalIgnoreCase))
                     .ToList();
 
                 var filteredNames = directories.Select(d => d.Name).ToList();
@@ -80,7 +82,7 @@ namespace PersonalAutomationTool.Modules.Email.Trains
                         string dirName = System.IO.Path.GetFileName(dir);
                         if (dirName.Contains(" LOG "))
                         {
-                            var tokens = dirName.Split(new[] { " LOG " }, StringSplitOptions.None);
+                            var tokens = dirName.Split(" LOG ", StringSplitOptions.None);
                             if (tokens.Length > 1)
                             {
                                 var infoTokens = tokens[1].Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -146,7 +148,7 @@ namespace PersonalAutomationTool.Modules.Email.Trains
                         string dirName = System.IO.Path.GetFileName(dir);
                         if (dirName.Contains(" LOG "))
                         {
-                            var tokens = dirName.Split(new[] { " LOG " }, StringSplitOptions.None);
+                            var tokens = dirName.Split(" LOG ", StringSplitOptions.None);
                             if (tokens.Length > 1)
                             {
                                 var infoTokens = tokens[1].Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);

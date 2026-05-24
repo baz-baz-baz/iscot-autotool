@@ -21,7 +21,8 @@ namespace PersonalAutomationTool.Modules.Email.Trains
             {
                 var directoryInfo = new DirectoryInfo(baseLogDump);
                 var directories = directoryInfo.GetDirectories()
-                    .Where(d => d.Name.StartsWith("ETR1000FH", StringComparison.OrdinalIgnoreCase))
+                    .Where(d => d.Name.StartsWith("ETR1000FH", StringComparison.OrdinalIgnoreCase) ||
+                                d.Name.StartsWith("ETR1000 FH", StringComparison.OrdinalIgnoreCase))
                     .ToList();
 
                 var filteredNames = directories.Select(d => d.Name).ToList();

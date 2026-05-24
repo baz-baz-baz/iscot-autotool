@@ -41,7 +41,7 @@ namespace PersonalAutomationTool {
     /// <summary>
     /// App
     /// </summary>
-    public partial class App : System.Windows.Application, System.Windows.Markup.IComponentConnector {
+    public partial class App : System.Windows.Application {
         
         private bool _contentLoaded;
         
@@ -49,18 +49,18 @@ namespace PersonalAutomationTool {
         /// InitializeComponent
         /// </summary>
         [System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [System.CodeDom.Compiler.GeneratedCodeAttribute("PresentationBuildTasks", "10.0.3.0")]
+        [System.CodeDom.Compiler.GeneratedCodeAttribute("PresentationBuildTasks", "10.0.8.0")]
         public void InitializeComponent() {
+            if (_contentLoaded) {
+                return;
+            }
+            _contentLoaded = true;
             
             #line 6 "..\..\..\..\main\App.xaml"
             this.StartupUri = new System.Uri("MainWindow.xaml", System.UriKind.Relative);
             
             #line default
             #line hidden
-            if (_contentLoaded) {
-                return;
-            }
-            _contentLoaded = true;
             System.Uri resourceLocater = new System.Uri("/PersonalAutomationTool;V1.0.0.0;component/main/app.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\main\App.xaml"
@@ -70,14 +70,16 @@ namespace PersonalAutomationTool {
             #line hidden
         }
         
+        /// <summary>
+        /// Application Entry Point.
+        /// </summary>
+        [System.STAThreadAttribute()]
         [System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [System.CodeDom.Compiler.GeneratedCodeAttribute("PresentationBuildTasks", "10.0.3.0")]
-        [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Never)]
-        [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Design", "CA1033:InterfaceMethodsShouldBeCallableByChildTypes")]
-        [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Maintainability", "CA1502:AvoidExcessiveComplexity")]
-        [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1800:DoNotCastUnnecessarily")]
-        void System.Windows.Markup.IComponentConnector.Connect(int connectionId, object target) {
-            this._contentLoaded = true;
+        [System.CodeDom.Compiler.GeneratedCodeAttribute("PresentationBuildTasks", "10.0.8.0")]
+        public static void Main() {
+            PersonalAutomationTool.App app = new PersonalAutomationTool.App();
+            app.InitializeComponent();
+            app.Run();
         }
     }
 }

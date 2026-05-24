@@ -21,7 +21,8 @@ namespace PersonalAutomationTool.Modules.Email.Trains
             {
                 var directoryInfo = new DirectoryInfo(baseLogDump);
                 var directories = directoryInfo.GetDirectories()
-                    .Where(d => d.Name.StartsWith("ETR1000IF", StringComparison.OrdinalIgnoreCase))
+                    .Where(d => d.Name.StartsWith("ETR1000IF", StringComparison.OrdinalIgnoreCase) ||
+                                d.Name.StartsWith("ETR1000 I-F", StringComparison.OrdinalIgnoreCase))
                     .ToList();
 
                 var filteredNames = directories.Select(d => d.Name).ToList();
@@ -59,7 +60,132 @@ namespace PersonalAutomationTool.Modules.Email.Trains
         }
         private void BtnScadenza6Mesi_Click(object sender, RoutedEventArgs e) { }
         private void BtnScadenza12Mesi_Click(object sender, RoutedEventArgs e) { }
-        private void BtnScadenzeFrancesi_Click(object sender, RoutedEventArgs e) { }
+        
+        private void BtnScadenzeFrancesi_Click(object sender, RoutedEventArgs e)
+        {
+            string cartella = CmbCartelle.SelectedItem?.ToString() ?? "";
+            if (string.IsNullOrWhiteSpace(cartella))
+            {
+                MessageBox.Show("Selezionare una cartella.", "Attenzione", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            string baseLogDump = PersonalAutomationTool.Core.AppConfig.LogAndDumpFolder;
+            string fullPath = System.IO.Path.Combine(baseLogDump, cartella);
+            
+            string scadenzaName = "I0"; // Fallback
+            if (System.IO.Directory.Exists(fullPath))
+            {
+                var txtFiles = System.IO.Directory.GetFiles(fullPath, "*.txt");
+                if (txtFiles.Length > 0)
+                {
+                    scadenzaName = System.IO.Path.GetFileNameWithoutExtension(txtFiles[0]);
+                }
+            }
+
+            var locos = new System.Collections.Generic.HashSet<string>();
+            try
+            {
+                if (System.IO.Directory.Exists(fullPath))
+                {
+                    var subDirs = System.IO.Directory.GetDirectories(fullPath);
+                    foreach (var dir in subDirs)
+                    {
+                        string dirName = System.IO.Path.GetFileName(dir);
+                        if (dirName.Contains(" LOG "))
+                        {
+                            var dateMatch = System.Text.RegularExpressions.Regex.Match(dirName, @"\b\d{6}\b");
+                            var parts = dirName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                            if (dateMatch.Success)
+                            {
+                                int dateIndex = Array.IndexOf(parts, dateMatch.Value);
+                                int locoStartIndex = 3;
+                                if (parts.Length > 3 && (parts[3].Equals("I-F", StringComparison.OrdinalIgnoreCase) || parts[3].Equals("FH", StringComparison.OrdinalIgnoreCase)))
+                                {
+                                    locoStartIndex = 4;
+                                }
+                                
+                                if (dateIndex > locoStartIndex)
+                                {
+                                    string locoString = string.Join(" ", parts.Skip(locoStartIndex).Take(dateIndex - locoStartIndex));
+                                    var splittedLocos = locoString.Split('-', StringSplitOptions.RemoveEmptyEntries);
+                                    foreach(var s in splittedLocos) 
+                                    {
+                                        string cleanLoco = s.Trim();
+                                        cleanLoco = System.Text.RegularExpressions.Regex.Replace(cleanLoco, @"\bBISTANDARD\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+                                        if (!string.IsNullOrEmpty(cleanLoco))
+                                        {
+                                            locos.Add(cleanLoco);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch { }
+
+            var locoList = System.Linq.Enumerable.ToList(locos);
+            locoList.Sort();
+
+            if (locoList.Count == 0) 
+            {
+                var parts = cartella.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var dateMatch = System.Text.RegularExpressions.Regex.Match(cartella, @"\b\d{6}\b");
+                string trainNumber = "";
+                
+                if (dateMatch.Success)
+                {
+                    int dateIndex = Array.IndexOf(parts, dateMatch.Value);
+                    int locoStartIndex = 1;
+                    if (parts.Length > 1 && (parts[1].Equals("I-F", StringComparison.OrdinalIgnoreCase) || parts[1].Equals("FH", StringComparison.OrdinalIgnoreCase)))
+                        locoStartIndex = 2;
+                    
+                    if (dateIndex > locoStartIndex)
+                    {
+                        trainNumber = string.Join(" ", parts.Skip(locoStartIndex).Take(dateIndex - locoStartIndex));
+                    }
+                }
+                else 
+                {
+                    int locoStartIndex = 1;
+                    if (parts.Length > 1 && (parts[1].Equals("I-F", StringComparison.OrdinalIgnoreCase) || parts[1].Equals("FH", StringComparison.OrdinalIgnoreCase)))
+                        locoStartIndex = 2;
+                    if (parts.Length > locoStartIndex)
+                        trainNumber = parts[locoStartIndex];
+                }
+
+                if (!string.IsNullOrWhiteSpace(trainNumber))
+                {
+                    if (trainNumber.Contains('-'))
+                    {
+                        var splitted = trainNumber.Split('-');
+                        foreach (var s in splitted) locoList.Add(s.Trim());
+                    }
+                    else
+                    {
+                        locoList.Add(trainNumber.Trim());
+                    }
+                }
+            }
+
+            var locoGroups = new System.Collections.ObjectModel.ObservableCollection<PersonalAutomationTool.Modules.Email.Dialogs.LocoGroupModel>();
+            
+            foreach(var loco in locoList)
+            {
+                var group = new PersonalAutomationTool.Modules.Email.Dialogs.LocoGroupModel { GroupLocoName = loco };
+                group.Inputs.Add(new PersonalAutomationTool.Modules.Email.Dialogs.TicketInputModel
+                {
+                    SelectedLoco = loco,
+                    Avaria = $"Revisione {scadenzaName}",
+                    Intervento = $"Eseguito controlli statici per scadenza {scadenzaName} come da PdM con esito positivo."
+                });
+                locoGroups.Add(group);
+            }
+
+            bool isNd = ChkPrefissoND.IsChecked == true;
+            PersonalAutomationTool.Modules.Email.EmailService.GenerateChiusuraTicketEmail(cartella, "ETR1000IF", locoGroups, isNd, "Scadenze Francesi");
+        }
 
         private void ChkPrefissoND_Checked(object sender, RoutedEventArgs e)
         {

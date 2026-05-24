@@ -166,9 +166,6 @@ namespace PersonalAutomationTool.Modules.Cartelle
 
             if (!string.IsNullOrWhiteSpace(ticket1))
             {
-                string treno1 = await GetTrenoFromDbAsync(tipo, loco1);
-                string parentName1 = !string.IsNullOrWhiteSpace(treno1) ? $"{tipo} {treno1}".Trim() : $"{tipo} {loco1}".Trim();
-
                 TxtPreviewLog1.Text = $"SR{ticket1} LOG {tipo} {loco1} {software} {data} {utente}".Trim();
                 TxtPreviewDump1.Text = $"SR{ticket1} DUMP {tipo} {loco1} {software} {data} {utente}".Trim();
             }
@@ -181,8 +178,6 @@ namespace PersonalAutomationTool.Modules.Cartelle
             if (!string.IsNullOrWhiteSpace(ticket2) && TxtPreviewLog2 != null && TxtPreviewDump2 != null)
             {
                 string l2 = string.IsNullOrWhiteSpace(loco2) ? loco1 : loco2;
-                string treno2 = await GetTrenoFromDbAsync(tipo, l2);
-                string parentName2 = !string.IsNullOrWhiteSpace(treno2) ? $"{tipo} {treno2}".Trim() : $"{tipo} {l2}".Trim();
 
                 TxtPreviewLog2.Text = $"SR{ticket2} LOG {tipo} {l2} {software} {data} {utente}".Trim();
                 TxtPreviewDump2.Text = $"SR{ticket2} DUMP {tipo} {l2} {software} {data} {utente}".Trim();

@@ -19,7 +19,7 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
             set { _selectedLoco = value; OnPropertyChanged(nameof(SelectedLoco)); }
         }
 
-        private ObservableCollection<string> _availableLocos = new ObservableCollection<string>();
+        private ObservableCollection<string> _availableLocos = [];
         public ObservableCollection<string> AvailableLocos
         {
             get => _availableLocos;
@@ -77,7 +77,7 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
             set { _isCopyFromFirstVisible = value; OnPropertyChanged(nameof(IsCopyFromFirstVisible)); }
         }
 
-        private ObservableCollection<TicketInputModel> _inputs = new ObservableCollection<TicketInputModel>();
+        private ObservableCollection<TicketInputModel> _inputs = [];
         public ObservableCollection<TicketInputModel> Inputs
         {
             get => _inputs;
@@ -93,13 +93,13 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
 
     public partial class ChiusuraTicketDialog : Window
     {
-        public ObservableCollection<LocoGroupModel> LocoGroups { get; set; } = new ObservableCollection<LocoGroupModel>();
-        public ObservableCollection<string> TrainShortcuts { get; set; } = new ObservableCollection<string>();
+        public ObservableCollection<LocoGroupModel> LocoGroups { get; set; } = [];
+        public ObservableCollection<string> TrainShortcuts { get; set; } = [];
         public string TipoInterventoSelezionato { get; private set; } = string.Empty;
-        private string _cartella;
-        private string _trainType;
-        private bool _isNd;
-        private string _actionType;
+        private readonly string _cartella;
+        private readonly string _trainType;
+        private readonly bool _isNd;
+        private readonly string _actionType;
 
         public ChiusuraTicketDialog(string cartella = "", string trainType = "", bool isNd = false, string actionType = "Chiusura Ticket")
         {
@@ -171,15 +171,35 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
                             string dirName = Path.GetFileName(dir);
                             if (dirName.Contains(" LOG "))
                             {
-                                var parts = dirName.Split(new[] { " LOG " }, StringSplitOptions.None);
+                                var parts = dirName.Split(" LOG ", StringSplitOptions.None);
                                 if (parts.Length > 1)
                                 {
-                                    string infoPart = parts[1].Trim();
-                                    var infoTokens = infoPart.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                                    if (infoTokens.Length >= 2)
+                                var dateMatch = System.Text.RegularExpressions.Regex.Match(dirName, @"\b\d{6}\b");
+                                var infoParts = dirName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                                if (dateMatch.Success)
+                                {
+                                    int dateIndex = Array.IndexOf(infoParts, dateMatch.Value);
+                                    int locoStartIndex = 3;
+                                    if (infoParts.Length > 3 && (infoParts[3].Equals("I-F", StringComparison.OrdinalIgnoreCase) || infoParts[3].Equals("FH", StringComparison.OrdinalIgnoreCase)))
                                     {
-                                        locos.Add(infoTokens[1]);
+                                        locoStartIndex = 4;
                                     }
+                                    
+                                    if (dateIndex > locoStartIndex)
+                                    {
+                                        string locoString = string.Join(" ", infoParts.Skip(locoStartIndex).Take(dateIndex - locoStartIndex));
+                                        var splittedLocos = locoString.Split('-', StringSplitOptions.RemoveEmptyEntries);
+                                        foreach(var s in splittedLocos) 
+                                        {
+                                            string cleanLoco = s.Trim();
+                                            cleanLoco = System.Text.RegularExpressions.Regex.Replace(cleanLoco, @"\bBISTANDARD\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+                                            if (!string.IsNullOrEmpty(cleanLoco))
+                                            {
+                                                locos.Add(cleanLoco);
+                                            }
+                                        }
+                                    }
+                                }
                                 }
                             }
                         }
@@ -188,17 +208,40 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
                     if (locos.Count == 0)
                     {
                         var parts = cartella.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                        if (parts.Length > 1)
+                        var dateMatch = System.Text.RegularExpressions.Regex.Match(cartella, @"\b\d{6}\b");
+                        string trainNumber = "";
+                        
+                        if (dateMatch.Success)
                         {
-                            string rest = string.Join(" ", parts.Skip(1));
-                            if (rest.Contains("-"))
+                            int dateIndex = Array.IndexOf(parts, dateMatch.Value);
+                            int locoStartIndex = 1;
+                            if (parts.Length > 1 && (parts[1].Equals("I-F", StringComparison.OrdinalIgnoreCase) || parts[1].Equals("FH", StringComparison.OrdinalIgnoreCase)))
+                                locoStartIndex = 2;
+                            
+                            if (dateIndex > locoStartIndex)
                             {
-                                var splitted = rest.Split('-');
+                                trainNumber = string.Join(" ", parts.Skip(locoStartIndex).Take(dateIndex - locoStartIndex));
+                            }
+                        }
+                        else 
+                        {
+                            int locoStartIndex = 1;
+                            if (parts.Length > 1 && (parts[1].Equals("I-F", StringComparison.OrdinalIgnoreCase) || parts[1].Equals("FH", StringComparison.OrdinalIgnoreCase)))
+                                locoStartIndex = 2;
+                            if (parts.Length > locoStartIndex)
+                                trainNumber = parts[locoStartIndex];
+                        }
+                        
+                        if (!string.IsNullOrEmpty(trainNumber))
+                        {
+                            if (trainNumber.Contains('-'))
+                            {
+                                var splitted = trainNumber.Split('-');
                                 foreach (var s in splitted) locos.Add(s.Trim());
                             }
                             else
                             {
-                                locos.Add(rest.Trim());
+                                locos.Add(trainNumber.Trim());
                             }
                         }
                     }
@@ -233,7 +276,7 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
                 var group = new LocoGroupModel { GroupLocoName = "Sconosciuta" };
                 group.Inputs.Add(new TicketInputModel
                 {
-                    AvailableLocos = new ObservableCollection<string>()
+                    AvailableLocos = []
                 });
                 LocoGroups.Add(group);
             }
@@ -246,7 +289,7 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
                 var firstInput = groupModel.Inputs.FirstOrDefault();
                 var newModel = new TicketInputModel
                 {
-                    AvailableLocos = firstInput?.AvailableLocos ?? new ObservableCollection<string>(),
+                    AvailableLocos = firstInput?.AvailableLocos ?? [],
                     SelectedLoco = groupModel.GroupLocoName
                 };
                 groupModel.Inputs.Add(newModel);
@@ -278,7 +321,7 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
             }
         }
 
-        private string GetMacroText(string macroName, string trainType)
+        private static string GetMacroText(string macroName, string trainType)
         {
             if (trainType == "E404P")
             {
@@ -381,11 +424,10 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
 
             if (!string.IsNullOrEmpty(textToInsert))
             {
-                var focusedElement = System.Windows.Input.Keyboard.FocusedElement as TextBox;
-                if (focusedElement != null && focusedElement.Tag is string tagString && tagString.Contains("Dettagli intervento"))
+                if (System.Windows.Input.Keyboard.FocusedElement is TextBox focusedElement && focusedElement.Tag is string tagString && tagString.Contains("Dettagli intervento"))
                 {
                     var insertPos = focusedElement.SelectionStart;
-                    if (!string.IsNullOrEmpty(focusedElement.Text) && !focusedElement.Text.EndsWith(" ") && !focusedElement.Text.EndsWith("\n") && insertPos > 0)
+                    if (!string.IsNullOrEmpty(focusedElement.Text) && !focusedElement.Text.EndsWith(' ') && !focusedElement.Text.EndsWith('\n') && insertPos > 0)
                     {
                         textToInsert = " " + textToInsert;
                     }
@@ -406,10 +448,8 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
             {
                 foreach (var group in LocoGroups.ToList())
                 {
-                    if (group.Inputs.Contains(inputModel))
+                    if (group.Inputs.Remove(inputModel))
                     {
-                        group.Inputs.Remove(inputModel);
-                        
                         // Se era l'ultimo riquadro per questa locomotiva, eliminiamo l'intera riga
                         if (group.Inputs.Count == 0)
                         {
@@ -460,7 +500,7 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
             }
         }
 
-        private void BubbleScroll(System.Windows.Controls.ScrollViewer scv, System.Windows.Input.MouseWheelEventArgs e)
+        private static void BubbleScroll(System.Windows.Controls.ScrollViewer scv, System.Windows.Input.MouseWheelEventArgs e)
         {
             e.Handled = true;
             var eventArg = new System.Windows.Input.MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)

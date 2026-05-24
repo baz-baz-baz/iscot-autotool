@@ -15,6 +15,12 @@ namespace PersonalAutomationTool.Modules.Email
         [System.Text.RegularExpressions.GeneratedRegex(@"\s+")]
         private static partial System.Text.RegularExpressions.Regex MultipleSpacesRegex();
 
+        [System.Text.RegularExpressions.GeneratedRegex(@"\b\d{6}\b")]
+        private static partial System.Text.RegularExpressions.Regex SixDigitsRegex();
+
+        [System.Text.RegularExpressions.GeneratedRegex(@"(?<!\d)\d{7,8}(?!\d)")]
+        private static partial System.Text.RegularExpressions.Regex TicketRegex();
+
         public static void GenerateChiusuraTicketEmail(string cartella, string trainType, ObservableCollection<LocoGroupModel> locoGroups, bool isNdPrefix = false, string actionType = "Chiusura Ticket")
         {
             try
@@ -55,12 +61,33 @@ namespace PersonalAutomationTool.Modules.Email
                         if (dirName.Contains(" DUMP ")) dumpFolders.Add(dirName);
 
                         var parts = dirName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                        if (parts.Length >= 7 && parts[0].StartsWith("SR", StringComparison.OrdinalIgnoreCase))
+                        if (parts.Length >= 4 && parts[0].StartsWith("SR", StringComparison.OrdinalIgnoreCase))
                         {
                             tickets.Add(parts[0].ToUpper());
-                            locos.Add(parts[3]);
-                            extractedDate = parts[5];
-                            extractedUser = string.Join(" ", parts.Skip(6));
+                            
+                            var dateMatch = SixDigitsRegex().Match(dirName);
+                            if (dateMatch.Success)
+                            {
+                                extractedDate = dateMatch.Value;
+                                int dateIndex = Array.IndexOf(parts, extractedDate);
+                                if (dateIndex > 0)
+                                {
+                                    extractedUser = string.Join(" ", parts.Skip(dateIndex + 1));
+                                    
+                                    int locoStartIndex = 3;
+                                    if (parts.Length > 3 && (parts[3].Equals("I-F", StringComparison.OrdinalIgnoreCase) || parts[3].Equals("FH", StringComparison.OrdinalIgnoreCase) || parts[3].Equals("I-F", StringComparison.OrdinalIgnoreCase)))
+                                    {
+                                        locoStartIndex = 4;
+                                    }
+                                    
+                                    if (dateIndex > locoStartIndex)
+                                    {
+                                        string locoString = string.Join(" ", parts.Skip(locoStartIndex).Take(dateIndex - locoStartIndex));
+                                        var splittedLocos = locoString.Split('-', StringSplitOptions.RemoveEmptyEntries);
+                                        foreach(var s in splittedLocos) locos.Add(s.Trim());
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -104,22 +131,105 @@ namespace PersonalAutomationTool.Modules.Email
                 if (actionType == "Scadenza 6 Mesi" || actionType == "Scadenza 12 Mesi")
                 {
                     var cParts = cartella.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    string tNum = cParts.Length > 1 ? cParts[1] : "";
-                    
+                    string tNum = "";
                     string dateStr = "";
-                    var dateMatch = System.Text.RegularExpressions.Regex.Match(cartella, @"\b\d{6}\b");
+                    var dateMatch = SixDigitsRegex().Match(cartella);
                     if (dateMatch.Success) 
                     {
                         dateStr = dateMatch.Value;
+                        int dateIndex = Array.IndexOf(cParts, dateStr);
+                        int locoStartIndex = 1;
+                        if (cParts.Length > 1 && (cParts[1].Equals("I-F", StringComparison.OrdinalIgnoreCase) || cParts[1].Equals("FH", StringComparison.OrdinalIgnoreCase)))
+                            locoStartIndex = 2;
+                        if (dateIndex > locoStartIndex)
+                            tNum = string.Join(" ", cParts.Skip(locoStartIndex).Take(dateIndex - locoStartIndex));
                     }
                     else if (logFolders.Count > 0)
                     {
-                        dateMatch = System.Text.RegularExpressions.Regex.Match(logFolders[0], @"\b\d{6}\b");
+                        dateMatch = SixDigitsRegex().Match(logFolders[0]);
+                        if (dateMatch.Success) dateStr = dateMatch.Value;
+                        
+                        int locoStartIndex = 1;
+                        if (cParts.Length > 1 && (cParts[1].Equals("I-F", StringComparison.OrdinalIgnoreCase) || cParts[1].Equals("FH", StringComparison.OrdinalIgnoreCase)))
+                            locoStartIndex = 2;
+                        if (cParts.Length > locoStartIndex)
+                            tNum = cParts[locoStartIndex];
+                    }
+                    {
+                        dateMatch = SixDigitsRegex().Match(logFolders[0]);
                         if (dateMatch.Success) dateStr = dateMatch.Value;
                     }
                     
                     string periodo = actionType == "Scadenza 6 Mesi" ? "semestrale" : "annuale";
                     subject = $"Revisione {periodo} {trainType} - {tNum} {dateStr}".Trim();
+                }
+                else if (actionType == "Scadenze Francesi")
+                {
+                    string scadenzaName = "I0";
+                    if (Directory.Exists(folderPath))
+                    {
+                        var txtFiles = Directory.GetFiles(folderPath, "*.txt");
+                        if (txtFiles.Length > 0)
+                        {
+                            scadenzaName = Path.GetFileNameWithoutExtension(txtFiles[0]);
+                        }
+                    }
+
+                    var cParts = cartella.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    string tNum = "";
+                    string dateStr = "";
+                    string myExtractedUser = "";
+                    var dateMatch = SixDigitsRegex().Match(cartella);
+                    if (dateMatch.Success) 
+                    {
+                        dateStr = dateMatch.Value;
+                        int dateIndex = Array.IndexOf(cParts, dateStr);
+                        
+                        int locoStartIndex = 1;
+                        if (cParts.Length > 1 && (cParts[1].Equals("I-F", StringComparison.OrdinalIgnoreCase) || cParts[1].Equals("FH", StringComparison.OrdinalIgnoreCase)))
+                            locoStartIndex = 2;
+                        
+                        if (dateIndex > locoStartIndex)
+                            tNum = string.Join(" ", cParts.Skip(locoStartIndex).Take(dateIndex - locoStartIndex));
+                            
+                        if (dateIndex >= 0 && dateIndex < cParts.Length - 1)
+                        {
+                            myExtractedUser = string.Join(" ", cParts.Skip(dateIndex + 1));
+                        }
+                    }
+                    
+                    if (string.IsNullOrEmpty(myExtractedUser) && logFolders.Count > 0)
+                    {
+                        var logParts = logFolders[0].Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                        var lmDateMatch = SixDigitsRegex().Match(logFolders[0]);
+                        if (lmDateMatch.Success)
+                        {
+                            int lmDateIndex = Array.IndexOf(logParts, lmDateMatch.Value);
+                            if (lmDateIndex >= 0 && lmDateIndex < logParts.Length - 1)
+                            {
+                                myExtractedUser = string.Join(" ", logParts.Skip(lmDateIndex + 1));
+                            }
+                        }
+                    }
+                    
+                    if (!dateMatch.Success && logFolders.Count > 0)
+                    {
+                        dateMatch = SixDigitsRegex().Match(logFolders[0]);
+                        if (dateMatch.Success) dateStr = dateMatch.Value;
+                        
+                        int locoStartIndex = 1;
+                        if (cParts.Length > 1 && (cParts[1].Equals("I-F", StringComparison.OrdinalIgnoreCase) || cParts[1].Equals("FH", StringComparison.OrdinalIgnoreCase)))
+                            locoStartIndex = 2;
+                        if (cParts.Length > locoStartIndex)
+                            tNum = cParts[locoStartIndex];
+                    }
+                    {
+                        dateMatch = SixDigitsRegex().Match(logFolders[0]);
+                        if (dateMatch.Success) dateStr = dateMatch.Value;
+                    }
+
+                    string displayTrainType = trainType == "ETR1000IF" ? "ETR1000 I-F" : trainType;
+                    subject = $"Revisione {scadenzaName} {displayTrainType} {tNum} {dateStr} {myExtractedUser}".Trim();
                 }
 
                 subject = MultipleSpacesRegex().Replace(subject, " ");
@@ -157,7 +267,7 @@ namespace PersonalAutomationTool.Modules.Email
                     saluto = "Buonanotte,";
                 }
 
-                List<string> bottomTickets = new List<string>();
+                List<string> bottomTickets = [];
                 if (Directory.Exists(folderPath))
                 {
                     try
@@ -166,7 +276,7 @@ namespace PersonalAutomationTool.Modules.Email
                         foreach (var entry in allEntries)
                         {
                             string name = Path.GetFileNameWithoutExtension(entry);
-                            var match = System.Text.RegularExpressions.Regex.Match(name, @"(?<!\d)\d{7,8}(?!\d)");
+                            var match = TicketRegex().Match(name);
                             if (match.Success)
                             {
                                 bottomTickets.Add(match.Value);
@@ -178,7 +288,7 @@ namespace PersonalAutomationTool.Modules.Email
                 }
 
                 // Genera Corpo HTML
-                StringBuilder htmlBuilder = new StringBuilder();
+                StringBuilder htmlBuilder = new();
                 htmlBuilder.Append("<div style='font-family: Calibri, sans-serif; font-size: 11pt; color: black;'>");
                 htmlBuilder.Append($"<p style='font-size: 14pt;'>{saluto}</p>");
                 
@@ -270,8 +380,18 @@ namespace PersonalAutomationTool.Modules.Email
                             if (File.Exists(dbPath))
                             {
                                 using var dbManager = new PersonalAutomationTool.Modules.Database.DatabaseManager(dbPath);
+                                string dbTrainType = trainType;
+                                if (dbTrainType.Equals("ETR1000IF", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    dbTrainType = "ETR1000 I-F";
+                                }
+                                else if (dbTrainType.Equals("ETR1000FH", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    dbTrainType = "ETR1001FH";
+                                }
+                                
                                 string locoSafe = loco.Replace("'", "''");
-                                string trainTypeSafe = trainType.Replace("'", "''");
+                                string trainTypeSafe = dbTrainType.Replace("'", "''");
                                 var dt = dbManager.ExecuteQuery($"SELECT treno, software FROM flotte WHERE tipo = '{trainTypeSafe}' AND loco = '{locoSafe}'");
                                 if (dt.Rows.Count > 0)
                                 {
