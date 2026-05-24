@@ -93,8 +93,8 @@ namespace PersonalAutomationTool.Modules.Email
 
                     if (tickets.Count > 0)
                     {
-                        tickets = tickets.Distinct().ToList();
-                        locos = locos.Distinct().ToList();
+                        tickets = [.. tickets.Distinct()];
+                        locos = [.. locos.Distinct()];
 
                         string ticketsStr = string.Join(" - ", tickets);
                         string locosStr = string.Join(" - ", locos);
@@ -282,7 +282,7 @@ namespace PersonalAutomationTool.Modules.Email
                                 bottomTickets.Add(match.Value);
                             }
                         }
-                        bottomTickets = bottomTickets.Distinct().ToList();
+                        bottomTickets = [.. bottomTickets.Distinct()];
                     }
                     catch { }
                 }
@@ -393,10 +393,29 @@ namespace PersonalAutomationTool.Modules.Email
                                 string locoSafe = loco.Replace("'", "''");
                                 string trainTypeSafe = dbTrainType.Replace("'", "''");
                                 var dt = dbManager.ExecuteQuery($"SELECT treno, software FROM flotte WHERE tipo = '{trainTypeSafe}' AND loco = '{locoSafe}'");
+                                
+                                if (dt.Rows.Count == 0 && locoSafe.Contains(' '))
+                                {
+                                    var parts = locoSafe.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                                    string firstPart = parts[0];
+                                    dt = dbManager.ExecuteQuery($"SELECT treno, software FROM flotte WHERE tipo = '{trainTypeSafe}' AND loco = '{firstPart}'");
+                                    if (dt.Rows.Count > 0)
+                                    {
+                                        loco = firstPart;
+                                        if (parts.Length > 1)
+                                        {
+                                            versioneSW = parts[1];
+                                        }
+                                    }
+                                }
+
                                 if (dt.Rows.Count > 0)
                                 {
                                     treno = dt.Rows[0]["treno"]?.ToString() ?? string.Empty;
-                                    versioneSW = dt.Rows[0]["software"]?.ToString() ?? string.Empty;
+                                    if (string.IsNullOrEmpty(versioneSW))
+                                    {
+                                        versioneSW = dt.Rows[0]["software"]?.ToString() ?? string.Empty;
+                                    }
                                 }
                             }
                         }

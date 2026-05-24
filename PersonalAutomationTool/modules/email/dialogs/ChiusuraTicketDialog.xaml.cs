@@ -96,6 +96,9 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
         [System.Text.RegularExpressions.GeneratedRegex(@"\b\d{6}\b")]
         private static partial System.Text.RegularExpressions.Regex SixDigitsRegex();
 
+        [System.Text.RegularExpressions.GeneratedRegex(@"\bBISTANDARD\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase)]
+        private static partial System.Text.RegularExpressions.Regex BistandardRegex();
+
         public ObservableCollection<LocoGroupModel> LocoGroups { get; set; } = [];
         public ObservableCollection<string> TrainShortcuts { get; set; } = [];
         public string TipoInterventoSelezionato { get; private set; } = string.Empty;
@@ -195,7 +198,11 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
                                         foreach(var s in splittedLocos) 
                                         {
                                             string cleanLoco = s.Trim();
-                                            cleanLoco = System.Text.RegularExpressions.Regex.Replace(cleanLoco, @"\bBISTANDARD\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+                                            cleanLoco = BistandardRegex().Replace(cleanLoco, "").Trim();
+                                            if (cleanLoco.Contains(' '))
+                                            {
+                                                cleanLoco = cleanLoco.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
+                                            }
                                             if (!string.IsNullOrEmpty(cleanLoco))
                                             {
                                                 locos.Add(cleanLoco);
@@ -240,11 +247,24 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
                             if (trainNumber.Contains('-'))
                             {
                                 var splitted = trainNumber.Split('-');
-                                foreach (var s in splitted) locos.Add(s.Trim());
+                                foreach (var s in splitted) 
+                                {
+                                    string cleanLoco = s.Trim();
+                                    if (cleanLoco.Contains(' '))
+                                    {
+                                        cleanLoco = cleanLoco.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
+                                    }
+                                    if (!string.IsNullOrEmpty(cleanLoco)) locos.Add(cleanLoco);
+                                }
                             }
                             else
                             {
-                                locos.Add(trainNumber.Trim());
+                                string cleanLoco = trainNumber.Trim();
+                                if (cleanLoco.Contains(' '))
+                                {
+                                    cleanLoco = cleanLoco.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
+                                }
+                                if (!string.IsNullOrEmpty(cleanLoco)) locos.Add(cleanLoco);
                             }
                         }
                     }
@@ -342,7 +362,7 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
                         return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguiti controlli con SIM-GIT con esito positivo. Eseguito scarico dati diagnostici per ingegneria.  Eseguiti controlli con esito positivo come da Checklist allegata.";
                 }
             }
-            else if (trainType == "700")
+            else if (trainType == "ETR700")
             {
                 switch (macroName)
                 {
@@ -358,7 +378,7 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
                         return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguiti controlli con SIM-GIT con esito positivo. Eseguito scarico dati diagnostici per ingegneria. Con ferimento al SSB il treno è conforme all'esercizio commerciale.";
                 }
             }
-            else if (trainType == "1000")
+            else if (trainType == "ETR1000")
             {
                 switch (macroName)
                 {
@@ -374,7 +394,7 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
                         return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguiti controlli con SIM-GIT con esito positivo. Eseguito scarico dati diagnostici per ingegneria. Con ferimento al SSB il treno è conforme all'esercizio commerciale.";
                 }
             }
-            else if (trainType == "1000IF")
+            else if (trainType == "ETR1000IF")
             {
                 switch (macroName)
                 {
@@ -390,7 +410,7 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
                         return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguiti controlli con SIM-GIT con esito positivo. Eseguito scarico dati diagnostici per ingegneria. Con ferimento al SSB il treno è conforme all'esercizio commerciale.";
                 }
             }
-            else if (trainType == "1000FH")
+            else if (trainType == "ETR1000FH")
             {
                 switch (macroName)
                 {
