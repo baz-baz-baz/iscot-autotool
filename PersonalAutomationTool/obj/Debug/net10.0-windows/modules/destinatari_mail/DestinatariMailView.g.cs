@@ -51,8 +51,8 @@ namespace PersonalAutomationTool.Modules.DestinatariMail {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri(("/PersonalAutomationTool;V1.0.0.0;component/modules/destinatari_mail/destinatarima" +
-                    "ilview.xaml"), System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri(("/PersonalAutomationTool;component/modules/destinatari_mail/destinatarimailview.xa" +
+                    "ml"), System.UriKind.Relative);
             
             #line 1 "..\..\..\..\..\modules\destinatari_mail\DestinatariMailView.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);

@@ -7,6 +7,8 @@ namespace PersonalAutomationTool.Modules.Excel
         public ExcelView()
         {
             InitializeComponent();
+            this.DataContext = new ExcelViewModel();
         }
     }
 }
+

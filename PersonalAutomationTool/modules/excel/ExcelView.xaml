@@ -3,9 +3,169 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
-    <Grid Background="White">
-        <TextBlock Text="Sezione Compilazione Excel" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="24" FontWeight="Bold"/>
+             d:DesignHeight="768" d:DesignWidth="1366"
+             Background="#F8F9FA"
+             TextOptions.TextFormattingMode="Display"
+             TextOptions.TextRenderingMode="ClearType"
+             UseLayoutRounding="True"
+             SnapsToDevicePixels="True">
+    <!-- Layout Principale: Sidebar a sinistra, Contenuto a destra -->
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Sidebar Sinistra -->
+        <materialDesign:Card Grid.Column="0" Margin="16" UniformCornerRadius="8" materialDesign:ElevationAssist.Elevation="Dp1" Background="White">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                
+                <TextBlock Grid.Row="0" Text="Sezioni disponibili" FontWeight="Bold" FontSize="16" Margin="20,20,20,12" Foreground="#111111"/>
+                
+                <StackPanel Grid.Row="1" Margin="20,8,20,24">
+                    <TextBlock Text="Cartella LOG &amp; DUMP" 
+                               FontSize="14" 
+                               FontWeight="Medium" 
+                               Foreground="#555555" 
+                               Margin="2,0,0,6"/>
+                    <ComboBox Style="{StaticResource MaterialDesignOutlinedComboBox}" 
+                              FontSize="15"
+                              IsEditable="False"
+                              ItemsSource="{Binding AvailableFolders}"
+                              SelectedItem="{Binding SelectedFolder}"
+                              materialDesign:HintAssist.Hint="Nessuna cartella disponibile"
+                              materialDesign:HintAssist.IsFloating="False" />
+                </StackPanel>
+
+                <ListBox Grid.Row="2" Margin="4,0,4,16" 
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         ItemsSource="{Binding Trains}"
+                         SelectedItem="{Binding SelectedTrain}">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Margin" Value="0,2"/>
+                            <Setter Property="Padding" Value="24,20"/>
+                            <Setter Property="MinHeight" Value="60"/>
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Setter Property="BorderBrush" Value="Transparent"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Foreground" Value="#111111"/>
+                            <Setter Property="FontSize" Value="16"/>
+                            <Setter Property="FontWeight" Value="Medium"/>
+                            <Setter Property="Cursor" Value="Hand"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="Border" 
+                                                CornerRadius="6" 
+                                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                                Background="{TemplateBinding Background}" 
+                                                SnapsToDevicePixels="true">
+                                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                                              HorizontalAlignment="Left"
+                                                              VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="true">
+                                                <Setter TargetName="Border" Property="Background" Value="#F0F4F8"/>
+                                            </Trigger>
+                                            <Trigger Property="IsSelected" Value="true">
+                                                <Setter TargetName="Border" Property="Background" Value="#E0E0E0"/>
+                                                <Setter Property="Foreground" Value="#111111"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                </ListBox>
+            </Grid>
+        </materialDesign:Card>
+
+        <!-- Area Principale Destra -->
+        <materialDesign:Card Grid.Column="1" Margin="0,16,16,16" UniformCornerRadius="8" materialDesign:ElevationAssist.Elevation="Dp1" Background="White">
+            <Grid Margin="32,24,32,32">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Top Bar -->
+                <Grid Grid.Row="0" Margin="0,0,0,32">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Bottone Indietro -->
+                        <Button Style="{StaticResource MaterialDesignFlatButton}" 
+                                Foreground="#444444"
+                                Padding="8,4,12,4"
+                                Margin="0,0,16,0"
+                                Cursor="Hand">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="ChevronLeft" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                <TextBlock Text="Indietro" VerticalAlignment="Center" FontWeight="Medium"/>
+                            </StackPanel>
+                        </Button>
+                        <!-- Titolo -->
+                        <TextBlock Text="Inserimento dati" FontSize="24" FontWeight="Bold" Foreground="#111111" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <!-- Bottoni Azione -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Stile comune per i bottoni azione in alto a destra -->
+                        <StackPanel.Resources>
+                            <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">
+                                <Setter Property="Foreground" Value="#111111"/>
+                                <Setter Property="BorderBrush" Value="#C0C0C0"/>
+                                <Setter Property="Background" Value="#FAFAFA"/>
+                                <Setter Property="Margin" Value="4,0"/>
+                                <Setter Property="Padding" Value="16,8"/>
+                                <Setter Property="FontWeight" Value="Medium"/>
+                                <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="6"/>
+                                <Setter Property="Cursor" Value="Hand"/>
+                            </Style>
+                        </StackPanel.Resources>
+                        <Button Content="Sposta Report"/>
+                        <Button Content="Scrivi report"/>
+                        <Button Content="Riporta Report"/>
+                        <Button Content="Pulisci campi" Margin="4,0,0,0"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Contenuto -->
+                <Grid Grid.Row="1">
+                    <TextBlock Text="Seleziona una sezione per caricare il report." 
+                               Foreground="#555555" 
+                               FontSize="15" 
+                               HorizontalAlignment="Left" 
+                               VerticalAlignment="Top"/>
+                    
+                    <!-- Spazio dove andrà poi la logica del modulo -->
+                    <Grid Margin="0,40,0,0">
+                        <Rectangle Stroke="#CCCCCC" StrokeThickness="2" StrokeDashArray="4 4" RadiusX="8" RadiusY="8" Fill="#FAFAFA"/>
+                        <TextBlock Text="[ Area di configurazione file Excel e opzioni ]" 
+                                   Foreground="#888888" 
+                                   HorizontalAlignment="Center" 
+                                   VerticalAlignment="Center" 
+                                   FontSize="16"
+                                   FontWeight="Medium"/>
+                    </Grid>
+                </Grid>
+            </Grid>
+        </materialDesign:Card>
     </Grid>
 </UserControl>
