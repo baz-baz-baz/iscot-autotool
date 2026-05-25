@@ -487,3 +487,10 @@ C:\Users\peli\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\n
 C:\Users\peli\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\email\dialogs\ChiusuraTicketDialog.g.cs
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\modules\database\emails.db
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\modules\database\train_software.db
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\ClosedXML.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\ClosedXML.Parser.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\DocumentFormat.OpenXml.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\DocumentFormat.OpenXml.Framework.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\ExcelNumberFormat.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\RBush.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\SixLabors.Fonts.dll

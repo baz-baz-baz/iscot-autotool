@@ -139,7 +139,7 @@
                                 <Setter Property="Cursor" Value="Hand"/>
                             </Style>
                         </StackPanel.Resources>
-                        <Button Content="Sposta Report"/>
+                        <Button Content="Sposta Report" Command="{Binding SpostaReportCommand}"/>
                         <Button Content="Scrivi report"/>
                         <Button Content="Riporta Report"/>
                         <Button Content="Pulisci campi" Margin="4,0,0,0"/>
@@ -154,16 +154,49 @@
                                HorizontalAlignment="Left" 
                                VerticalAlignment="Top"/>
                     
-                    <!-- Spazio dove andrà poi la logica del modulo -->
-                    <Grid Margin="0,40,0,0">
-                        <Rectangle Stroke="#CCCCCC" StrokeThickness="2" StrokeDashArray="4 4" RadiusX="8" RadiusY="8" Fill="#FAFAFA"/>
-                        <TextBlock Text="[ Area di configurazione file Excel e opzioni ]" 
-                                   Foreground="#888888" 
-                                   HorizontalAlignment="Center" 
-                                   VerticalAlignment="Center" 
-                                   FontSize="16"
-                                   FontWeight="Medium"/>
-                    </Grid>
+                    <!-- Area di configurazione file Excel -->
+                    <ScrollViewer Margin="0,20,0,0" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding FormFields}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Width="250" Margin="0,0,16,16">
+                                        <TextBlock Text="{Binding FieldName}" 
+                                                   FontWeight="SemiBold" 
+                                                   Foreground="#333333" 
+                                                   Margin="0,0,0,4" 
+                                                   TextTrimming="CharacterEllipsis" 
+                                                   ToolTip="{Binding FieldName}"/>
+                                        
+                                        <!-- TextBox -->
+                                        <TextBox x:Name="FieldTextBox"
+                                                 Text="{Binding FieldValue, UpdateSourceTrigger=PropertyChanged}"
+                                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                 Visibility="Collapsed"/>
+                                        
+                                        <!-- ComboBox -->
+                                        <ComboBox x:Name="FieldComboBox"
+                                                  ItemsSource="{Binding Options}"
+                                                  SelectedItem="{Binding FieldValue}"
+                                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                                  Visibility="Collapsed"/>
+                                    </StackPanel>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsTextBox}" Value="True">
+                                            <Setter TargetName="FieldTextBox" Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsComboBox}" Value="True">
+                                            <Setter TargetName="FieldComboBox" Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
                 </Grid>
             </Grid>
         </materialDesign:Card>

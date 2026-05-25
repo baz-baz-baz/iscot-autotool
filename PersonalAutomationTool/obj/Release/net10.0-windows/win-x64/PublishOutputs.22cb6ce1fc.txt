@@ -1,0 +1,10 @@
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Release\net10.0-windows\win-x64\publish\PersonalAutomationTool.pdb
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Release\net10.0-windows\win-x64\publish\modules\database\emails.db
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Release\net10.0-windows\win-x64\publish\modules\database\train_software.db
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Release\net10.0-windows\win-x64\publish\D3DCompiler_47_cor3.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Release\net10.0-windows\win-x64\publish\PenImc_cor3.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Release\net10.0-windows\win-x64\publish\PresentationNative_cor3.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Release\net10.0-windows\win-x64\publish\vcruntime140_cor3.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Release\net10.0-windows\win-x64\publish\wpfgfx_cor3.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Release\net10.0-windows\win-x64\publish\e_sqlite3.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Release\net10.0-windows\win-x64\publish\PersonalAutomationTool.exe
