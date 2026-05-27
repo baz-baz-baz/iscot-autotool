@@ -494,3 +494,13 @@ C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\ExcelNumberFormat.dll
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\RBush.dll
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\SixLabors.Fonts.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\EPPlus.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\Microsoft.Extensions.Configuration.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\Microsoft.Extensions.Configuration.Abstractions.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\Microsoft.Extensions.Configuration.FileExtensions.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\Microsoft.Extensions.Configuration.Json.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\Microsoft.Extensions.FileProviders.Abstractions.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\Microsoft.Extensions.FileProviders.Physical.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\Microsoft.Extensions.FileSystemGlobbing.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\Microsoft.Extensions.Primitives.dll
+C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\System.Xml.XPath.XmlDocument.dll

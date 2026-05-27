@@ -51,6 +51,10 @@ namespace PersonalAutomationTool.Modules.Excel
         public ObservableCollection<ExcelFieldViewModel> FormFields { get; } = new ObservableCollection<ExcelFieldViewModel>();
 
         public ICommand SpostaReportCommand { get; }
+        public ICommand ScriviReportCommand { get; }
+        public ICommand PulisciCampiCommand { get; }
+
+        private string? _currentExcelFilePath;
 
         public ExcelViewModel()
         {
@@ -58,6 +62,8 @@ namespace PersonalAutomationTool.Modules.Excel
             SelectedTrain = Trains.FirstOrDefault();
 
             SpostaReportCommand = new RelayCommand(ExecuteSpostaReport, CanExecuteSpostaReport);
+            ScriviReportCommand = new RelayCommand(ExecuteScriviReport, CanExecuteScriviReport);
+            PulisciCampiCommand = new RelayCommand(ExecutePulisciCampi);
 
             // Subscribe to folder changes
             AppWatcher.OnLogDumpFolderChanged += AppWatcher_OnLogDumpFolderChanged;
@@ -137,6 +143,7 @@ namespace PersonalAutomationTool.Modules.Excel
         {
             try
             {
+                _currentExcelFilePath = filePath;
                 FormFields.Clear();
 
                 using (var workbook = new XLWorkbook(filePath))
@@ -342,6 +349,95 @@ namespace PersonalAutomationTool.Modules.Excel
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error updating folders: {ex.Message}");
+            }
+        }
+
+        private bool CanExecuteScriviReport(object? parameter)
+        {
+            return !string.IsNullOrEmpty(_currentExcelFilePath) && File.Exists(_currentExcelFilePath);
+        }
+
+        private void ExecuteScriviReport(object? parameter)
+        {
+            if (string.IsNullOrEmpty(_currentExcelFilePath) || !File.Exists(_currentExcelFilePath))
+            {
+                MessageBox.Show("Nessun file Excel caricato.", "Errore", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                int targetRow = 1;
+
+                // 1. Usa ClosedXML per trovare l'ultima riga reale in modo veloce e preciso, ignorando spazi vuoti o formattazione.
+                using (var fs = new FileStream(_currentExcelFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                {
+                    using (var workbook = new XLWorkbook(fs))
+                    {
+                        var ws = workbook.Worksheets.FirstOrDefault();
+                        if (ws != null)
+                        {
+                            int lastRow = 1;
+                            for (int col = 2; col <= 27; col++)
+                            {
+                                // Escludi righe oltre la 900.000 per evitare falsi positivi dovuti a "Ctrl+Giù" accidentali
+                                var cellsWithValues = ws.Column(col).CellsUsed(c => !c.Value.IsBlank && c.Address.RowNumber < 900000);
+                                if (cellsWithValues.Any())
+                                {
+                                    int maxRow = cellsWithValues.Max(c => c.Address.RowNumber);
+                                    if (maxRow > lastRow)
+                                    {
+                                        lastRow = maxRow;
+                                    }
+                                }
+                            }
+                            targetRow = lastRow + 1;
+                        }
+                    }
+                }
+
+                // 2. Usa EPPlus per scrivere i valori e salvare, per non rompere la formattazione complessa
+                using (var package = new OfficeOpenXml.ExcelPackage(new FileInfo(_currentExcelFilePath)))
+                {
+                    var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+                    if (worksheet == null) return;
+
+                    // Scrivi i valori
+                    for (int i = 0; i < FormFields.Count; i++)
+                    {
+                        int col = i + 2; // FormFields parte dalla colonna B (indice 2)
+                        var field = FormFields[i];
+                        
+                        // Scrive solo se c'è un valore
+                        if (!string.IsNullOrWhiteSpace(field.FieldValue))
+                        {
+                            worksheet.Cells[targetRow, col].Value = field.FieldValue;
+                        }
+                    }
+
+                    package.Save();
+                    
+                    MessageBox.Show($"Report salvato con successo alla riga {targetRow}.", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
+                    
+                    // Pulisci i campi dopo il salvataggio
+                    ExecutePulisciCampi(null);
+                }
+            }
+            catch (IOException ioEx)
+            {
+                MessageBox.Show($"Impossibile salvare il report perché il file Excel è attualmente aperto. Chiudi Excel e riprova.\n\nDettaglio: {ioEx.Message}", "File Aperto", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Errore durante il salvataggio nel file Excel:\n{ex.Message}\n{ex.StackTrace}", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ExecutePulisciCampi(object? parameter)
+        {
+            foreach (var field in FormFields)
+            {
+                field.FieldValue = string.Empty;
             }
         }
 

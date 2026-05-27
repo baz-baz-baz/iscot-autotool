@@ -140,9 +140,9 @@
                             </Style>
                         </StackPanel.Resources>
                         <Button Content="Sposta Report" Command="{Binding SpostaReportCommand}"/>
-                        <Button Content="Scrivi report"/>
+                        <Button Content="Scrivi report" Command="{Binding ScriviReportCommand}"/>
                         <Button Content="Riporta Report"/>
-                        <Button Content="Pulisci campi" Margin="4,0,0,0"/>
+                        <Button Content="Pulisci campi" Command="{Binding PulisciCampiCommand}" Margin="4,0,0,0"/>
                     </StackPanel>
                 </Grid>
 
