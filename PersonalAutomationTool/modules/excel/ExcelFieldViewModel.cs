@@ -32,7 +32,7 @@ namespace PersonalAutomationTool.Modules.Excel
             }
         }
 
-        private List<string> _options = new List<string>();
+        private List<string> _options = [];
         public List<string> Options
         {
             get => _options;
