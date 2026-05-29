@@ -48,7 +48,7 @@ namespace PersonalAutomationTool.Modules.Excel
             {
                 if (SetProperty(ref _selectedFolder, value))
                 {
-                    CheckAndLoadExistingReport();
+                    _ = CheckAndLoadExistingReportAsync();
                 }
             }
         }
@@ -60,6 +60,7 @@ namespace PersonalAutomationTool.Modules.Excel
         public ICommand PulisciCampiCommand { get; }
 
         private string? _currentExcelFilePath;
+        private bool _isWritingReport = false;
 
         public ExcelViewModel()
         {
@@ -79,7 +80,7 @@ namespace PersonalAutomationTool.Modules.Excel
             return SelectedTrain == "ETR700";
         }
 
-        private void ExecuteSpostaReport(object? parameter)
+        private async void ExecuteSpostaReport(object? parameter)
         {
             try
             {
@@ -93,50 +94,66 @@ namespace PersonalAutomationTool.Modules.Excel
                     return;
                 }
 
-                var files = Directory.GetFiles(hitachiDir, "Report Interventi*.xls*");
-                if (files.Length == 0)
+                string? originalFile = null;
+                string? movedFile = null;
+                bool alreadyInLogDump = false;
+                string? currentSelectedFolder = SelectedFolder;
+                string? currentSelectedTrain = SelectedTrain;
+
+                await Task.Run(() => 
                 {
-                    // Controlla se c'è un file già presente in LOG & DUMP o nella cartella selezionata
-                    string searchDir = string.IsNullOrEmpty(SelectedFolder) ? AppConfig.LogAndDumpFolder : Path.Combine(AppConfig.LogAndDumpFolder, SelectedFolder);
-                    if (Directory.Exists(searchDir))
+                    var files = Directory.GetFiles(hitachiDir, "Report Interventi*.xls*");
+                    if (files.Length == 0)
                     {
-                        var existingFiles = Directory.GetFiles(searchDir, $"Report Interventi*{SelectedTrain}*.xls*");
-                        if (existingFiles.Length > 0)
+                        string searchDir = string.IsNullOrEmpty(currentSelectedFolder) ? AppConfig.LogAndDumpFolder : Path.Combine(AppConfig.LogAndDumpFolder, currentSelectedFolder);
+                        if (Directory.Exists(searchDir))
                         {
-                            LoadExcelFields(existingFiles[0]);
-                            MessageBox.Show("Il file 'Report Interventi' era già presente in LOG & DUMP. I campi sono stati caricati.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
-                            return;
+                            var existingFiles = Directory.GetFiles(searchDir, $"Report Interventi*{currentSelectedTrain}*.xls*");
+                            if (existingFiles.Length > 0)
+                            {
+                                originalFile = existingFiles[0];
+                                alreadyInLogDump = true;
+                                return;
+                            }
                         }
                     }
+                    else
+                    {
+                        originalFile = files[0];
+                        string fileName = Path.GetFileName(originalFile);
 
+                        string currentYear = DateTime.Now.Year.ToString();
+                        string targetFolderName = $"REPORT OLD ETR700 ANNO {currentYear}";
+                        string targetFolder = Path.Combine(reportOldBaseDir, targetFolderName);
+
+                        if (!Directory.Exists(targetFolder)) Directory.CreateDirectory(targetFolder);
+
+                        string copyDestination = Path.Combine(targetFolder, fileName);
+                        movedFile = Path.Combine(AppConfig.LogAndDumpFolder, fileName);
+
+                        File.Copy(originalFile, copyDestination, true);
+                        File.Move(originalFile, movedFile, true);
+                    }
+                });
+
+                if (originalFile == null)
+                {
                     MessageBox.Show("File 'Report Interventi' non trovato nella cartella Hitachi né in LOG & DUMP:\n" + hitachiDir, "Attenzione", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
-                string originalFile = files[0];
-                string fileName = Path.GetFileName(originalFile);
-
-                string currentYear = DateTime.Now.Year.ToString();
-                string targetFolderName = $"REPORT OLD ETR700 ANNO {currentYear}";
-                string targetFolder = Path.Combine(reportOldBaseDir, targetFolderName);
-
-                if (!Directory.Exists(targetFolder))
+                if (alreadyInLogDump)
                 {
-                    Directory.CreateDirectory(targetFolder);
+                    await LoadExcelFieldsAsync(originalFile);
+                    MessageBox.Show("Il file 'Report Interventi' era già presente in LOG & DUMP. I campi sono stati caricati.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
                 }
 
-                string copyDestination = Path.Combine(targetFolder, fileName);
-                string moveDestination = Path.Combine(AppConfig.LogAndDumpFolder, fileName);
-
-                // Make a copy
-                File.Copy(originalFile, copyDestination, true);
-
-                // Move original
-                File.Move(originalFile, moveDestination, true);
-
-                LoadExcelFields(moveDestination);
-
-                MessageBox.Show("Report spostato e campi caricati con successo!", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
+                if (movedFile != null)
+                {
+                    await LoadExcelFieldsAsync(movedFile);
+                    MessageBox.Show("Report spostato e campi caricati con successo!", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
             }
             catch (Exception ex)
             {
@@ -144,16 +161,19 @@ namespace PersonalAutomationTool.Modules.Excel
             }
         }
 
-        private void LoadExcelFields(string filePath)
+        private async Task LoadExcelFieldsAsync(string filePath)
         {
             try
             {
                 _currentExcelFilePath = filePath;
-                FormFields.Clear();
 
-                using var workbook = new XLWorkbook(filePath);
-                var worksheet = workbook.Worksheets.FirstOrDefault();
-                    if (worksheet == null) return;
+                var fields = await Task.Run(() => 
+                {
+                    var result = new List<ExcelFieldViewModel>();
+                    using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                    using var workbook = new XLWorkbook(fs);
+                    var worksheet = workbook.Worksheets.FirstOrDefault();
+                    if (worksheet == null) return result;
 
                     // Colonne da B ad AA (indice 2 a 27)
                     for (int col = 2; col <= 27; col++)
@@ -251,8 +271,13 @@ namespace PersonalAutomationTool.Modules.Excel
                             fieldViewModel.Options = [.. allOptions];
                         }
 
-                        FormFields.Add(fieldViewModel);
+                        result.Add(fieldViewModel);
                     }
+                    return result;
+                });
+
+                FormFields.Clear();
+                foreach (var f in fields) FormFields.Add(f);
             }
             catch (Exception ex)
             {
@@ -260,40 +285,41 @@ namespace PersonalAutomationTool.Modules.Excel
             }
         }
 
-        private void CheckAndLoadExistingReport()
+        private async Task CheckAndLoadExistingReportAsync()
         {
             try
             {
+                if (_isWritingReport) return;
                 FormFields.Clear();
                 if (string.IsNullOrEmpty(SelectedTrain)) return;
 
-                // Cerca prima nella cartella selezionata
                 string searchDir = string.IsNullOrEmpty(SelectedFolder) 
                     ? AppConfig.LogAndDumpFolder 
                     : Path.Combine(AppConfig.LogAndDumpFolder, SelectedFolder);
+                string? currentTrain = SelectedTrain;
 
-                if (Directory.Exists(searchDir))
+                string? foundFile = await Task.Run(() => 
                 {
-                    var existingFiles = Directory.GetFiles(searchDir, $"Report Interventi*{SelectedTrain}*.xls*");
-                    if (existingFiles.Length > 0)
+                    if (Directory.Exists(searchDir))
                     {
-                        LoadExcelFields(existingFiles[0]);
-                        AutoFillReportFields();
-                        return;
+                        var existingFiles = Directory.GetFiles(searchDir, $"Report Interventi*{currentTrain}*.xls*");
+                        if (existingFiles.Length > 0) return existingFiles[0];
                     }
-                }
 
-                // Se non lo trova nella cartella selezionata, cerca nella root di LOG & DUMP
-                if (Directory.Exists(AppConfig.LogAndDumpFolder))
-                {
-                    var rootFiles = Directory.GetFiles(AppConfig.LogAndDumpFolder, $"Report Interventi*{SelectedTrain}*.xls*");
-                    if (rootFiles.Length > 0)
+                    if (Directory.Exists(AppConfig.LogAndDumpFolder))
                     {
-                        LoadExcelFields(rootFiles[0]);
+                        var rootFiles = Directory.GetFiles(AppConfig.LogAndDumpFolder, $"Report Interventi*{currentTrain}*.xls*");
+                        if (rootFiles.Length > 0) return rootFiles[0];
                     }
+                    return null;
+                });
+
+                if (foundFile != null)
+                {
+                    await LoadExcelFieldsAsync(foundFile);
                 }
                 
-                AutoFillReportFields();
+                await AutoFillReportFieldsAsync();
             }
             catch
             {
@@ -301,7 +327,7 @@ namespace PersonalAutomationTool.Modules.Excel
             }
         }
 
-        private void AutoFillReportFields()
+        private async Task AutoFillReportFieldsAsync()
         {
             if (FormFields.Count == 0 || string.IsNullOrEmpty(SelectedFolder)) return;
 
@@ -319,8 +345,10 @@ namespace PersonalAutomationTool.Modules.Excel
                 }
             }
 
-            // Estrazione nomi sottocartelle
-            string allSubfolderNames = "";
+            await Task.Run(() => 
+            {
+                // Estrazione nomi sottocartelle
+                string allSubfolderNames = "";
             try
             {
                 var subDirs = Directory.GetDirectories(folderPath);
@@ -700,6 +728,7 @@ namespace PersonalAutomationTool.Modules.Excel
                     scaricoField.FieldValue = hasLogs ? "Sì" : "No";
                 }
             }
+            });
         }
 
         private void AppWatcher_OnLogDumpFolderChanged()
@@ -761,7 +790,7 @@ namespace PersonalAutomationTool.Modules.Excel
             return !string.IsNullOrEmpty(_currentExcelFilePath) && File.Exists(_currentExcelFilePath);
         }
 
-        private void ExecuteScriviReport(object? parameter)
+        private async void ExecuteScriviReport(object? parameter)
         {
             if (string.IsNullOrEmpty(_currentExcelFilePath) || !File.Exists(_currentExcelFilePath))
             {
@@ -771,10 +800,14 @@ namespace PersonalAutomationTool.Modules.Excel
 
             try
             {
+                _isWritingReport = true;
+                var fieldsData = FormFields.Select(f => f.FieldValue).ToList();
                 int targetRow = 1;
 
-                // 1. Usa ClosedXML per trovare l'ultima riga reale in modo veloce e preciso, ignorando spazi vuoti o formattazione.
+                await Task.Run(() => 
                 {
+                    // 1. Usa ClosedXML per trovare l'ultima riga reale in modo veloce e preciso, ignorando spazi vuoti o formattazione.
+                    {
                     using var fs = new FileStream(_currentExcelFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                     using var workbook = new XLWorkbook(fs);
                     var ws = workbook.Worksheets.FirstOrDefault();
@@ -822,15 +855,15 @@ namespace PersonalAutomationTool.Modules.Excel
                     dynamic worksheetInterop = workbookInterop.Worksheets[1]; // Interop è 1-based
 
                     // Scrivi i valori
-                    for (int i = 0; i < FormFields.Count; i++)
+                    for (int i = 0; i < fieldsData.Count; i++)
                     {
                         int col = i + 2; // FormFields parte dalla colonna B (indice 2)
-                        var field = FormFields[i];
+                        string? val = fieldsData[i];
 
                         // Scrive solo se c'è un valore
-                        if (!string.IsNullOrWhiteSpace(field.FieldValue))
+                        if (!string.IsNullOrWhiteSpace(val))
                         {
-                            worksheetInterop.Cells[targetRow, col].Value = field.FieldValue;
+                            worksheetInterop.Cells[targetRow, col].Value = val;
                         }
                     }
 
@@ -842,11 +875,12 @@ namespace PersonalAutomationTool.Modules.Excel
                     excelApp.Quit();
                     System.Runtime.InteropServices.Marshal.ReleaseComObject(excelApp);
                 }
+                }); // Fine Task.Run
                     
-                    MessageBox.Show($"Report salvato con successo alla riga {targetRow}.", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"Report salvato con successo alla riga {targetRow}.", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
                     
-                    // Pulisci i campi dopo il salvataggio
-                    ExecutePulisciCampi(null);
+                // Pulisci i campi dopo il salvataggio
+                ExecutePulisciCampi(null);
             }
             catch (IOException ioEx)
             {
@@ -855,6 +889,10 @@ namespace PersonalAutomationTool.Modules.Excel
             catch (Exception ex)
             {
                 MessageBox.Show($"Errore durante il salvataggio nel file Excel:\n{ex.Message}\n{ex.StackTrace}", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                _isWritingReport = false;
             }
         }
 
