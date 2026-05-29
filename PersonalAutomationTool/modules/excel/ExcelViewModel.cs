@@ -13,8 +13,10 @@ using PersonalAutomationTool.Modules.Email.Dialogs;
 
 namespace PersonalAutomationTool.Modules.Excel
 {
-    public class ExcelViewModel : ViewModelBase, IDisposable
+    public partial class ExcelViewModel : ViewModelBase, IDisposable
     {
+        private static readonly char[] TechNameSeparators = [' ', '-', '_'];
+        private static readonly char[] SwVersionSeparators = [' ', '_'];
         public List<string> Trains { get; } =
         [
             "E404P",
@@ -36,7 +38,7 @@ namespace PersonalAutomationTool.Modules.Excel
             }
         }
 
-        public ObservableCollection<string> AvailableFolders { get; } = new();
+        public ObservableCollection<string> AvailableFolders { get; } = [];
 
         private string? _selectedFolder;
         public string? SelectedFolder
@@ -51,7 +53,7 @@ namespace PersonalAutomationTool.Modules.Excel
             }
         }
 
-        public ObservableCollection<ExcelFieldViewModel> FormFields { get; } = new();
+        public ObservableCollection<ExcelFieldViewModel> FormFields { get; } = [];
 
         public ICommand SpostaReportCommand { get; }
         public ICommand ScriviReportCommand { get; }
@@ -351,7 +353,7 @@ namespace PersonalAutomationTool.Modules.Excel
                 foreach (var subDir in subDirs)
                 {
                     string subName = new DirectoryInfo(subDir).Name;
-                    var subDateMatch = Regex.Match(subName, @"\b(\d{2})(\d{2})(\d{2})\b");
+                    var subDateMatch = FolderDateRegex().Match(subName);
                     if (subDateMatch.Success)
                     {
                         folderDate = $"{subDateMatch.Groups[1].Value}/{subDateMatch.Groups[2].Value}/20{subDateMatch.Groups[3].Value}";
@@ -363,7 +365,7 @@ namespace PersonalAutomationTool.Modules.Excel
 
             if (string.IsNullOrEmpty(folderDate))
             {
-                var dateMatch = Regex.Match(folderName, @"\b(\d{2})(\d{2})(\d{2})\b");
+                var dateMatch = FolderDateRegex().Match(folderName);
                 if (dateMatch.Success)
                 {
                     folderDate = $"{dateMatch.Groups[1].Value}/{dateMatch.Groups[2].Value}/20{dateMatch.Groups[3].Value}";
@@ -380,24 +382,7 @@ namespace PersonalAutomationTool.Modules.Excel
             // Sito Intervento
             if (formDict.TryGetValue("SITO INTERVENTO", out var sito)) sito.FieldValue = "Milano Martesana";
 
-            // Ticket
-            var ticketField = FormFields.FirstOrDefault(f => f.FieldName.Contains("TICKET", StringComparison.OrdinalIgnoreCase) && f.FieldName.Contains("ASTS", StringComparison.OrdinalIgnoreCase));
-            if (ticketField != null)
-            {
-                var ticketMatch = Regex.Match(combinedSearchString, @"SR[-_\s]*([0-9]+)", RegexOptions.IgnoreCase);
-                if (ticketMatch.Success)
-                {
-                    ticketField.FieldValue = ticketMatch.Groups[1].Value;
-                }
-                else
-                {
-                    var standaloneTicketMatch = Regex.Match(combinedSearchString, @"\b\d{7,8}\b");
-                    if (standaloneTicketMatch.Success)
-                    {
-                        ticketField.FieldValue = standaloneTicketMatch.Value;
-                    }
-                }
-            }
+            // (Ticket ASTS extraction is moved down to be handled together with info_ticket.json)
 
             // Rotabile
             if (!string.IsNullOrEmpty(SelectedTrain) && formDict.TryGetValue("ROTABILE", out var rotabileField))
@@ -425,14 +410,14 @@ namespace PersonalAutomationTool.Modules.Excel
                 
                 foreach (var opt in techField.Options)
                 {
-                    string cleanOpt = Regex.Replace(opt, @"^(IsMan|Sub|ASTS|Hitachi|Man|TEC)[\s\-]*", "", RegexOptions.IgnoreCase).Replace(".", "");
-                    var nameParts = cleanOpt.Split(new[] { ' ', '-', '_' }, StringSplitOptions.RemoveEmptyEntries)
+                    string cleanOpt = TechPrefixRegex().Replace(opt, "").Replace(".", "");
+                    var nameParts = cleanOpt.Split(TechNameSeparators, StringSplitOptions.RemoveEmptyEntries)
                                             .Where(p => p.Length >= 3).ToList();
                     
                     int score = 0;
                     foreach(var part in nameParts)
                     {
-                        if (normSearch.Contains(part.ToLower()))
+                        if (normSearch.Contains(part, StringComparison.OrdinalIgnoreCase))
                         {
                             score += part.Length;
                         }
@@ -459,7 +444,7 @@ namespace PersonalAutomationTool.Modules.Excel
 
             if (formDict.TryGetValue("VERSIONE SW PRESENTE", out var swField) && swField.IsComboBox)
             {
-                var folderWords = combinedSearchString.Split(new[] { ' ', '_' }, StringSplitOptions.RemoveEmptyEntries)
+                var folderWords = combinedSearchString.Split(SwVersionSeparators, StringSplitOptions.RemoveEmptyEntries)
                                   .Where(w => w.Contains('.') || w.Contains("CR", StringComparison.OrdinalIgnoreCase) || w.Any(char.IsDigit)).ToList();
 
                 string bestMatch = "";
@@ -472,7 +457,7 @@ namespace PersonalAutomationTool.Modules.Excel
                     {
                         if (fw.Length < 3) continue;
                         
-                        var subParts = Regex.Split(fw, @"(?=CR)", RegexOptions.IgnoreCase);
+                        var subParts = CrRegex().Split(fw);
                         foreach(var sp in subParts)
                         {
                             if (sp.Length >= 2 && opt.Contains(sp, StringComparison.OrdinalIgnoreCase))
@@ -493,37 +478,191 @@ namespace PersonalAutomationTool.Modules.Excel
                 }
             }
 
-            // info_ticket.json reading
+            // --- GESTIONE COMBINATA TICKET ASTS E INFO_TICKET.JSON ---
+            
+            formDict.TryGetValue("SN", out var snField);
+            formDict.TryGetValue("N. ODL Trenitalia", out var odlField);
+            var ticketAstsField = FormFields.FirstOrDefault(f => f.FieldName.Contains("TICKET", StringComparison.OrdinalIgnoreCase) && f.FieldName.Contains("ASTS", StringComparison.OrdinalIgnoreCase));
+            formDict.TryGetValue("AVARIA SEGNALATA", out var avariaField);
+            formDict.TryGetValue("DESCRIZIONE INTERVENTO EFFETTUATO", out var interventoField);
+
+            var ticketLocoMap = new Dictionary<string, string>(); 
+            var ticketsList = new List<string>();
+            try
+            {
+                var subDirs = Directory.GetDirectories(folderPath);
+                foreach(var subDir in subDirs)
+                {
+                    string subName = Path.GetFileName(subDir);
+                    
+                    string ticket = "";
+                    var ticketMatch = TicketSrRegex().Match(subName);
+                    if (ticketMatch.Success) ticket = ticketMatch.Groups[1].Value;
+                    else {
+                        var standaloneTicketMatch = StandaloneTicketRegex().Match(subName);
+                        if (standaloneTicketMatch.Success && !standaloneTicketMatch.Value.StartsWith("202")) 
+                            ticket = standaloneTicketMatch.Value;
+                    }
+                    
+                    string loco = "";
+                    var locoMatch = Regex.Match(subName, $@"{SelectedTrain}\s*[-_]?\s*(\d{{3,4}})", RegexOptions.IgnoreCase);
+                    if (locoMatch.Success) loco = locoMatch.Groups[1].Value;
+                    else
+                    {
+                        var standaloneLocoMatch = StandaloneLocoRegex().Match(subName);
+                        if (standaloneLocoMatch.Success && !standaloneLocoMatch.Value.StartsWith("202") && standaloneLocoMatch.Value != ticket)
+                            loco = standaloneLocoMatch.Value;
+                    }
+                    
+                    if (!string.IsNullOrEmpty(ticket))
+                    {
+                        if (!ticketsList.Contains(ticket)) ticketsList.Add(ticket);
+                        if (!string.IsNullOrEmpty(loco) && !ticketLocoMap.ContainsKey(ticket))
+                            ticketLocoMap[ticket] = loco;
+                    }
+                }
+            }
+            catch { }
+
+            if (ticketsList.Count == 0)
+            {
+                var ticketMatch = TicketSrRegex().Match(combinedSearchString);
+                if (ticketMatch.Success) ticketsList.Add(ticketMatch.Groups[1].Value);
+                else
+                {
+                    var standaloneTicketMatch = StandaloneTicketRegex().Match(combinedSearchString);
+                    if (standaloneTicketMatch.Success && !standaloneTicketMatch.Value.StartsWith("202"))
+                        ticketsList.Add(standaloneTicketMatch.Value);
+                }
+            }
+
             string jsonPath = Path.Combine(folderPath, "info_ticket.json");
+            var allInputsWithLoco = new List<(LocoGroupModel Group, TicketInputModel Input)>();
+            bool infoTicketLoaded = false;
+            
             if (File.Exists(jsonPath))
             {
                 try
                 {
                     string json = File.ReadAllText(jsonPath);
                     var groups = JsonSerializer.Deserialize<ObservableCollection<LocoGroupModel>>(json);
-                    if (groups != null && groups.Count > 0)
+                    if (groups != null)
                     {
-                        var firstInput = groups[0].Inputs.FirstOrDefault();
-                        
-                        if (formDict.TryGetValue("SN", out var snField)) snField.FieldValue = groups[0].GroupLocoName;
-                        
-                        if (firstInput != null)
+                        foreach (var g in groups)
                         {
-                            if (formDict.TryGetValue("N. ODL Trenitalia", out var odlField)) odlField.FieldValue = firstInput.Avviso;
-                            if (formDict.TryGetValue("AVARIA SEGNALATA", out var avariaField)) avariaField.FieldValue = firstInput.Avaria;
-                            if (formDict.TryGetValue("DESCRIZIONE INTERVENTO EFFETTUATO", out var interventoField)) interventoField.FieldValue = firstInput.Intervento;
+                            if (g.Inputs != null)
+                            {
+                                foreach (var i in g.Inputs)
+                                {
+                                    if (!string.IsNullOrWhiteSpace(i.Avviso))
+                                    {
+                                        allInputsWithLoco.Add((g, i));
+                                    }
+                                }
+                            }
                         }
                     }
                 }
                 catch { }
             }
-            else
+
+            bool isUpdating = false;
+            void AggiornaCampi(string? ticketSelezionato)
             {
-                // Fallback for SN
-                var snMatch = Regex.Match(folderName, @"\b\d{3}\b");
-                if (snMatch.Success && formDict.TryGetValue("SN", out var snField2))
+                if (isUpdating || string.IsNullOrWhiteSpace(ticketSelezionato)) return;
+                isUpdating = true;
+                
+                string? targetLoco = null;
+                if (ticketLocoMap.TryGetValue(ticketSelezionato, out var l))
                 {
-                    snField2.FieldValue = snMatch.Value;
+                    targetLoco = l;
+                }
+                
+                if (targetLoco != null)
+                {
+                    if (snField != null) snField.FieldValue = targetLoco;
+                    
+                    var infoMatch = allInputsWithLoco.FirstOrDefault(x => x.Group.GroupLocoName == targetLoco);
+                    if (infoMatch.Group != null && infoMatch.Input != null)
+                    {
+                        if (avariaField != null) avariaField.FieldValue = infoMatch.Input.Avaria;
+                        if (interventoField != null) interventoField.FieldValue = infoMatch.Input.Intervento;
+                        if (odlField != null) odlField.FieldValue = infoMatch.Input.Avviso;
+                    }
+                }
+                
+                isUpdating = false;
+            }
+
+            if (ticketsList.Count > 0 && ticketAstsField != null)
+            {
+                infoTicketLoaded = true; // Segnaliamo come caricato per evitare il vecchio fallback
+                
+                ticketAstsField.IsComboBox = true;
+                ticketAstsField.Options = ticketsList;
+                ticketAstsField.FieldValue = ticketsList[0];
+                
+                AggiornaCampi(ticketAstsField.FieldValue);
+                
+                ticketAstsField.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(ExcelFieldViewModel.FieldValue))
+                    {
+                        AggiornaCampi(ticketAstsField.FieldValue);
+                    }
+                };
+            }
+            else if (allInputsWithLoco.Count > 0)
+            {
+                infoTicketLoaded = true;
+                var first = allInputsWithLoco[0];
+                if (snField != null) snField.FieldValue = first.Group.GroupLocoName;
+                if (odlField != null) odlField.FieldValue = first.Input.Avviso;
+                if (avariaField != null) avariaField.FieldValue = first.Input.Avaria;
+                if (interventoField != null) interventoField.FieldValue = first.Input.Intervento;
+            }
+
+            if (!infoTicketLoaded)
+            {
+                // Fallback for SN: cerca nel nome della cartella e nelle sottocartelle
+                if (formDict.TryGetValue("SN", out var snField2))
+                {
+                    bool found = false;
+                    
+                    // 1. Cerca il nome treno + 3/4 cifre (es. ETR700 101)
+                    var snMatch = Regex.Match(combinedSearchString, $@"{SelectedTrain}\s*[-_]?\s*(\d{{3,4}})", RegexOptions.IgnoreCase);
+                    if (snMatch.Success)
+                    {
+                        snField2.FieldValue = snMatch.Groups[1].Value;
+                        found = true;
+                    }
+                    
+                    // 2. Verifica con le opzioni del menu a tendina o cerca altri numeri validi
+                    if (!found || (snField2.Options != null && snField2.Options.Count > 0 && !snField2.Options.Contains(snField2.FieldValue)))
+                    {
+                        var allMatches = StandaloneLocoRegex().Matches(combinedSearchString);
+                        foreach (Match m in allMatches)
+                        {
+                            if (snField2.Options != null && snField2.Options.Contains(m.Value))
+                            {
+                                snField2.FieldValue = m.Value;
+                                found = true;
+                                break;
+                            }
+                        }
+                        
+                        if (!found)
+                        {
+                            foreach (Match m in allMatches)
+                            {
+                                if (!m.Value.StartsWith("202")) // Evita di confondere l'anno con la loco
+                                {
+                                    snField2.FieldValue = m.Value;
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -646,7 +785,7 @@ namespace PersonalAutomationTool.Modules.Excel
                         {
                             // Escludi righe oltre la 900.000 per evitare falsi positivi dovuti a "Ctrl+Giù" accidentali
                             var cellsWithValues = ws.Column(col).CellsUsed(c => !c.Value.IsBlank && c.Address.RowNumber < 900000);
-                            if (cellsWithValues.Count() > 0)
+                            if (cellsWithValues.Any())
                             {
                                 int maxRow = cellsWithValues.Max(c => c.Address.RowNumber);
                                 if (maxRow > lastRow)
@@ -732,5 +871,23 @@ namespace PersonalAutomationTool.Modules.Excel
             AppWatcher.OnLogDumpFolderChanged -= AppWatcher_OnLogDumpFolderChanged;
             GC.SuppressFinalize(this);
         }
+
+        [GeneratedRegex(@"\b(\d{2})(\d{2})(\d{2})\b")]
+        private static partial Regex FolderDateRegex();
+
+        [GeneratedRegex(@"^(IsMan|Sub|ASTS|Hitachi|Man|TEC)[\s\-]*", RegexOptions.IgnoreCase)]
+        private static partial Regex TechPrefixRegex();
+
+        [GeneratedRegex(@"(?=CR)", RegexOptions.IgnoreCase)]
+        private static partial Regex CrRegex();
+
+        [GeneratedRegex(@"SR[-_\s]*([0-9]+)", RegexOptions.IgnoreCase)]
+        private static partial Regex TicketSrRegex();
+
+        [GeneratedRegex(@"\b\d{7,8}\b")]
+        private static partial Regex StandaloneTicketRegex();
+
+        [GeneratedRegex(@"\b\d{3,4}\b")]
+        private static partial Regex StandaloneLocoRegex();
     }
 }
