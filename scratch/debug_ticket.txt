@@ -1,0 +1,30 @@
+--- TICKET DEBUG ---
+combinedSearchString: E404P 30 SR1234567 DUMP E404P 618 04.02HR 300526 Todde SR1234567 LOG E404P 618 04.02HR 300526 Todde SR1234568 DUMP E404P 627 04.02HR 300526 Todde SR1234568 LOG E404P 627 04.02HR 300526 Todde
+ticketAstsField found: True
+ticketAstsField Name: TICKET HRI-STS SR
+ticketsList Count: 2
+ticketsList Content: 1234567, 1234568
+--- TICKET DEBUG ---
+combinedSearchString: ETR700 1 SR1247641 LOG ETR700 101 02.02CR3 250526 Bassetto SR1247642 LOG ETR700 801 02.02CR3 250526 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET HRI-STS SR
+ticketsList Count: 2
+ticketsList Content: 1247641, 1247642
+--- TICKET DEBUG ---
+combinedSearchString: ETR700 1 SR1247641 LOG ETR700 101 02.02CR3 250526 Bassetto SR1247642 LOG ETR700 801 02.02CR3 250526 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 2
+ticketsList Content: 1247641, 1247642
+--- TICKET DEBUG ---
+combinedSearchString: ETR700 1 SR1247641 LOG ETR700 101 02.02CR3 250526 Bassetto SR1247642 LOG ETR700 801 02.02CR3 250526 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 2
+ticketsList Content: 1247641, 1247642
+--- TICKET DEBUG ---
+combinedSearchString: ETR700 9 SR1247598 DUMP ETR700 109 02.02CR3 250526 DelFante SR1247598 LOG ETR700 109 02.02CR3 250526 DelFante
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 1
+ticketsList Content: 1247598

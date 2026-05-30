@@ -79,7 +79,7 @@ namespace PersonalAutomationTool.Modules.Excel
 
         private bool CanExecuteSpostaReport(object? parameter)
         {
-            return SelectedTrain == "ETR700";
+            return SelectedTrain == "ETR700" || SelectedTrain == "E404P";
         }
 
         private async void ExecuteSpostaReport(object? parameter)
@@ -87,8 +87,25 @@ namespace PersonalAutomationTool.Modules.Excel
             try
             {
                 string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                string hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - INTERVENTI ETR700 ELO BL3");
-                string reportOldBaseDir = Path.Combine(hitachiDir, "REPORT INTERVENTI ETR700 OLD");
+                string hitachiDir = "";
+                string targetFolder = "";
+                string currentYear = DateTime.Now.Year.ToString();
+
+                if (SelectedTrain == "ETR700")
+                {
+                    hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - INTERVENTI ETR700 ELO BL3");
+                    string reportOldBaseDir = Path.Combine(hitachiDir, "REPORT INTERVENTI ETR700 OLD");
+                    targetFolder = Path.Combine(reportOldBaseDir, $"REPORT OLD ETR700 ANNO {currentYear}");
+                }
+                else if (SelectedTrain == "E404P")
+                {
+                    hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - Interventi ETR500", "REPORT INTERVENTI NAPOLI - MILANO");
+                    targetFolder = Path.Combine(hitachiDir, $"REPORT INTERVENTI OLD_ModifyYear{currentYear}");
+                }
+                else
+                {
+                    return;
+                }
                 
                 if (!Directory.Exists(hitachiDir))
                 {
@@ -110,7 +127,9 @@ namespace PersonalAutomationTool.Modules.Excel
                         string searchDir = string.IsNullOrEmpty(currentSelectedFolder) ? AppConfig.LogAndDumpFolder : Path.Combine(AppConfig.LogAndDumpFolder, currentSelectedFolder);
                         if (Directory.Exists(searchDir))
                         {
-                            var existingFiles = Directory.GetFiles(searchDir, $"Report Interventi*{currentSelectedTrain}*.xls*");
+                            var existingFiles = Directory.GetFiles(searchDir, "Report Interventi*.xls*")
+                                .Where(f => currentSelectedTrain == "E404P" ? (f.Contains("ETR500", StringComparison.OrdinalIgnoreCase) || f.Contains("E404P", StringComparison.OrdinalIgnoreCase)) : f.Contains(currentSelectedTrain ?? "", StringComparison.OrdinalIgnoreCase))
+                                .ToArray();
                             if (existingFiles.Length > 0)
                             {
                                 originalFile = existingFiles[0];
@@ -123,10 +142,6 @@ namespace PersonalAutomationTool.Modules.Excel
                     {
                         originalFile = files[0];
                         string fileName = Path.GetFileName(originalFile);
-
-                        string currentYear = DateTime.Now.Year.ToString();
-                        string targetFolderName = $"REPORT OLD ETR700 ANNO {currentYear}";
-                        string targetFolder = Path.Combine(reportOldBaseDir, targetFolderName);
 
                         if (!Directory.Exists(targetFolder)) Directory.CreateDirectory(targetFolder);
 
@@ -278,16 +293,36 @@ namespace PersonalAutomationTool.Modules.Excel
                             fieldViewModel.Options = [.. allOptions];
                         }
 
+                        if (fieldName.Contains("Sito", StringComparison.OrdinalIgnoreCase) && fieldName.Contains("Intervento", StringComparison.OrdinalIgnoreCase))
+                        {
+                            fieldViewModel.IsComboBox = true;
+                            fieldViewModel.Options = ["Pistoia", "Napoli Gianturco", "Milano Martesana", "Roma S.Lorenzo", "Piacenza", "Firenze", "OMC ETR Vicenza", "IMC AV Mestre"];
+                        }
+
                         if (fieldName.Contains("Tipologia", StringComparison.OrdinalIgnoreCase))
                         {
                             fieldViewModel.IsComboBox = true;
-                            fieldViewModel.Options = ["Assistenza", "Mis", "Extragaranzia", "Supporto", "Semestrale", "Annuale", "Upgrade"];
+                            if (SelectedTrain == "E404P")
+                            {
+                                fieldViewModel.Options = ["Mis", "Extragaranzia", "Upgrade", "Man Programmata", "Man Predittiva", "Controlli Remoto", "Nulla Riscontrato", "Correttiva con sostit", "Correttiva senza sostit"];
+                            }
+                            else
+                            {
+                                fieldViewModel.Options = ["Assistenza", "Mis", "Extragaranzia", "Supporto", "Semestrale", "Annuale", "Upgrade"];
+                            }
                         }
 
                         if (fieldName.Contains("Categoria", StringComparison.OrdinalIgnoreCase) && fieldName.Contains("Avaria", StringComparison.OrdinalIgnoreCase))
                         {
                             fieldViewModel.IsComboBox = true;
-                            fieldViewModel.Options = ["Oscuram Monitor", "Verifica", "Catena Radio", "Catena Vigilante", "Catena RSDD", "JRU", "Data Logger", "Nulla di Riscontrato", "RIML", "Odometria", "Perdita Rid. SSB", "Altro"];
+                            if (SelectedTrain == "E404P")
+                            {
+                                fieldViewModel.Options = ["Oscuram Monitor", "Verifica", "Catena Radio", "Catena Vigilante", "Catena RSDD", "JRU", "Data Logger", "RIML", "Odometria", "Perdita Rid. SSB", "Altro"];
+                            }
+                            else
+                            {
+                                fieldViewModel.Options = ["Oscuram Monitor", "Verifica", "Catena Radio", "Catena Vigilante", "Catena RSDD", "JRU", "Data Logger", "Nulla di Riscontrato", "RIML", "Odometria", "Perdita Rid. SSB", "Altro"];
+                            }
                         }
 
                         if (fieldName.Contains("Descrizione LRU", StringComparison.OrdinalIgnoreCase))
@@ -306,7 +341,14 @@ namespace PersonalAutomationTool.Modules.Excel
                         if (fieldName.Contains("Versione", StringComparison.OrdinalIgnoreCase) && fieldName.Contains("SW", StringComparison.OrdinalIgnoreCase))
                         {
                             fieldViewModel.IsComboBox = true;
-                            fieldViewModel.Options = ["04.01.0002HR", "04.02.0007HR", "04.04.0003HR", "02.02.0004_ELO_BL3", "02.02.0006_ELO_BL3", "02.02.0007_ELO_BL3"];
+                            if (SelectedTrain == "E404P")
+                            {
+                                fieldViewModel.Options = ["04.00.34CR", "04.00.35A1", "04.00.35HR", "04.00.36HR", "04.01.0002HR", "04.02.0007HR"];
+                            }
+                            else
+                            {
+                                fieldViewModel.Options = ["04.01.0002HR", "04.02.0007HR", "04.04.0003HR", "02.02.0004_ELO_BL3", "02.02.0006_ELO_BL3", "02.02.0007_ELO_BL3"];
+                            }
                         }
 
                         result.Add(fieldViewModel);
@@ -340,13 +382,17 @@ namespace PersonalAutomationTool.Modules.Excel
                 {
                     if (Directory.Exists(searchDir))
                     {
-                        var existingFiles = Directory.GetFiles(searchDir, $"Report Interventi*{currentTrain}*.xls*");
+                        var existingFiles = Directory.GetFiles(searchDir, "Report Interventi*.xls*")
+                            .Where(f => currentTrain == "E404P" ? (f.Contains("ETR500", StringComparison.OrdinalIgnoreCase) || f.Contains("E404P", StringComparison.OrdinalIgnoreCase)) : f.Contains(currentTrain ?? "", StringComparison.OrdinalIgnoreCase))
+                            .ToArray();
                         if (existingFiles.Length > 0) return existingFiles[0];
                     }
 
                     if (Directory.Exists(AppConfig.LogAndDumpFolder))
                     {
-                        var rootFiles = Directory.GetFiles(AppConfig.LogAndDumpFolder, $"Report Interventi*{currentTrain}*.xls*");
+                        var rootFiles = Directory.GetFiles(AppConfig.LogAndDumpFolder, "Report Interventi*.xls*")
+                            .Where(f => currentTrain == "E404P" ? (f.Contains("ETR500", StringComparison.OrdinalIgnoreCase) || f.Contains("E404P", StringComparison.OrdinalIgnoreCase)) : f.Contains(currentTrain ?? "", StringComparison.OrdinalIgnoreCase))
+                            .ToArray();
                         if (rootFiles.Length > 0) return rootFiles[0];
                     }
                     return null;
@@ -383,6 +429,8 @@ namespace PersonalAutomationTool.Modules.Excel
                 }
             }
 
+            string currentTrain = SelectedTrain ?? "";
+
             await Task.Run(() => 
             {
                 // Estrazione nomi sottocartelle
@@ -399,15 +447,17 @@ namespace PersonalAutomationTool.Modules.Excel
             // Cliente
             if (formDict.TryGetValue("Cliente", out var clienteField))
             {
+                string targetCliente = currentTrain == "E404P" ? "Trenitalia" : "Hitachi";
+
                 if (clienteField.IsComboBox)
                 {
-                    var match = clienteField.Options.FirstOrDefault(o => o.Contains("Hitachi", StringComparison.OrdinalIgnoreCase));
+                    var match = clienteField.Options.FirstOrDefault(o => o.Contains(targetCliente, StringComparison.OrdinalIgnoreCase));
                     if (match != null) clienteField.FieldValue = match;
-                    else clienteField.FieldValue = "Hitachi";
+                    else clienteField.FieldValue = targetCliente;
                 }
                 else
                 {
-                    clienteField.FieldValue = "Hitachi";
+                    clienteField.FieldValue = targetCliente;
                 }
             }
 
@@ -511,7 +561,7 @@ namespace PersonalAutomationTool.Modules.Excel
             if (formDict.TryGetValue("VERSIONE SW PRESENTE", out var swField) && swField.IsComboBox)
             {
                 var folderWords = combinedSearchString.Split(SwVersionSeparators, StringSplitOptions.RemoveEmptyEntries)
-                                  .Where(w => w.Contains('.') || w.Contains("CR", StringComparison.OrdinalIgnoreCase) || w.Any(char.IsDigit)).ToList();
+                                  .Where(w => w.Contains('.') || w.Contains("CR", StringComparison.OrdinalIgnoreCase) || w.Contains("HR", StringComparison.OrdinalIgnoreCase) || w.Contains("A1", StringComparison.OrdinalIgnoreCase) || w.Any(char.IsDigit)).ToList();
 
                 string bestMatch = "";
                 int maxScore = 0;
@@ -546,9 +596,24 @@ namespace PersonalAutomationTool.Modules.Excel
 
             // --- GESTIONE COMBINATA TICKET ASTS E INFO_TICKET.JSON ---
             
-            formDict.TryGetValue("SN", out var snField);
+            if (!formDict.TryGetValue("SN", out var snField))
+            {
+                formDict.TryGetValue("LOCO", out snField);
+            }
             formDict.TryGetValue("N. ODL Trenitalia", out var odlField);
-            var ticketAstsField = FormFields.FirstOrDefault(f => f.FieldName.Contains("TICKET", StringComparison.OrdinalIgnoreCase) && f.FieldName.Contains("ASTS", StringComparison.OrdinalIgnoreCase));
+            var ticketAstsField = FormFields.FirstOrDefault(f => f.FieldName.Contains("TICKET", StringComparison.OrdinalIgnoreCase) && (f.FieldName.Contains("ASTS", StringComparison.OrdinalIgnoreCase) || f.FieldName.Contains("STS", StringComparison.OrdinalIgnoreCase)));
+            
+            // DEBUG LOGGING
+            try {
+                var logLines = new List<string> {
+                    $"--- TICKET DEBUG ---",
+                    $"combinedSearchString: {combinedSearchString}",
+                    $"ticketAstsField found: {ticketAstsField != null}",
+                    $"ticketAstsField Name: {ticketAstsField?.FieldName ?? "NULL"}"
+                };
+                System.IO.File.AppendAllLines(@"C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\scratch\debug_ticket.txt", logLines);
+            } catch { }
+
             formDict.TryGetValue("AVARIA SEGNALATA", out var avariaField);
             formDict.TryGetValue("DESCRIZIONE INTERVENTO EFFETTUATO", out var interventoField);
 
@@ -601,6 +666,13 @@ namespace PersonalAutomationTool.Modules.Excel
                         ticketsList.Add(standaloneTicketMatch.Value);
                 }
             }
+
+            try {
+                System.IO.File.AppendAllLines(@"C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\scratch\debug_ticket.txt", new[] {
+                    $"ticketsList Count: {ticketsList.Count}",
+                    $"ticketsList Content: {string.Join(", ", ticketsList)}"
+                });
+            } catch { }
 
             string jsonPath = Path.Combine(folderPath, "info_ticket.json");
             var allInputsWithLoco = new List<(LocoGroupModel Group, TicketInputModel Input)>();
@@ -935,7 +1007,7 @@ namespace PersonalAutomationTool.Modules.Excel
 
         private bool CanExecuteRiportaReport(object? parameter)
         {
-            return !string.IsNullOrEmpty(_currentExcelFilePath) && File.Exists(_currentExcelFilePath) && SelectedTrain == "ETR700";
+            return !string.IsNullOrEmpty(_currentExcelFilePath) && File.Exists(_currentExcelFilePath) && (SelectedTrain == "ETR700" || SelectedTrain == "E404P");
         }
 
         private async void ExecuteRiportaReport(object? parameter)
@@ -974,10 +1046,27 @@ namespace PersonalAutomationTool.Modules.Excel
                 }
 
                 string currentDateTime = DateTime.Now.ToString("ddMMyy HH_mm");
-                string newFileName = $"Report Interventi ETR700 {currentDateTime} {cleanTech}{Path.GetExtension(_currentExcelFilePath)}";
-
+                
                 string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                string hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - INTERVENTI ETR700 ELO BL3");
+                string hitachiDir = "";
+                string trainPrefix = "";
+
+                if (SelectedTrain == "ETR700")
+                {
+                    hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - INTERVENTI ETR700 ELO BL3");
+                    trainPrefix = "ETR700";
+                }
+                else if (SelectedTrain == "E404P")
+                {
+                    hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - Interventi ETR500", "REPORT INTERVENTI NAPOLI - MILANO");
+                    trainPrefix = "E404P";
+                }
+                else
+                {
+                    return;
+                }
+
+                string newFileName = $"Report Interventi {trainPrefix} {currentDateTime} {cleanTech}{Path.GetExtension(_currentExcelFilePath)}";
 
                 if (!Directory.Exists(hitachiDir))
                 {
@@ -1023,7 +1112,7 @@ namespace PersonalAutomationTool.Modules.Excel
         [GeneratedRegex(@"^(IsMan|Sub|ASTS|Hitachi|Man|TEC)[\s\-]*", RegexOptions.IgnoreCase)]
         private static partial Regex TechPrefixRegex();
 
-        [GeneratedRegex(@"(?=CR)", RegexOptions.IgnoreCase)]
+        [GeneratedRegex(@"(?=CR|HR|A1)", RegexOptions.IgnoreCase)]
         private static partial Regex CrRegex();
 
         [GeneratedRegex(@"SR[-_\s]*([0-9]+)", RegexOptions.IgnoreCase)]
