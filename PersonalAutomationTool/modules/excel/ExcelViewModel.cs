@@ -21,7 +21,7 @@ namespace PersonalAutomationTool.Modules.Excel
         [
             "E404P",
             "ETR700",
-            "ETR1000",
+            "ETR1000 / 1000FH",
             "ETR1000 I-F"
         ];
 
@@ -79,7 +79,7 @@ namespace PersonalAutomationTool.Modules.Excel
 
         private bool CanExecuteSpostaReport(object? parameter)
         {
-            return SelectedTrain == "ETR700" || SelectedTrain == "E404P" || SelectedTrain == "ETR1000";
+            return SelectedTrain == "ETR700" || SelectedTrain == "E404P" || SelectedTrain == "ETR1000 / 1000FH" || SelectedTrain == "ETR1000 I-F";
         }
 
         private async void ExecuteSpostaReport(object? parameter)
@@ -102,10 +102,15 @@ namespace PersonalAutomationTool.Modules.Excel
                     hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - Interventi ETR500", "REPORT INTERVENTI NAPOLI - MILANO");
                     targetFolder = Path.Combine(hitachiDir, $"REPORT INTERVENTI OLD_ModifyYear{currentYear}");
                 }
-                else if (SelectedTrain == "ETR1000")
+                else if (SelectedTrain == "ETR1000 / 1000FH")
                 {
                     hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - Interventi ETR1000");
                     targetFolder = Path.Combine(hitachiDir, "OLD REPORT");
+                }
+                else if (SelectedTrain == "ETR1000 I-F")
+                {
+                    hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - Interventi ETR1000", "ETR1000 ITA-FRA");
+                    targetFolder = Path.Combine(hitachiDir, "OLD Report");
                 }
                 else
                 {
@@ -133,7 +138,10 @@ namespace PersonalAutomationTool.Modules.Excel
                         if (Directory.Exists(searchDir))
                         {
                             var existingFiles = Directory.GetFiles(searchDir, "Report Interventi*.xls*")
-                                .Where(f => currentSelectedTrain == "E404P" ? (f.Contains("ETR500", StringComparison.OrdinalIgnoreCase) || f.Contains("E404P", StringComparison.OrdinalIgnoreCase)) : f.Contains(currentSelectedTrain ?? "", StringComparison.OrdinalIgnoreCase))
+                                .Where(f => currentSelectedTrain == "E404P" ? (f.Contains("ETR500", StringComparison.OrdinalIgnoreCase) || f.Contains("E404P", StringComparison.OrdinalIgnoreCase)) : 
+                                            currentSelectedTrain == "ETR1000 / 1000FH" ? ((f.Contains("ETR1000", StringComparison.OrdinalIgnoreCase) || f.Contains("1001", StringComparison.OrdinalIgnoreCase) || f.Contains("1000FH", StringComparison.OrdinalIgnoreCase)) && !f.Contains("Italia", StringComparison.OrdinalIgnoreCase) && !f.Contains("Francia", StringComparison.OrdinalIgnoreCase) && !f.Contains("ITA-FRA", StringComparison.OrdinalIgnoreCase) && !f.Contains("1000IF", StringComparison.OrdinalIgnoreCase) && !f.Contains("I-F", StringComparison.OrdinalIgnoreCase)) : 
+                                            currentSelectedTrain == "ETR1000 I-F" ? (f.Contains("1000IF", StringComparison.OrdinalIgnoreCase) || f.Contains("Italia", StringComparison.OrdinalIgnoreCase) || f.Contains("Francia", StringComparison.OrdinalIgnoreCase) || f.Contains("ITA-FRA", StringComparison.OrdinalIgnoreCase) || f.Contains("I-F", StringComparison.OrdinalIgnoreCase)) : 
+                                            f.Contains(currentSelectedTrain ?? "", StringComparison.OrdinalIgnoreCase))
                                 .ToArray();
                             if (existingFiles.Length > 0)
                             {
@@ -197,8 +205,11 @@ namespace PersonalAutomationTool.Modules.Excel
                     var worksheet = workbook.Worksheets.FirstOrDefault();
                     if (worksheet == null) return result;
 
-                    // Colonne da B ad AA (indice 2 a 27)
-                    for (int col = 2; col <= 27; col++)
+                    string currentTrain = SelectedTrain ?? "";
+                    int maxCol = currentTrain == "ETR1000 I-F" ? 24 : 27;
+                    
+                    // Colonne da B a X o AA
+                    for (int col = 2; col <= maxCol; col++)
                     {
                         var headerCell = worksheet.Cell(1, col); // Assumiamo intestazioni su riga 1
                         string fieldName = headerCell.GetString();
@@ -207,10 +218,30 @@ namespace PersonalAutomationTool.Modules.Excel
                         {
                             fieldName = $"Colonna {worksheet.Column(col).ColumnLetter()}";
                         }
+                        else
+                        {
+                            fieldName = fieldName.Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ");
+                            if (fieldName.Contains("TECNICO HRSTS", StringComparison.OrdinalIgnoreCase) || fieldName.Contains("subappalto", StringComparison.OrdinalIgnoreCase))
+                            {
+                                fieldName = "TECNICO HRSTS";
+                            }
+                        }
 
-                        if (fieldName == "Colonna T" || fieldName == "Colonna W")
+                        if (fieldName == "Colonna T" || fieldName == "Colonna W" || fieldName == "Colonna R" || fieldName == "Colonna U")
                         {
                             fieldName = "Rev.";
+                        }
+                        else if (fieldName == "Colonna Y")
+                        {
+                            fieldName = "Tecnico Cliente";
+                        }
+                        else if (fieldName == "Colonna Z")
+                        {
+                            fieldName = "NOTE";
+                        }
+                        else if (fieldName == "Colonna AA")
+                        {
+                            fieldName = "SW Installato";
                         }
 
                         var fieldViewModel = new ExcelFieldViewModel
@@ -316,7 +347,7 @@ namespace PersonalAutomationTool.Modules.Excel
                         if (fieldName.Contains("Tipologia", StringComparison.OrdinalIgnoreCase))
                         {
                             fieldViewModel.IsComboBox = true;
-                            if (SelectedTrain == "E404P" || SelectedTrain == "ETR1000")
+                            if (SelectedTrain == "E404P" || SelectedTrain == "ETR1000 / 1000FH" || SelectedTrain == "ETR1000 I-F")
                             {
                                 fieldViewModel.Options = ["Mis", "Extragaranzia", "Upgrade", "Man Programmata", "Man Predittiva", "Controlli Remoto", "Nulla Riscontrato", "Correttiva con sostit", "Correttiva senza sostit"];
                             }
@@ -333,7 +364,7 @@ namespace PersonalAutomationTool.Modules.Excel
                             {
                                 fieldViewModel.Options = ["Oscuram Monitor", "Verifica", "Catena Radio", "Catena Vigilante", "Catena RSDD", "JRU", "Data Logger", "RIML", "Odometria", "Perdita Rid. SSB", "Altro"];
                             }
-                            else if (SelectedTrain == "ETR1000")
+                            else if (SelectedTrain == "ETR1000 / 1000FH" || SelectedTrain == "ETR1000 I-F")
                             {
                                 fieldViewModel.Options = ["Oscuram Monitor", "Verifica", "Catena Radio", "Catena Vigilante", "Catena RSDD", "JRU DIS", "Data Logger", "RIML", "Odometria", "Perdita Rid. SSB", "Altro"];
                             }
@@ -363,7 +394,7 @@ namespace PersonalAutomationTool.Modules.Excel
                             {
                                 fieldViewModel.Options = ["04.00.34CR", "04.00.35A1", "04.00.35HR", "04.00.36HR", "04.01.0002HR", "04.02.0007HR"];
                             }
-                            else if (SelectedTrain == "ETR1000")
+                            else if (SelectedTrain == "ETR1000 / 1000FH")
                             {
                                 fieldViewModel.Options = ["04.01 HR", "04.03 HR", "01.01.0000 Elo BL3", "02.02.0006 Elo BL3", "02.02.0007 Elo BL3"];
                             }
@@ -374,15 +405,15 @@ namespace PersonalAutomationTool.Modules.Excel
                         }
 
                         string[] importantKeywords = [
-                            "DATA CHIAMATA", "SITO INTERVENTO", "TICKET ASTS", "N. ODL", "Cliente",
-                            "DATA INTERVENTO", "Ora Inizio", "Ora Fine", "ROTABILE", "SN",
-                            "Tipologia", "AVARIA SEGNALATA", "CATEGORIA AVARIA", "Scarico Dati Locale",
-                            "Descrizione intervento effettuato", "TECNICO ASTS", "VERSIONE SW"
+                            "DATA CHIAMATA", "SITO INTERVENTO", "TICKET", "N. ODL", "Cliente",
+                            "DATA INTERVENTO", "Inizio", "Fine", "ROTABILE", "SN", "LOCO",
+                            "Tipologia", "AVARIA SEGNALATA", "CATEGORIA AVARIA", "Scarico Dati",
+                            "Descrizione intervento effettuato", "TECNICO ASTS", "VERSIONE SW", "TECNICO HRSTS", "SW Installato"
                         ];
                         
                         fieldViewModel.IsImportant = importantKeywords.Any(k => 
-                            (k == "SN" || k == "Cliente") ? fieldName.Equals(k, StringComparison.OrdinalIgnoreCase) 
-                                                          : fieldName.Contains(k, StringComparison.OrdinalIgnoreCase));
+                            (k == "SN" || k == "LOCO" || k == "Cliente") ? fieldName.Equals(k, StringComparison.OrdinalIgnoreCase) 
+                                                                         : fieldName.Contains(k, StringComparison.OrdinalIgnoreCase));
 
                         result.Add(fieldViewModel);
                     }
@@ -416,7 +447,10 @@ namespace PersonalAutomationTool.Modules.Excel
                     if (Directory.Exists(searchDir))
                     {
                         var existingFiles = Directory.GetFiles(searchDir, "Report Interventi*.xls*")
-                            .Where(f => currentTrain == "E404P" ? (f.Contains("ETR500", StringComparison.OrdinalIgnoreCase) || f.Contains("E404P", StringComparison.OrdinalIgnoreCase)) : f.Contains(currentTrain ?? "", StringComparison.OrdinalIgnoreCase))
+                            .Where(f => currentTrain == "E404P" ? (f.Contains("ETR500", StringComparison.OrdinalIgnoreCase) || f.Contains("E404P", StringComparison.OrdinalIgnoreCase)) : 
+                                        currentTrain == "ETR1000 / 1000FH" ? ((f.Contains("ETR1000", StringComparison.OrdinalIgnoreCase) || f.Contains("1001", StringComparison.OrdinalIgnoreCase) || f.Contains("1000FH", StringComparison.OrdinalIgnoreCase)) && !f.Contains("Italia", StringComparison.OrdinalIgnoreCase) && !f.Contains("Francia", StringComparison.OrdinalIgnoreCase) && !f.Contains("ITA-FRA", StringComparison.OrdinalIgnoreCase) && !f.Contains("1000IF", StringComparison.OrdinalIgnoreCase) && !f.Contains("I-F", StringComparison.OrdinalIgnoreCase)) : 
+                                        currentTrain == "ETR1000 I-F" ? (f.Contains("1000IF", StringComparison.OrdinalIgnoreCase) || f.Contains("Italia", StringComparison.OrdinalIgnoreCase) || f.Contains("Francia", StringComparison.OrdinalIgnoreCase) || f.Contains("ITA-FRA", StringComparison.OrdinalIgnoreCase) || f.Contains("I-F", StringComparison.OrdinalIgnoreCase)) : 
+                                        f.Contains(currentTrain ?? "", StringComparison.OrdinalIgnoreCase))
                             .ToArray();
                         if (existingFiles.Length > 0) return existingFiles[0];
                     }
@@ -424,7 +458,10 @@ namespace PersonalAutomationTool.Modules.Excel
                     if (Directory.Exists(AppConfig.LogAndDumpFolder))
                     {
                         var rootFiles = Directory.GetFiles(AppConfig.LogAndDumpFolder, "Report Interventi*.xls*")
-                            .Where(f => currentTrain == "E404P" ? (f.Contains("ETR500", StringComparison.OrdinalIgnoreCase) || f.Contains("E404P", StringComparison.OrdinalIgnoreCase)) : f.Contains(currentTrain ?? "", StringComparison.OrdinalIgnoreCase))
+                            .Where(f => currentTrain == "E404P" ? (f.Contains("ETR500", StringComparison.OrdinalIgnoreCase) || f.Contains("E404P", StringComparison.OrdinalIgnoreCase)) : 
+                                        currentTrain == "ETR1000 / 1000FH" ? ((f.Contains("ETR1000", StringComparison.OrdinalIgnoreCase) || f.Contains("1001", StringComparison.OrdinalIgnoreCase) || f.Contains("1000FH", StringComparison.OrdinalIgnoreCase)) && !f.Contains("Italia", StringComparison.OrdinalIgnoreCase) && !f.Contains("Francia", StringComparison.OrdinalIgnoreCase) && !f.Contains("ITA-FRA", StringComparison.OrdinalIgnoreCase) && !f.Contains("1000IF", StringComparison.OrdinalIgnoreCase) && !f.Contains("I-F", StringComparison.OrdinalIgnoreCase)) : 
+                                        currentTrain == "ETR1000 I-F" ? (f.Contains("1000IF", StringComparison.OrdinalIgnoreCase) || f.Contains("Italia", StringComparison.OrdinalIgnoreCase) || f.Contains("Francia", StringComparison.OrdinalIgnoreCase) || f.Contains("ITA-FRA", StringComparison.OrdinalIgnoreCase) || f.Contains("I-F", StringComparison.OrdinalIgnoreCase)) : 
+                                        f.Contains(currentTrain ?? "", StringComparison.OrdinalIgnoreCase))
                             .ToArray();
                         if (rootFiles.Length > 0) return rootFiles[0];
                     }
@@ -538,7 +575,25 @@ namespace PersonalAutomationTool.Modules.Excel
             {
                 if (rotabileField.IsComboBox)
                 {
-                    var matchingOption = rotabileField.Options.FirstOrDefault(o => o.Contains(SelectedTrain, StringComparison.OrdinalIgnoreCase));
+                    string? matchingOption = null;
+                    if (SelectedTrain == "ETR1000 / 1000FH")
+                    {
+                        matchingOption = rotabileField.Options.FirstOrDefault(o => o.Contains("ETR 1000", StringComparison.OrdinalIgnoreCase) || o.Contains("ETR1000", StringComparison.OrdinalIgnoreCase));
+                    }
+                    else if (SelectedTrain == "ETR1000 I-F")
+                    {
+                        matchingOption = rotabileField.Options.FirstOrDefault(o => (o.Contains("1000", StringComparison.OrdinalIgnoreCase) && (o.Contains("IF", StringComparison.OrdinalIgnoreCase) || o.Contains("I-F", StringComparison.OrdinalIgnoreCase) || o.Contains("ITA", StringComparison.OrdinalIgnoreCase))) || o.Contains("Italia", StringComparison.OrdinalIgnoreCase) || o.Contains("Francia", StringComparison.OrdinalIgnoreCase));
+                        if (matchingOption == null)
+                        {
+                            matchingOption = rotabileField.Options.FirstOrDefault(o => o.Contains("ETR 1000", StringComparison.OrdinalIgnoreCase) || o.Contains("ETR1000", StringComparison.OrdinalIgnoreCase));
+                        }
+                    }
+                    
+                    if (matchingOption == null)
+                    {
+                        matchingOption = rotabileField.Options.FirstOrDefault(o => o.Contains(SelectedTrain, StringComparison.OrdinalIgnoreCase));
+                    }
+
                     if (matchingOption != null) rotabileField.FieldValue = matchingOption;
                     else rotabileField.FieldValue = SelectedTrain;
                 }
@@ -549,7 +604,7 @@ namespace PersonalAutomationTool.Modules.Excel
             }
 
             // Tecnico & SW
-            var techField = FormFields.FirstOrDefault(f => f.FieldName.Contains("TECNICO", StringComparison.OrdinalIgnoreCase) && f.FieldName.Contains("ASTS", StringComparison.OrdinalIgnoreCase));
+            var techField = FormFields.FirstOrDefault(f => f.FieldName.Contains("TECNICO", StringComparison.OrdinalIgnoreCase) && (f.FieldName.Contains("ASTS", StringComparison.OrdinalIgnoreCase) || f.FieldName.Contains("STS", StringComparison.OrdinalIgnoreCase)));
             if (techField != null && techField.IsComboBox)
             {
                 string normSearch = combinedSearchString.Replace(" ", "").Replace("_", "").Replace(".", "").ToLower();
@@ -578,6 +633,11 @@ namespace PersonalAutomationTool.Modules.Excel
                         score += solidName.Length * 2;
                     }
 
+                    if (opt.Contains("Iscot", StringComparison.OrdinalIgnoreCase))
+                    {
+                        score += 1; // Dai priorità a Iscot a parità di nome
+                    }
+
                     if (score > maxTechScore && score > 0)
                     {
                         maxTechScore = score;
@@ -591,10 +651,23 @@ namespace PersonalAutomationTool.Modules.Excel
                 }
             }
 
-            if (formDict.TryGetValue("VERSIONE SW PRESENTE", out var swField) && swField.IsComboBox)
+            if (!formDict.TryGetValue("VERSIONE SW PRESENTE", out var swField))
             {
+                formDict.TryGetValue("SW Installato", out swField);
+            }
+
+            if (swField != null && swField.IsComboBox)
+            {
+                if (SelectedTrain == "ETR1000 I-F")
+                {
+                    var optBi = swField.Options?.FirstOrDefault(o => o.Contains("Bi-Standard", StringComparison.OrdinalIgnoreCase) || o.Contains("KVB", StringComparison.OrdinalIgnoreCase));
+                    if (optBi != null)
+                    {
+                        swField.FieldValue = optBi;
+                    }
+                }
                 // Regola esplicita per 02.02CR3
-                if (combinedSearchString.Contains("02.02CR3", StringComparison.OrdinalIgnoreCase) && swField.Options != null)
+                else if (combinedSearchString.Contains("02.02CR3", StringComparison.OrdinalIgnoreCase) && swField.Options != null)
                 {
                     var opt6 = swField.Options.FirstOrDefault(o => o.Contains("02.02.0006", StringComparison.OrdinalIgnoreCase));
                     if (opt6 != null)
@@ -646,7 +719,7 @@ namespace PersonalAutomationTool.Modules.Excel
                 formDict.TryGetValue("LOCO", out snField);
             }
             formDict.TryGetValue("N. ODL Trenitalia", out var odlField);
-            var ticketAstsField = FormFields.FirstOrDefault(f => f.FieldName.Contains("TICKET", StringComparison.OrdinalIgnoreCase) && (f.FieldName.Contains("ASTS", StringComparison.OrdinalIgnoreCase) || f.FieldName.Contains("STS", StringComparison.OrdinalIgnoreCase)));
+            var ticketAstsField = FormFields.FirstOrDefault(f => f.FieldName.Equals("TICKET", StringComparison.OrdinalIgnoreCase) || (f.FieldName.Contains("TICKET", StringComparison.OrdinalIgnoreCase) && (f.FieldName.Contains("ASTS", StringComparison.OrdinalIgnoreCase) || f.FieldName.Contains("STS", StringComparison.OrdinalIgnoreCase))));
             
             // DEBUG LOGGING
             try {
@@ -737,7 +810,7 @@ namespace PersonalAutomationTool.Modules.Excel
                             {
                                 foreach (var i in g.Inputs)
                                 {
-                                    if (!string.IsNullOrWhiteSpace(i.Avviso))
+                                    if (!string.IsNullOrWhiteSpace(i.Avviso) || !string.IsNullOrWhiteSpace(i.Avaria) || !string.IsNullOrWhiteSpace(i.Intervento))
                                     {
                                         allInputsWithLoco.Add((g, i));
                                     }
@@ -808,12 +881,13 @@ namespace PersonalAutomationTool.Modules.Excel
             if (!infoTicketLoaded)
             {
                 // Fallback for SN: cerca nel nome della cartella e nelle sottocartelle
-                if (formDict.TryGetValue("SN", out var snField2))
+                if (snField != null)
                 {
+                    var snField2 = snField;
                     bool found = false;
                     
                     // 1. Cerca il nome treno + 3/4 cifre (es. ETR700 101)
-                    var snMatch = Regex.Match(combinedSearchString, $@"{SelectedTrain}\s*[-_]?\s*(\d{{3,4}})", RegexOptions.IgnoreCase);
+                    var snMatch = Regex.Match(combinedSearchString, $@"{SelectedTrain}\s*[-_]?\s*(\d{{2,4}})", RegexOptions.IgnoreCase);
                     if (snMatch.Success)
                     {
                         snField2.FieldValue = snMatch.Groups[1].Value;
@@ -853,23 +927,30 @@ namespace PersonalAutomationTool.Modules.Excel
             if (formDict.TryGetValue("Scarico Dati Locale", out var scaricoField))
             {
                 bool hasLogs = false;
-                try
+                if (SelectedTrain == "ETR1000 I-F")
                 {
-                    var allDirs = Directory.GetDirectories(folderPath, "*", SearchOption.TopDirectoryOnly);
-                    var logDumpDirs = allDirs.Where(d => new DirectoryInfo(d).Name.Contains("LOG", StringComparison.OrdinalIgnoreCase) || 
-                                                         new DirectoryInfo(d).Name.Contains("DUMP", StringComparison.OrdinalIgnoreCase)).ToList();
-                    
-                    foreach (var ldDir in logDumpDirs)
+                    hasLogs = true;
+                }
+                else
+                {
+                    try
                     {
-                        var files = Directory.GetFiles(ldDir, "*", SearchOption.AllDirectories);
-                        if (files.Length > 0)
+                        var allDirs = Directory.GetDirectories(folderPath, "*", SearchOption.TopDirectoryOnly);
+                        var logDumpDirs = allDirs.Where(d => new DirectoryInfo(d).Name.Contains("LOG", StringComparison.OrdinalIgnoreCase) || 
+                                                             new DirectoryInfo(d).Name.Contains("DUMP", StringComparison.OrdinalIgnoreCase)).ToList();
+                        
+                        foreach (var ldDir in logDumpDirs)
                         {
-                            hasLogs = true;
-                            break;
+                            var files = Directory.GetFiles(ldDir, "*", SearchOption.AllDirectories);
+                            if (files.Length > 0)
+                            {
+                                hasLogs = true;
+                                break;
+                            }
                         }
                     }
+                    catch { }
                 }
-                catch { }
                 
                 if (scaricoField.IsComboBox)
                 {
@@ -918,7 +999,30 @@ namespace PersonalAutomationTool.Modules.Excel
                     if (string.IsNullOrEmpty(dirName)) continue;
 
                     // Filter based on the selected train name
-                    if (dirName.Contains(SelectedTrain, StringComparison.OrdinalIgnoreCase))
+                    if (SelectedTrain == "ETR1000 / 1000FH")
+                    {
+                        if ((dirName.Contains("ETR1000", StringComparison.OrdinalIgnoreCase) || 
+                            dirName.Contains("1001", StringComparison.OrdinalIgnoreCase) || 
+                            dirName.Contains("1000FH", StringComparison.OrdinalIgnoreCase)) &&
+                            !dirName.Contains("Italia", StringComparison.OrdinalIgnoreCase) &&
+                            !dirName.Contains("Francia", StringComparison.OrdinalIgnoreCase) &&
+                            !dirName.Contains("ITA-FRA", StringComparison.OrdinalIgnoreCase) &&
+                            !dirName.Contains("1000IF", StringComparison.OrdinalIgnoreCase) &&
+                            !dirName.Contains("I-F", StringComparison.OrdinalIgnoreCase))
+                        {
+                            AvailableFolders.Add(dirName);
+                        }
+                    }
+                    else if (SelectedTrain == "ETR1000 I-F")
+                    {
+                        if (dirName.Contains("ETR1000 I-F", StringComparison.OrdinalIgnoreCase) || 
+                            dirName.Contains("1000IF", StringComparison.OrdinalIgnoreCase) || 
+                            dirName.Contains("ITA-FRA", StringComparison.OrdinalIgnoreCase))
+                        {
+                            AvailableFolders.Add(dirName);
+                        }
+                    }
+                    else if (dirName.Contains(SelectedTrain, StringComparison.OrdinalIgnoreCase))
                     {
                         AvailableFolders.Add(dirName);
                     }
@@ -1052,7 +1156,7 @@ namespace PersonalAutomationTool.Modules.Excel
 
         private bool CanExecuteRiportaReport(object? parameter)
         {
-            return !string.IsNullOrEmpty(_currentExcelFilePath) && File.Exists(_currentExcelFilePath) && (SelectedTrain == "ETR700" || SelectedTrain == "E404P" || SelectedTrain == "ETR1000");
+            return !string.IsNullOrEmpty(_currentExcelFilePath) && File.Exists(_currentExcelFilePath) && (SelectedTrain == "ETR700" || SelectedTrain == "E404P" || SelectedTrain == "ETR1000 / 1000FH" || SelectedTrain == "ETR1000 I-F");
         }
 
         private async void ExecuteRiportaReport(object? parameter)
@@ -1106,10 +1210,15 @@ namespace PersonalAutomationTool.Modules.Excel
                     hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - Interventi ETR500", "REPORT INTERVENTI NAPOLI - MILANO");
                     trainPrefix = "E404P";
                 }
-                else if (SelectedTrain == "ETR1000")
+                else if (SelectedTrain == "ETR1000 / 1000FH")
                 {
                     hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - Interventi ETR1000");
                     trainPrefix = "ETR1000";
+                }
+                else if (SelectedTrain == "ETR1000 I-F")
+                {
+                    hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - Interventi ETR1000", "ETR1000 ITA-FRA");
+                    trainPrefix = "ETR1000 Italia_Francia";
                 }
                 else
                 {
@@ -1171,7 +1280,7 @@ namespace PersonalAutomationTool.Modules.Excel
         [GeneratedRegex(@"\b\d{7,8}\b")]
         private static partial Regex StandaloneTicketRegex();
 
-        [GeneratedRegex(@"\b\d{3,4}\b")]
+        [GeneratedRegex(@"\b\d{2,4}\b")]
         private static partial Regex StandaloneLocoRegex();
     }
 }

@@ -42,6 +42,18 @@ namespace PersonalAutomationTool.Modules.Email
                 string baseLogDump = PersonalAutomationTool.Core.AppConfig.LogAndDumpFolder;
                 string folderPath = Path.Combine(baseLogDump, cartella);
                 
+                // Salva il file json anche quando si usa la generazione veloce senza dialog (es. scadenze)
+                if (Directory.Exists(folderPath))
+                {
+                    try
+                    {
+                        string cacheFile = Path.Combine(folderPath, "info_ticket.json");
+                        string json = System.Text.Json.JsonSerializer.Serialize(locoGroups);
+                        File.WriteAllText(cacheFile, json);
+                    }
+                    catch { }
+                }
+                
                 string subject = $"CHIUSURA TICKET {cartella}"; // fallback
                 List<string> logFolders = [];
                 List<string> dumpFolders = [];
