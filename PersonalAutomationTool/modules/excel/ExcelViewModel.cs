@@ -186,6 +186,11 @@ namespace PersonalAutomationTool.Modules.Excel
                             fieldName = $"Colonna {worksheet.Column(col).ColumnLetter()}";
                         }
 
+                        if (fieldName == "Colonna T" || fieldName == "Colonna W")
+                        {
+                            fieldName = "Rev.";
+                        }
+
                         var fieldViewModel = new ExcelFieldViewModel
                         {
                             FieldName = fieldName
@@ -269,6 +274,37 @@ namespace PersonalAutomationTool.Modules.Excel
                             }
 
                             fieldViewModel.Options = [.. allOptions];
+                        }
+
+                        if (fieldName.Contains("Tipologia", StringComparison.OrdinalIgnoreCase))
+                        {
+                            fieldViewModel.IsComboBox = true;
+                            fieldViewModel.Options = ["Assistenza", "Mis", "Extragaranzia", "Supporto", "Semestrale", "Annuale", "Upgrade"];
+                        }
+
+                        if (fieldName.Contains("Categoria", StringComparison.OrdinalIgnoreCase) && fieldName.Contains("Avaria", StringComparison.OrdinalIgnoreCase))
+                        {
+                            fieldViewModel.IsComboBox = true;
+                            fieldViewModel.Options = ["Oscuram Monitor", "Verifica", "Catena Radio", "Catena Vigilante", "Catena RSDD", "JRU", "Data Logger", "Nulla di Riscontrato", "RIML", "Odometria", "Perdita Rid. SSB", "Altro"];
+                        }
+
+                        if (fieldName.Contains("Descrizione LRU", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var list = fieldViewModel.Options;
+                            if (list != null)
+                            {
+                                int eloIndex = list.FindIndex(o => o.Contains("ELO", StringComparison.OrdinalIgnoreCase) && o.Contains("Logic Onboard", StringComparison.OrdinalIgnoreCase));
+                                if (eloIndex > 0)
+                                {
+                                    list.RemoveRange(0, eloIndex);
+                                }
+                            }
+                        }
+
+                        if (fieldName.Contains("Versione", StringComparison.OrdinalIgnoreCase) && fieldName.Contains("SW", StringComparison.OrdinalIgnoreCase))
+                        {
+                            fieldViewModel.IsComboBox = true;
+                            fieldViewModel.Options = ["04.01.0002HR", "04.02.0007HR", "04.04.0003HR", "02.02.0004_ELO_BL3", "02.02.0006_ELO_BL3", "02.02.0007_ELO_BL3"];
                         }
 
                         result.Add(fieldViewModel);
