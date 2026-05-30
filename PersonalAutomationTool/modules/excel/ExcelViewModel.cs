@@ -60,6 +60,20 @@ namespace PersonalAutomationTool.Modules.Excel
         public ICommand RiportaReportCommand { get; }
         public ICommand PulisciCampiCommand { get; }
 
+        private bool _isLoading;
+        public bool IsLoading
+        {
+            get => _isLoading;
+            set => SetProperty(ref _isLoading, value);
+        }
+
+        private string _loadingMessage = "Caricamento...";
+        public string LoadingMessage
+        {
+            get => _loadingMessage;
+            set => SetProperty(ref _loadingMessage, value);
+        }
+
         private string? _currentExcelFilePath;
         private bool _isWritingReport = false;
 
@@ -84,6 +98,8 @@ namespace PersonalAutomationTool.Modules.Excel
 
         private async void ExecuteSpostaReport(object? parameter)
         {
+            IsLoading = true;
+            LoadingMessage = "Spostamento report in corso...";
             try
             {
                 string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -188,6 +204,10 @@ namespace PersonalAutomationTool.Modules.Excel
             catch (Exception ex)
             {
                 MessageBox.Show($"Si è verificato un errore durante l'operazione:\n{ex.Message}", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsLoading = false;
             }
         }
 
@@ -434,6 +454,8 @@ namespace PersonalAutomationTool.Modules.Excel
             try
             {
                 if (_isWritingReport) return;
+                IsLoading = true;
+                LoadingMessage = "Caricamento report in corso...";
                 FormFields.Clear();
                 if (string.IsNullOrEmpty(SelectedTrain)) return;
 
@@ -475,9 +497,13 @@ namespace PersonalAutomationTool.Modules.Excel
                 
                 await AutoFillReportFieldsAsync();
             }
-            catch
+            catch (Exception)
             {
                 // Ignora silenziosamente errori nel caricamento automatico
+            }
+            finally
+            {
+                IsLoading = false;
             }
         }
 
@@ -583,16 +609,10 @@ namespace PersonalAutomationTool.Modules.Excel
                     else if (SelectedTrain == "ETR1000 I-F")
                     {
                         matchingOption = rotabileField.Options.FirstOrDefault(o => (o.Contains("1000", StringComparison.OrdinalIgnoreCase) && (o.Contains("IF", StringComparison.OrdinalIgnoreCase) || o.Contains("I-F", StringComparison.OrdinalIgnoreCase) || o.Contains("ITA", StringComparison.OrdinalIgnoreCase))) || o.Contains("Italia", StringComparison.OrdinalIgnoreCase) || o.Contains("Francia", StringComparison.OrdinalIgnoreCase));
-                        if (matchingOption == null)
-                        {
-                            matchingOption = rotabileField.Options.FirstOrDefault(o => o.Contains("ETR 1000", StringComparison.OrdinalIgnoreCase) || o.Contains("ETR1000", StringComparison.OrdinalIgnoreCase));
-                        }
+                        matchingOption ??= rotabileField.Options.FirstOrDefault(o => o.Contains("ETR 1000", StringComparison.OrdinalIgnoreCase) || o.Contains("ETR1000", StringComparison.OrdinalIgnoreCase));
                     }
                     
-                    if (matchingOption == null)
-                    {
-                        matchingOption = rotabileField.Options.FirstOrDefault(o => o.Contains(SelectedTrain, StringComparison.OrdinalIgnoreCase));
-                    }
+                    matchingOption ??= rotabileField.Options.FirstOrDefault(o => o.Contains(SelectedTrain, StringComparison.OrdinalIgnoreCase));
 
                     if (matchingOption != null) rotabileField.FieldValue = matchingOption;
                     else rotabileField.FieldValue = SelectedTrain;
@@ -683,7 +703,7 @@ namespace PersonalAutomationTool.Modules.Excel
                     string bestMatch = "";
                     int maxScore = 0;
 
-                    foreach (var opt in swField.Options)
+                    foreach (var opt in swField.Options ?? Enumerable.Empty<string>())
                     {
                         int score = 0;
                         foreach (var fw in folderWords)
@@ -786,10 +806,10 @@ namespace PersonalAutomationTool.Modules.Excel
             }
 
             try {
-                System.IO.File.AppendAllLines(@"C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\scratch\debug_ticket.txt", new[] {
+                System.IO.File.AppendAllLines(@"C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\scratch\debug_ticket.txt", [
                     $"ticketsList Count: {ticketsList.Count}",
                     $"ticketsList Content: {string.Join(", ", ticketsList)}"
-                });
+                ]);
             } catch { }
 
             string jsonPath = Path.Combine(folderPath, "info_ticket.json");
@@ -1057,6 +1077,8 @@ namespace PersonalAutomationTool.Modules.Excel
                 return;
             }
 
+            IsLoading = true;
+            LoadingMessage = "Scrittura report in corso...";
             try
             {
                 _isWritingReport = true;
@@ -1151,6 +1173,7 @@ namespace PersonalAutomationTool.Modules.Excel
             finally
             {
                 _isWritingReport = false;
+                IsLoading = false;
             }
         }
 
@@ -1168,6 +1191,9 @@ namespace PersonalAutomationTool.Modules.Excel
                     MessageBox.Show("Nessun file Excel caricato.", "Errore", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
+
+                IsLoading = true;
+                LoadingMessage = "Ripristino report in corso...";
 
                 // Trova il tecnico selezionato
                 var techField = FormFields.FirstOrDefault(f => f.FieldName.Contains("TECNICO", StringComparison.OrdinalIgnoreCase) && f.FieldName.Contains("ASTS", StringComparison.OrdinalIgnoreCase));
@@ -1248,6 +1274,10 @@ namespace PersonalAutomationTool.Modules.Excel
             catch (Exception ex)
             {
                 MessageBox.Show($"Si è verificato un errore durante l'operazione:\n{ex.Message}", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsLoading = false;
             }
         }
 
