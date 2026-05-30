@@ -3,9 +3,133 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:PersonalAutomationTool.Modules.Home"
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
-    <Grid Background="White">
-        <TextBlock Text="Benvenuto nella Home" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="24" FontWeight="Bold"/>
+             d:DesignHeight="700" d:DesignWidth="1200"
+             Background="White">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+    </UserControl.Resources>
+    <UserControl.DataContext>
+        <local:HomeViewModel/>
+    </UserControl.DataContext>
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Sezione Orologio -->
+        <Border Grid.Row="0" BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="8" Padding="20" HorizontalAlignment="Left" MinWidth="250" Margin="0,0,0,20">
+            <StackPanel HorizontalAlignment="Center">
+                <TextBlock Text="{Binding CurrentTime}" FontSize="48" FontWeight="Bold" Foreground="#333333" HorizontalAlignment="Center"/>
+                <TextBlock Text="{Binding CurrentDate}" FontSize="16" Foreground="#666666" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Sezione Manutenzioni in sospeso -->
+        <Border Grid.Row="1" BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="8" Padding="15">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Header / Title -->
+                <TextBlock Grid.Row="0" Text="Manutenzioni in sospeso" FontWeight="Bold" FontSize="18" Foreground="#333333" Margin="0,0,0,15" Padding="5,0"/>
+
+                <!-- Toolbar -->
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="5,0,0,15">
+                    <TextBlock Text="Cambio ticket" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,10,0"/>
+                    <TextBox Width="120" Margin="0,0,10,0" VerticalAlignment="Center" Padding="2" Text="{Binding OldTicket, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBox Width="120" Margin="0,0,10,0" VerticalAlignment="Center" Padding="2" Text="{Binding NewTicket, UpdateSourceTrigger=PropertyChanged}"/>
+                    <Button Content="Aggiorna ticket" Command="{Binding AggiornaTicketCommand}" Padding="10,5" Margin="0,0,10,0" Background="#F0F0F0" BorderBrush="#CCCCCC" Foreground="#333333"/>
+                    
+                    <Button Content="Zip" Command="{Binding ZipCommand}" Padding="15,5" Margin="20,0,10,0" Background="#F0F0F0" BorderBrush="#CCCCCC" Foreground="#333333"/>
+                    <Button Content="Log Dump in rete" Command="{Binding LogDumpReteCommand}" Padding="10,5" Margin="0,0,10,0" Background="#F0F0F0" BorderBrush="#CCCCCC" Foreground="#333333"/>
+                    <Button Content="Elimina" Command="{Binding EliminaCommand}" Padding="10,5" Background="#FFEBEE" Foreground="#D32F2F" BorderBrush="#FFCDD2" FontWeight="SemiBold"/>
+                </StackPanel>
+
+                <!-- DataGrid -->
+                <DataGrid Grid.Row="2" ItemsSource="{Binding PendingItems}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}" AutoGenerateColumns="False" CanUserAddRows="False" 
+                          HeadersVisibility="Column" Background="White" RowBackground="White" AlternatingRowBackground="#FAFAFA"
+                          BorderBrush="#EEEEEE" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#EEEEEE">
+                    <DataGrid.Resources>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="White"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                            <Setter Property="Padding" Value="10,5"/>
+                            <Setter Property="BorderBrush" Value="#DDDDDD"/>
+                            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                        </Style>
+                        <Style TargetType="DataGridCell">
+                            <Setter Property="Padding" Value="10,8"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="DataGridCell">
+                                        <Border Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                                            <ContentPresenter VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGrid.Resources>
+                    <!-- Stile per la riga in modo da legare RowDetailsVisibility a IsExpanded -->
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow">
+                            <Setter Property="DetailsVisibility" Value="{Binding IsExpanded, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        </Style>
+                    </DataGrid.RowStyle>
+
+                    <DataGrid.RowDetailsTemplate>
+                        <DataTemplate>
+                            <ItemsControl ItemsSource="{Binding SubFolders}" Margin="40,5,0,5">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" Foreground="#555555" Margin="0,2"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </DataTemplate>
+                    </DataGrid.RowDetailsTemplate>
+
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Width="40">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ToggleButton IsChecked="{Binding IsExpanded, UpdateSourceTrigger=PropertyChanged}" 
+                                                  Background="Transparent" BorderThickness="0" Padding="0" Cursor="Hand" Width="20" Height="20">
+                                        <ToggleButton.Style>
+                                            <Style TargetType="ToggleButton">
+                                                <Setter Property="Content" Value="&gt;"/>
+                                                <Setter Property="Foreground" Value="#777777"/>
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsChecked" Value="True">
+                                                        <Setter Property="Content" Value="v"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ToggleButton.Style>
+                                    </ToggleButton>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Tipo/Treno" Binding="{Binding TipoTreno}" Width="150" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Numero cartelle" Binding="{Binding NumeroCartelle}" Width="120" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Data" Binding="{Binding Data}" Width="100" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Giorni" Binding="{Binding Giorni}" Width="80" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Percorso" Binding="{Binding Percorso}" Width="*" IsReadOnly="True">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
     </Grid>
 </UserControl>
