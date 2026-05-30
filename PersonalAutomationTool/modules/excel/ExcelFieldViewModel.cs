@@ -39,6 +39,13 @@ namespace PersonalAutomationTool.Modules.Excel
             set => SetProperty(ref _options, value);
         }
 
+        private bool _isImportant;
+        public bool IsImportant
+        {
+            get => _isImportant;
+            set => SetProperty(ref _isImportant, value);
+        }
+
         public bool IsTextBox => !IsComboBox;
     }
 }

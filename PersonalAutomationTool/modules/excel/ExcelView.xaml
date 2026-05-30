@@ -175,15 +175,33 @@
                                         <!-- TextBox -->
                                         <TextBox x:Name="FieldTextBox"
                                                  Text="{Binding FieldValue, UpdateSourceTrigger=PropertyChanged}"
-                                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                 Visibility="Collapsed"/>
+                                                 Visibility="Collapsed">
+                                            <TextBox.Style>
+                                                <Style TargetType="TextBox" BasedOn="{StaticResource MaterialDesignOutlinedTextBox}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsImportant}" Value="True">
+                                                            <Setter Property="Background" Value="#FFF9C4"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBox.Style>
+                                        </TextBox>
                                         
                                         <!-- ComboBox -->
                                         <ComboBox x:Name="FieldComboBox"
                                                   ItemsSource="{Binding Options}"
                                                   SelectedItem="{Binding FieldValue}"
-                                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                                  Visibility="Collapsed"/>
+                                                  Visibility="Collapsed">
+                                            <ComboBox.Style>
+                                                <Style TargetType="ComboBox" BasedOn="{StaticResource MaterialDesignOutlinedComboBox}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsImportant}" Value="True">
+                                                            <Setter Property="Background" Value="#FFF9C4"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ComboBox.Style>
+                                        </ComboBox>
                                     </StackPanel>
                                     <DataTemplate.Triggers>
                                         <DataTrigger Binding="{Binding IsTextBox}" Value="True">

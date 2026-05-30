@@ -79,7 +79,7 @@ namespace PersonalAutomationTool.Modules.Excel
 
         private bool CanExecuteSpostaReport(object? parameter)
         {
-            return SelectedTrain == "ETR700" || SelectedTrain == "E404P";
+            return SelectedTrain == "ETR700" || SelectedTrain == "E404P" || SelectedTrain == "ETR1000";
         }
 
         private async void ExecuteSpostaReport(object? parameter)
@@ -101,6 +101,11 @@ namespace PersonalAutomationTool.Modules.Excel
                 {
                     hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - Interventi ETR500", "REPORT INTERVENTI NAPOLI - MILANO");
                     targetFolder = Path.Combine(hitachiDir, $"REPORT INTERVENTI OLD_ModifyYear{currentYear}");
+                }
+                else if (SelectedTrain == "ETR1000")
+                {
+                    hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - Interventi ETR1000");
+                    targetFolder = Path.Combine(hitachiDir, "OLD REPORT");
                 }
                 else
                 {
@@ -293,6 +298,15 @@ namespace PersonalAutomationTool.Modules.Excel
                             fieldViewModel.Options = [.. allOptions];
                         }
 
+                        // Forza campi specifici ad essere sempre una TextBox (non ComboBox) 
+                        // anche se nel file Excel originale c'è una convalida dati, per permettere l'autocompilazione libera.
+                        if (fieldName.Contains("Descrizione intervento effettuato", StringComparison.OrdinalIgnoreCase) || 
+                            fieldName.Equals("Rev.", StringComparison.OrdinalIgnoreCase))
+                        {
+                            fieldViewModel.IsComboBox = false;
+                            fieldViewModel.Options = [];
+                        }
+
                         if (fieldName.Contains("Sito", StringComparison.OrdinalIgnoreCase) && fieldName.Contains("Intervento", StringComparison.OrdinalIgnoreCase))
                         {
                             fieldViewModel.IsComboBox = true;
@@ -302,7 +316,7 @@ namespace PersonalAutomationTool.Modules.Excel
                         if (fieldName.Contains("Tipologia", StringComparison.OrdinalIgnoreCase))
                         {
                             fieldViewModel.IsComboBox = true;
-                            if (SelectedTrain == "E404P")
+                            if (SelectedTrain == "E404P" || SelectedTrain == "ETR1000")
                             {
                                 fieldViewModel.Options = ["Mis", "Extragaranzia", "Upgrade", "Man Programmata", "Man Predittiva", "Controlli Remoto", "Nulla Riscontrato", "Correttiva con sostit", "Correttiva senza sostit"];
                             }
@@ -318,6 +332,10 @@ namespace PersonalAutomationTool.Modules.Excel
                             if (SelectedTrain == "E404P")
                             {
                                 fieldViewModel.Options = ["Oscuram Monitor", "Verifica", "Catena Radio", "Catena Vigilante", "Catena RSDD", "JRU", "Data Logger", "RIML", "Odometria", "Perdita Rid. SSB", "Altro"];
+                            }
+                            else if (SelectedTrain == "ETR1000")
+                            {
+                                fieldViewModel.Options = ["Oscuram Monitor", "Verifica", "Catena Radio", "Catena Vigilante", "Catena RSDD", "JRU DIS", "Data Logger", "RIML", "Odometria", "Perdita Rid. SSB", "Altro"];
                             }
                             else
                             {
@@ -345,11 +363,26 @@ namespace PersonalAutomationTool.Modules.Excel
                             {
                                 fieldViewModel.Options = ["04.00.34CR", "04.00.35A1", "04.00.35HR", "04.00.36HR", "04.01.0002HR", "04.02.0007HR"];
                             }
+                            else if (SelectedTrain == "ETR1000")
+                            {
+                                fieldViewModel.Options = ["04.01 HR", "04.03 HR", "01.01.0000 Elo BL3", "02.02.0006 Elo BL3", "02.02.0007 Elo BL3"];
+                            }
                             else
                             {
                                 fieldViewModel.Options = ["04.01.0002HR", "04.02.0007HR", "04.04.0003HR", "02.02.0004_ELO_BL3", "02.02.0006_ELO_BL3", "02.02.0007_ELO_BL3"];
                             }
                         }
+
+                        string[] importantKeywords = [
+                            "DATA CHIAMATA", "SITO INTERVENTO", "TICKET ASTS", "N. ODL", "Cliente",
+                            "DATA INTERVENTO", "Ora Inizio", "Ora Fine", "ROTABILE", "SN",
+                            "Tipologia", "AVARIA SEGNALATA", "CATEGORIA AVARIA", "Scarico Dati Locale",
+                            "Descrizione intervento effettuato", "TECNICO ASTS", "VERSIONE SW"
+                        ];
+                        
+                        fieldViewModel.IsImportant = importantKeywords.Any(k => 
+                            (k == "SN" || k == "Cliente") ? fieldName.Equals(k, StringComparison.OrdinalIgnoreCase) 
+                                                          : fieldName.Contains(k, StringComparison.OrdinalIgnoreCase));
 
                         result.Add(fieldViewModel);
                     }
@@ -560,37 +593,49 @@ namespace PersonalAutomationTool.Modules.Excel
 
             if (formDict.TryGetValue("VERSIONE SW PRESENTE", out var swField) && swField.IsComboBox)
             {
-                var folderWords = combinedSearchString.Split(SwVersionSeparators, StringSplitOptions.RemoveEmptyEntries)
-                                  .Where(w => w.Contains('.') || w.Contains("CR", StringComparison.OrdinalIgnoreCase) || w.Contains("HR", StringComparison.OrdinalIgnoreCase) || w.Contains("A1", StringComparison.OrdinalIgnoreCase) || w.Any(char.IsDigit)).ToList();
-
-                string bestMatch = "";
-                int maxScore = 0;
-
-                foreach (var opt in swField.Options)
+                // Regola esplicita per 02.02CR3
+                if (combinedSearchString.Contains("02.02CR3", StringComparison.OrdinalIgnoreCase) && swField.Options != null)
                 {
-                    int score = 0;
-                    foreach (var fw in folderWords)
+                    var opt6 = swField.Options.FirstOrDefault(o => o.Contains("02.02.0006", StringComparison.OrdinalIgnoreCase));
+                    if (opt6 != null)
                     {
-                        if (fw.Length < 3) continue;
-                        
-                        var subParts = CrRegex().Split(fw);
-                        foreach(var sp in subParts)
-                        {
-                            if (sp.Length >= 2 && opt.Contains(sp, StringComparison.OrdinalIgnoreCase))
-                            {
-                                score += sp.Length;
-                            }
-                        }
-                    }
-                    if (score > maxScore)
-                    {
-                        maxScore = score;
-                        bestMatch = opt;
+                        swField.FieldValue = opt6;
                     }
                 }
-                if (maxScore > 0)
+                else
                 {
-                    swField.FieldValue = bestMatch;
+                    var folderWords = combinedSearchString.Split(SwVersionSeparators, StringSplitOptions.RemoveEmptyEntries)
+                                      .Where(w => w.Contains('.') || w.Contains("CR", StringComparison.OrdinalIgnoreCase) || w.Contains("HR", StringComparison.OrdinalIgnoreCase) || w.Contains("A1", StringComparison.OrdinalIgnoreCase) || w.Any(char.IsDigit)).ToList();
+
+                    string bestMatch = "";
+                    int maxScore = 0;
+
+                    foreach (var opt in swField.Options)
+                    {
+                        int score = 0;
+                        foreach (var fw in folderWords)
+                        {
+                            if (fw.Length < 3) continue;
+                            
+                            var subParts = CrRegex().Split(fw);
+                            foreach(var sp in subParts)
+                            {
+                                if (sp.Length >= 2 && opt.Contains(sp, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    score += sp.Length;
+                                }
+                            }
+                        }
+                        if (score > maxScore)
+                        {
+                            maxScore = score;
+                            bestMatch = opt;
+                        }
+                    }
+                    if (maxScore > 0)
+                    {
+                        swField.FieldValue = bestMatch;
+                    }
                 }
             }
 
@@ -1007,7 +1052,7 @@ namespace PersonalAutomationTool.Modules.Excel
 
         private bool CanExecuteRiportaReport(object? parameter)
         {
-            return !string.IsNullOrEmpty(_currentExcelFilePath) && File.Exists(_currentExcelFilePath) && (SelectedTrain == "ETR700" || SelectedTrain == "E404P");
+            return !string.IsNullOrEmpty(_currentExcelFilePath) && File.Exists(_currentExcelFilePath) && (SelectedTrain == "ETR700" || SelectedTrain == "E404P" || SelectedTrain == "ETR1000");
         }
 
         private async void ExecuteRiportaReport(object? parameter)
@@ -1060,6 +1105,11 @@ namespace PersonalAutomationTool.Modules.Excel
                 {
                     hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - Interventi ETR500", "REPORT INTERVENTI NAPOLI - MILANO");
                     trainPrefix = "E404P";
+                }
+                else if (SelectedTrain == "ETR1000")
+                {
+                    hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - Interventi ETR1000");
+                    trainPrefix = "ETR1000";
                 }
                 else
                 {

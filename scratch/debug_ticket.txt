@@ -28,3 +28,85 @@ ticketAstsField found: True
 ticketAstsField Name: TICKET ASTS CS
 ticketsList Count: 1
 ticketsList Content: 1247598
+--- TICKET DEBUG ---
+combinedSearchString: ETR1000 33 SR1247961 LOG ETR1000 133 02.02CR3 280526 Bassetto SR1247962 LOG ETR1000 833 02.02CR3 280526 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 2
+ticketsList Content: 1247961, 1247962
+ticketsList Count: 2
+ticketsList Content: 1247961, 1247962
+--- TICKET DEBUG ---
+combinedSearchString: ETR1000 33 SR1247961 LOG ETR1000 133 02.02CR3 280526 Bassetto SR1247962 LOG ETR1000 833 02.02CR3 280526 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 2
+ticketsList Content: 1247961, 1247962
+--- TICKET DEBUG ---
+combinedSearchString: ETR1000 33 SR1247961 LOG ETR1000 133 02.02CR3 280526 Bassetto SR1247962 LOG ETR1000 833 02.02CR3 280526 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 2
+ticketsList Content: 1247961, 1247962
+--- TICKET DEBUG ---
+combinedSearchString: ETR1000 33 SR1247961 LOG ETR1000 133 02.02CR3 280526 Bassetto SR1247962 LOG ETR1000 833 02.02CR3 280526 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 2
+ticketsList Content: 1247961, 1247962
+--- TICKET DEBUG ---
+combinedSearchString: ETR1000 33 SR1247961 LOG ETR1000 133 02.02CR3 280526 Bassetto SR1247962 LOG ETR1000 833 02.02CR3 280526 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 2
+ticketsList Content: 1247961, 1247962
+--- TICKET DEBUG ---
+combinedSearchString: ETR1000 33 SR1247961 LOG ETR1000 133 02.02CR3 280526 Bassetto SR1247962 LOG ETR1000 833 02.02CR3 280526 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 2
+ticketsList Content: 1247961, 1247962
+--- TICKET DEBUG ---
+combinedSearchString: ETR1000 33 SR1247961 LOG ETR1000 133 02.02CR3 280526 Bassetto SR1247962 LOG ETR1000 833 02.02CR3 280526 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 2
+ticketsList Content: 1247961, 1247962
+ticketsList Count: 2
+ticketsList Content: 1247961, 1247962
+--- TICKET DEBUG ---
+combinedSearchString: ETR1000 33 SR1247961 LOG ETR1000 133 02.02CR3 280526 Bassetto SR1247962 LOG ETR1000 833 02.02CR3 280526 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 2
+ticketsList Content: 1247961, 1247962
+--- TICKET DEBUG ---
+combinedSearchString: ETR1000 33 SR1247961 LOG ETR1000 133 02.02CR3 280526 Bassetto SR1247962 LOG ETR1000 833 02.02CR3 280526 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 2
+ticketsList Content: 1247961, 1247962
+--- TICKET DEBUG ---
+combinedSearchString: ETR1000 33 SR1247961 LOG ETR1000 133 02.02CR3 280526 Bassetto SR1247962 LOG ETR1000 833 02.02CR3 280526 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 2
+ticketsList Content: 1247961, 1247962
+--- TICKET DEBUG ---
+combinedSearchString: ETR1000 33 SR1247961 LOG ETR1000 133 02.02CR3 280526 Bassetto SR1247962 LOG ETR1000 833 02.02CR3 280526 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 2
+ticketsList Content: 1247961, 1247962
+--- TICKET DEBUG ---
+combinedSearchString: ETR1000 33 SR1247961 LOG ETR1000 133 02.02CR3 280526 Bassetto SR1247962 LOG ETR1000 833 02.02CR3 280526 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 2
+ticketsList Content: 1247961, 1247962
+--- TICKET DEBUG ---
+combinedSearchString: ETR1000 33 SR1247961 LOG ETR1000 133 02.02CR3 280526 Bassetto SR1247962 LOG ETR1000 833 02.02CR3 280526 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 2
+ticketsList Content: 1247961, 1247962
