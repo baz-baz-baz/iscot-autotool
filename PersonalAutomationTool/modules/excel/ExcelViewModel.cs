@@ -57,6 +57,7 @@ namespace PersonalAutomationTool.Modules.Excel
 
         public ICommand SpostaReportCommand { get; }
         public ICommand ScriviReportCommand { get; }
+        public ICommand RiportaReportCommand { get; }
         public ICommand PulisciCampiCommand { get; }
 
         private string? _currentExcelFilePath;
@@ -69,6 +70,7 @@ namespace PersonalAutomationTool.Modules.Excel
 
             SpostaReportCommand = new RelayCommand(ExecuteSpostaReport, CanExecuteSpostaReport);
             ScriviReportCommand = new RelayCommand(ExecuteScriviReport, CanExecuteScriviReport);
+            RiportaReportCommand = new RelayCommand(ExecuteRiportaReport, CanExecuteRiportaReport);
             PulisciCampiCommand = new RelayCommand(ExecutePulisciCampi);
 
             // Subscribe to folder changes
@@ -915,8 +917,7 @@ namespace PersonalAutomationTool.Modules.Excel
                     
                 MessageBox.Show($"Report salvato con successo alla riga {targetRow}.", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
                     
-                // Pulisci i campi dopo il salvataggio
-                ExecutePulisciCampi(null);
+                // (I campi non vengono puliti automaticamente qui per permettere il 'Riporta Report')
             }
             catch (IOException ioEx)
             {
@@ -929,6 +930,76 @@ namespace PersonalAutomationTool.Modules.Excel
             finally
             {
                 _isWritingReport = false;
+            }
+        }
+
+        private bool CanExecuteRiportaReport(object? parameter)
+        {
+            return !string.IsNullOrEmpty(_currentExcelFilePath) && File.Exists(_currentExcelFilePath) && SelectedTrain == "ETR700";
+        }
+
+        private async void ExecuteRiportaReport(object? parameter)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_currentExcelFilePath) || !File.Exists(_currentExcelFilePath))
+                {
+                    MessageBox.Show("Nessun file Excel caricato.", "Errore", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // Trova il tecnico selezionato
+                var techField = FormFields.FirstOrDefault(f => f.FieldName.Contains("TECNICO", StringComparison.OrdinalIgnoreCase) && f.FieldName.Contains("ASTS", StringComparison.OrdinalIgnoreCase));
+                string technician = techField?.FieldValue ?? "Tecnico";
+                
+                // Pulisci il nome del tecnico
+                string cleanTech = technician;
+                if (string.IsNullOrWhiteSpace(cleanTech)) 
+                {
+                    cleanTech = "Tecnico";
+                }
+                else
+                {
+                    if (cleanTech.Contains('-'))
+                    {
+                        cleanTech = cleanTech.Split('-').Last().Trim();
+                    }
+                    
+                    // Se l'ultima parola è di un solo carattere (es. l'iniziale del nome), la rimuoviamo per avere solo il cognome
+                    var parts = cleanTech.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length > 1 && parts.Last().Length == 1)
+                    {
+                        cleanTech = string.Join(" ", parts.Take(parts.Length - 1));
+                    }
+                }
+
+                string currentDateTime = DateTime.Now.ToString("ddMMyy HH_mm");
+                string newFileName = $"Report Interventi ETR700 {currentDateTime} {cleanTech}{Path.GetExtension(_currentExcelFilePath)}";
+
+                string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                string hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - INTERVENTI ETR700 ELO BL3");
+
+                if (!Directory.Exists(hitachiDir))
+                {
+                    MessageBox.Show("Cartella d'origine Hitachi non trovata:\n" + hitachiDir, "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                string destinationPath = Path.Combine(hitachiDir, newFileName);
+
+                await Task.Run(() => 
+                {
+                    File.Move(_currentExcelFilePath, destinationPath, true);
+                });
+
+                MessageBox.Show($"Report riportato con successo nella cartella d'origine come:\n{newFileName}", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
+                
+                _currentExcelFilePath = null;
+                FormFields.Clear();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Si è verificato un errore durante l'operazione:\n{ex.Message}", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
