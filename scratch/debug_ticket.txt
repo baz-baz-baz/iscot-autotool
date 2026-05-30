@@ -484,3 +484,53 @@ ticketAstsField found: True
 ticketAstsField Name: TICKET HRI-STS SR
 ticketsList Count: 2
 ticketsList Content: 1247654, 1247655
+--- TICKET DEBUG ---
+combinedSearchString: E404P 30 1247654 DUMP E404P 627 04.02HR 300526 Todde 1247654 LOG E404P 627 04.02HR 300526 Todde 1247655 DUMP E404P 618 04.02HR 300526 Todde 1247655 LOG E404P 618 04.02HR 300526 Todde
+ticketAstsField found: True
+ticketAstsField Name: TICKET HRI-STS SR
+ticketsList Count: 2
+ticketsList Content: 1247654, 1247655
+--- TICKET DEBUG ---
+combinedSearchString: ETR700 1 1234567 LOG ETR700 101 02.02CR3 250526 Bassetto 1234568 LOG ETR700 801 02.02CR3 250526 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 2
+ticketsList Content: 1234567, 1234568
+ticketsList Count: 2
+ticketsList Content: 1234567, 1234568
+--- TICKET DEBUG ---
+combinedSearchString: ETR1000 33 SR1247961 LOG ETR1000 133 02.02CR3 280526 Bassetto SR1247962 LOG ETR1000 833 02.02CR3 280526 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 2
+ticketsList Content: 1247961, 1247962
+--- TICKET DEBUG ---
+combinedSearchString: ETR1000 33 SR1247961 LOG ETR1000 133 02.02CR3 280526 Bassetto SR1247962 LOG ETR1000 833 02.02CR3 280526 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 2
+ticketsList Content: 1247961, 1247962
+--- TICKET DEBUG ---
+combinedSearchString: ETR1000 I-F 25 SR1234567 DUMP ETR1000 I-F 125 BISTANDARD 300526 Todde SR1234567 LOG ETR1000 I-F 125 BISTANDARD 300526 Todde SR1234568 DUMP ETR1000 I-F 825 BISTANDARD 300526 Todde SR1234568 LOG ETR1000 I-F 825 BISTANDARD 300526 Todde
+ticketAstsField found: True
+ticketAstsField Name: TICKET
+ticketsList Count: 2
+ticketsList Content: 1234567, 1234568
+--- TICKET DEBUG ---
+combinedSearchString: ETR1000 I-F 25 SR1234567 DUMP ETR1000 I-F 125 BISTANDARD 300526 Todde SR1234567 LOG ETR1000 I-F 125 BISTANDARD 300526 Todde SR1234568 DUMP ETR1000 I-F 825 BISTANDARD 300526 Todde SR1234568 LOG ETR1000 I-F 825 BISTANDARD 300526 Todde
+ticketAstsField found: True
+ticketAstsField Name: TICKET
+ticketsList Count: 2
+ticketsList Content: 1234567, 1234568
+--- TICKET DEBUG ---
+combinedSearchString: E404P 30 1247654 DUMP E404P 627 04.02HR 300526 Todde 1247654 LOG E404P 627 04.02HR 300526 Todde 1247655 DUMP E404P 618 04.02HR 300526 Todde 1247655 LOG E404P 618 04.02HR 300526 Todde
+ticketAstsField found: True
+ticketAstsField Name: TICKET HRI-STS SR
+ticketsList Count: 2
+ticketsList Content: 1247654, 1247655
+--- TICKET DEBUG ---
+combinedSearchString: E404P 30 1247654 DUMP E404P 627 04.02HR 300526 Todde 1247654 LOG E404P 627 04.02HR 300526 Todde 1247655 DUMP E404P 618 04.02HR 300526 Todde 1247655 LOG E404P 618 04.02HR 300526 Todde
+ticketAstsField found: True
+ticketAstsField Name: TICKET HRI-STS SR
+ticketsList Count: 2
+ticketsList Content: 1247654, 1247655

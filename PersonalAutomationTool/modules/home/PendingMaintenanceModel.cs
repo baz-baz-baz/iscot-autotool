@@ -19,6 +19,6 @@ namespace PersonalAutomationTool.Modules.Home
             set => SetProperty(ref _isExpanded, value); 
         }
 
-        public List<string> SubFolders { get; set; } = new();
+        public List<string> SubFolders { get; set; } = [];
     }
 }
