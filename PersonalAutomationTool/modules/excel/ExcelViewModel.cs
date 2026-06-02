@@ -1129,10 +1129,11 @@ namespace PersonalAutomationTool.Modules.Excel
 
                 try
                 {
-                    excelApp.Visible = false;
-                    excelApp.DisplayAlerts = false;
+                    ExecuteComWithRetry(() => excelApp.Visible = false);
+                    ExecuteComWithRetry(() => excelApp.DisplayAlerts = false);
 
-                    dynamic workbookInterop = excelApp.Workbooks.Open(_currentExcelFilePath);
+                    dynamic? workbookInterop = null;
+                    ExecuteComWithRetry(() => { workbookInterop = excelApp.Workbooks.Open(_currentExcelFilePath); });
                     dynamic worksheetInterop = workbookInterop.Worksheets[1]; // Interop è 1-based
 
                     // Scrivi i valori
@@ -1144,16 +1145,16 @@ namespace PersonalAutomationTool.Modules.Excel
                         // Scrive solo se c'è un valore
                         if (!string.IsNullOrWhiteSpace(val))
                         {
-                            worksheetInterop.Cells[targetRow, col].Value = val;
+                            ExecuteComWithRetry(() => worksheetInterop.Cells[targetRow, col].Value = val);
                         }
                     }
 
-                    workbookInterop.Save();
-                    workbookInterop.Close();
+                    ExecuteComWithRetry(() => workbookInterop.Save());
+                    ExecuteComWithRetry(() => workbookInterop.Close());
                 }
                 finally
                 {
-                    excelApp.Quit();
+                    ExecuteComWithRetry(() => excelApp.Quit());
                     System.Runtime.InteropServices.Marshal.ReleaseComObject(excelApp);
                 }
                 }); // Fine Task.Run
@@ -1286,6 +1287,24 @@ namespace PersonalAutomationTool.Modules.Excel
             foreach (var field in FormFields)
             {
                 field.FieldValue = string.Empty;
+            }
+        }
+
+        private static void ExecuteComWithRetry(Action action, int maxRetries = 3)
+        {
+            int retries = 0;
+            while (true)
+            {
+                try
+                {
+                    action();
+                    break;
+                }
+                catch (System.Runtime.InteropServices.COMException ex) when ((uint)ex.ErrorCode == 0x8001010A && retries < maxRetries)
+                {
+                    retries++;
+                    System.Threading.Thread.Sleep(1000);
+                }
             }
         }
 
