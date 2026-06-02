@@ -1134,7 +1134,7 @@ namespace PersonalAutomationTool.Modules.Excel
 
                     dynamic? workbookInterop = null;
                     ExecuteComWithRetry(() => { workbookInterop = excelApp.Workbooks.Open(_currentExcelFilePath); });
-                    dynamic worksheetInterop = workbookInterop.Worksheets[1]; // Interop è 1-based
+                    dynamic worksheetInterop = workbookInterop!.Worksheets[1]; // Interop è 1-based
 
                     // Scrivi i valori
                     for (int i = 0; i < fieldsData.Count; i++)
