@@ -1145,7 +1145,14 @@ namespace PersonalAutomationTool.Modules.Excel
                         // Scrive solo se c'è un valore
                         if (!string.IsNullOrWhiteSpace(val))
                         {
-                            ExecuteComWithRetry(() => worksheetInterop.Cells[targetRow, col].Value = val);
+                            if (DateTime.TryParseExact(val, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime parsedDate))
+                            {
+                                ExecuteComWithRetry(() => worksheetInterop.Cells[targetRow, col].Value = parsedDate);
+                            }
+                            else
+                            {
+                                ExecuteComWithRetry(() => worksheetInterop.Cells[targetRow, col].Value = val);
+                            }
                         }
                     }
 
