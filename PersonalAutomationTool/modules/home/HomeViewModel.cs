@@ -53,6 +53,7 @@ namespace PersonalAutomationTool.Modules.Home
         public ICommand ZipCommand { get; }
         public ICommand LogDumpReteCommand { get; }
         public ICommand EliminaCommand { get; }
+        public ICommand AggiornaDataCommand { get; }
 
         public HomeViewModel()
         {
@@ -68,6 +69,7 @@ namespace PersonalAutomationTool.Modules.Home
             ZipCommand = new RelayCommand(OnZip);
             LogDumpReteCommand = new RelayCommand(OnLogDumpRete);
             EliminaCommand = new RelayCommand(OnElimina);
+            AggiornaDataCommand = new RelayCommand(OnAggiornaData);
 
             LoadPendingItems();
         }
@@ -215,6 +217,63 @@ namespace PersonalAutomationTool.Modules.Home
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"Errore aggiornamento ticket: {ex.Message}");
+                }
+            }
+        }
+
+        private void OnAggiornaData(object? parameter)
+        {
+            if (SelectedItem == null)
+                return;
+
+            string path = SelectedItem.Percorso;
+            if (Directory.Exists(path))
+            {
+                try
+                {
+                    var subDirs = Directory.GetDirectories(path);
+                    string todayString = DateTime.Now.ToString("ddMMyy");
+                    var dateRegex = new System.Text.RegularExpressions.Regex(@"\b\d{6}\b");
+
+                    foreach (var subDir in subDirs)
+                    {
+                        var dirInfo = new DirectoryInfo(subDir);
+                        string currentName = dirInfo.Name;
+                        
+                        var match = dateRegex.Match(currentName);
+                        if (match.Success)
+                        {
+                            string newName = currentName.Substring(0, match.Index) + todayString + currentName.Substring(match.Index + match.Length);
+                            string? parentFolder = dirInfo.Parent?.FullName;
+                            if (parentFolder != null)
+                            {
+                                string newPath = Path.Combine(parentFolder, newName);
+                                if (dirInfo.FullName != newPath)
+                                    Directory.Move(dirInfo.FullName, newPath);
+                            }
+                        }
+                    }
+                    
+                    var expandedItems = PendingItems.Where(p => p.IsExpanded).Select(p => p.TipoTreno).ToList();
+                    string? selectedTreno = SelectedItem?.TipoTreno;
+
+                    LoadPendingItems();
+                    
+                    foreach (var item in PendingItems)
+                    {
+                        if (expandedItems.Contains(item.TipoTreno))
+                        {
+                            item.IsExpanded = true;
+                        }
+                    }
+                    if (selectedTreno != null)
+                    {
+                        SelectedItem = PendingItems.FirstOrDefault(p => p.TipoTreno == selectedTreno);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Windows.MessageBox.Show($"Errore durante l'aggiornamento della data:\n{ex.Message}", "Errore", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
                 }
             }
         }

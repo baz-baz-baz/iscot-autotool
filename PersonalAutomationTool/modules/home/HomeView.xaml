@@ -45,6 +45,7 @@
                     <TextBox Width="120" Margin="0,0,10,0" VerticalAlignment="Center" Padding="2" Text="{Binding OldTicket, UpdateSourceTrigger=PropertyChanged}"/>
                     <TextBox Width="120" Margin="0,0,10,0" VerticalAlignment="Center" Padding="2" Text="{Binding NewTicket, UpdateSourceTrigger=PropertyChanged}"/>
                     <Button Content="Aggiorna ticket" Command="{Binding AggiornaTicketCommand}" Padding="10,5" Margin="0,0,10,0" Background="#F0F0F0" BorderBrush="#CCCCCC" Foreground="#333333"/>
+                    <Button Content="Aggiorna Data" Command="{Binding AggiornaDataCommand}" Padding="10,5" Margin="0,0,10,0" Background="#F0F0F0" BorderBrush="#CCCCCC" Foreground="#333333"/>
                     
                     <Button Content="Zip" Command="{Binding ZipCommand}" Padding="15,5" Margin="20,0,10,0" Background="#F0F0F0" BorderBrush="#CCCCCC" Foreground="#333333"/>
                     <Button Content="Log Dump in rete" Command="{Binding LogDumpReteCommand}" Padding="10,5" Margin="0,0,10,0" Background="#F0F0F0" BorderBrush="#CCCCCC" Foreground="#333333"/>
