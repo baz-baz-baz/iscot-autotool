@@ -127,7 +127,7 @@ namespace PersonalAutomationTool.Modules.Home
             }
         }
 
-        private void OnAggiornaTicket(object? parameter)
+        private async void OnAggiornaTicket(object? parameter)
         {
             if (SelectedItem == null)
                 return;
@@ -144,51 +144,54 @@ namespace PersonalAutomationTool.Modules.Home
                     if (string.IsNullOrWhiteSpace(ticket1) && string.IsNullOrWhiteSpace(ticket2))
                         return;
 
-                    var subDirs = Directory.GetDirectories(path);
-                    
-                    // Trova i ticket correnti (assumendo che il ticket sia la prima parola nel nome della cartella)
-                    var currentTickets = subDirs
-                        .Select(d => new DirectoryInfo(d).Name.Split(' ').FirstOrDefault())
-                        .Where(t => !string.IsNullOrEmpty(t))
-                        .Distinct()
-                        .OrderBy(t => t) // Ordina alfabeticamente per coerenza
-                        .ToList();
-
-                    for (int i = 0; i < subDirs.Length; i++)
+                    await System.Threading.Tasks.Task.Run(() =>
                     {
-                        var dirInfo = new DirectoryInfo(subDirs[i]);
-                        var parts = dirInfo.Name.Split(' ');
-                        if (parts.Length > 0)
+                        var subDirs = Directory.GetDirectories(path);
+                        
+                        // Trova i ticket correnti (assumendo che il ticket sia la prima parola nel nome della cartella)
+                        var currentTickets = subDirs
+                            .Select(d => new DirectoryInfo(d).Name.Split(' ').FirstOrDefault())
+                            .Where(t => !string.IsNullOrEmpty(t))
+                            .Distinct()
+                            .OrderBy(t => t) // Ordina alfabeticamente per coerenza
+                            .ToList();
+
+                        for (int i = 0; i < subDirs.Length; i++)
                         {
-                            string currentTicket = parts[0];
-                            string? newTicketForThisDir = null;
+                            var dirInfo = new DirectoryInfo(subDirs[i]);
+                            var parts = dirInfo.Name.Split(' ');
+                            if (parts.Length > 0)
+                            {
+                                string currentTicket = parts[0];
+                                string? newTicketForThisDir = null;
 
-                            // Assegna il nuovo ticket in base a se è il primo o il secondo ticket trovato
-                            if (currentTickets.Count > 0 && currentTicket == currentTickets[0] && !string.IsNullOrWhiteSpace(ticket1))
-                            {
-                                newTicketForThisDir = ticket1;
-                            }
-                            else if (currentTickets.Count > 1 && currentTicket == currentTickets[1] && !string.IsNullOrWhiteSpace(ticket2))
-                            {
-                                newTicketForThisDir = ticket2;
-                            }
-                            // Se il treno ha un solo ticket ma l'utente ha compilato ticket1 e ticket2, 
-                            // il ticket1 viene applicato a tutte le cartelle di quel ticket.
-
-                            if (!string.IsNullOrEmpty(newTicketForThisDir))
-                            {
-                                parts[0] = newTicketForThisDir;
-                                string newName = string.Join(" ", parts);
-                                string? parentFolder = dirInfo.Parent?.FullName;
-                                if (parentFolder != null)
+                                // Assegna il nuovo ticket in base a se è il primo o il secondo ticket trovato
+                                if (currentTickets.Count > 0 && currentTicket == currentTickets[0] && !string.IsNullOrWhiteSpace(ticket1))
                                 {
-                                    string newPath = Path.Combine(parentFolder, newName);
-                                    if (dirInfo.FullName != newPath)
-                                        Directory.Move(dirInfo.FullName, newPath);
+                                    newTicketForThisDir = ticket1;
+                                }
+                                else if (currentTickets.Count > 1 && currentTicket == currentTickets[1] && !string.IsNullOrWhiteSpace(ticket2))
+                                {
+                                    newTicketForThisDir = ticket2;
+                                }
+                                // Se il treno ha un solo ticket ma l'utente ha compilato ticket1 e ticket2, 
+                                // il ticket1 viene applicato a tutte le cartelle di quel ticket.
+
+                                if (!string.IsNullOrEmpty(newTicketForThisDir))
+                                {
+                                    parts[0] = newTicketForThisDir;
+                                    string newName = string.Join(" ", parts);
+                                    string? parentFolder = dirInfo.Parent?.FullName;
+                                    if (parentFolder != null)
+                                    {
+                                        string newPath = Path.Combine(parentFolder, newName);
+                                        if (dirInfo.FullName != newPath)
+                                            Directory.Move(dirInfo.FullName, newPath);
+                                    }
                                 }
                             }
                         }
-                    }
+                    });
                     
                     // Salva lo stato prima di ricaricare
                     var expandedItems = PendingItems.Where(p => p.IsExpanded).Select(p => p.TipoTreno).ToList();
@@ -221,7 +224,7 @@ namespace PersonalAutomationTool.Modules.Home
             }
         }
 
-        private void OnAggiornaData(object? parameter)
+        private async void OnAggiornaData(object? parameter)
         {
             if (SelectedItem == null)
                 return;
@@ -231,28 +234,31 @@ namespace PersonalAutomationTool.Modules.Home
             {
                 try
                 {
-                    var subDirs = Directory.GetDirectories(path);
-                    string todayString = DateTime.Now.ToString("ddMMyy");
-                    var dateRegex = new System.Text.RegularExpressions.Regex(@"\b\d{6}\b");
-
-                    foreach (var subDir in subDirs)
+                    await System.Threading.Tasks.Task.Run(() =>
                     {
-                        var dirInfo = new DirectoryInfo(subDir);
-                        string currentName = dirInfo.Name;
-                        
-                        var match = dateRegex.Match(currentName);
-                        if (match.Success)
+                        var subDirs = Directory.GetDirectories(path);
+                        string todayString = DateTime.Now.ToString("ddMMyy");
+                        var dateRegex = new System.Text.RegularExpressions.Regex(@"\b\d{6}\b");
+
+                        foreach (var subDir in subDirs)
                         {
-                            string newName = currentName.Substring(0, match.Index) + todayString + currentName.Substring(match.Index + match.Length);
-                            string? parentFolder = dirInfo.Parent?.FullName;
-                            if (parentFolder != null)
+                            var dirInfo = new DirectoryInfo(subDir);
+                            string currentName = dirInfo.Name;
+                            
+                            var match = dateRegex.Match(currentName);
+                            if (match.Success)
                             {
-                                string newPath = Path.Combine(parentFolder, newName);
-                                if (dirInfo.FullName != newPath)
-                                    Directory.Move(dirInfo.FullName, newPath);
+                                string newName = currentName.Substring(0, match.Index) + todayString + currentName.Substring(match.Index + match.Length);
+                                string? parentFolder = dirInfo.Parent?.FullName;
+                                if (parentFolder != null)
+                                {
+                                    string newPath = Path.Combine(parentFolder, newName);
+                                    if (dirInfo.FullName != newPath)
+                                        Directory.Move(dirInfo.FullName, newPath);
+                                }
                             }
                         }
-                    }
+                    });
                     
                     var expandedItems = PendingItems.Where(p => p.IsExpanded).Select(p => p.TipoTreno).ToList();
                     string? selectedTreno = SelectedItem?.TipoTreno;
@@ -278,7 +284,7 @@ namespace PersonalAutomationTool.Modules.Home
             }
         }
 
-        private void OnZip(object? parameter)
+        private async void OnZip(object? parameter)
         {
             if (SelectedItem == null)
                 return;
@@ -288,18 +294,21 @@ namespace PersonalAutomationTool.Modules.Home
             {
                 try
                 {
-                    var subDirs = Directory.GetDirectories(path);
-                    foreach (var subDir in subDirs)
+                    await System.Threading.Tasks.Task.Run(() =>
                     {
-                        var dirInfo = new DirectoryInfo(subDir);
-                        string zipFilePath = Path.Combine(dirInfo.Parent?.FullName ?? string.Empty, dirInfo.Name + ".zip");
-                        
-                        // Se il file zip non esiste già, crealo
-                        if (!File.Exists(zipFilePath))
+                        var subDirs = Directory.GetDirectories(path);
+                        foreach (var subDir in subDirs)
                         {
-                            System.IO.Compression.ZipFile.CreateFromDirectory(subDir, zipFilePath);
+                            var dirInfo = new DirectoryInfo(subDir);
+                            string zipFilePath = Path.Combine(dirInfo.Parent?.FullName ?? string.Empty, dirInfo.Name + ".zip");
+                            
+                            // Se il file zip non esiste già, crealo
+                            if (!File.Exists(zipFilePath))
+                            {
+                                System.IO.Compression.ZipFile.CreateFromDirectory(subDir, zipFilePath);
+                            }
                         }
-                    }
+                    });
                     
                     System.Windows.MessageBox.Show("Archiviazione Zip completata con successo!", "Successo", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
                 }
@@ -310,7 +319,7 @@ namespace PersonalAutomationTool.Modules.Home
             }
         }
 
-        private void OnLogDumpRete(object? parameter)
+        private async void OnLogDumpRete(object? parameter)
         {
             if (SelectedItem == null)
                 return;
@@ -354,10 +363,12 @@ namespace PersonalAutomationTool.Modules.Home
                 }
 
                 int movedCount = 0;
-                foreach (var zipFile in zipFiles)
+                await System.Threading.Tasks.Task.Run(() =>
                 {
-                    string fileName = Path.GetFileNameWithoutExtension(zipFile);
-                    var parts = fileName.Split(' ');
+                    foreach (var zipFile in zipFiles)
+                    {
+                        string fileName = Path.GetFileNameWithoutExtension(zipFile);
+                        var parts = fileName.Split(' ');
                     
                     // Ci aspettiamo un nome del tipo: [Ticket] [LOG/DUMP] [Treno] [Loco] ...
                     // Es: "1247654 DUMP E404P 627 04.02HR 300526 Todde"
@@ -419,6 +430,7 @@ namespace PersonalAutomationTool.Modules.Home
                         }
                     }
                 }
+                });
 
                 if (movedCount > 0)
                 {
@@ -454,6 +466,18 @@ namespace PersonalAutomationTool.Modules.Home
                 {
                     if (Directory.Exists(path))
                     {
+                        // Rimuovi l'attributo di sola lettura dai file e dalle cartelle (spesso impostato da OneDrive o da file scaricati)
+                        var dirInfo = new DirectoryInfo(path);
+                        foreach (var file in dirInfo.GetFiles("*", SearchOption.AllDirectories))
+                        {
+                            file.Attributes &= ~FileAttributes.ReadOnly;
+                        }
+                        foreach (var dir in dirInfo.GetDirectories("*", SearchOption.AllDirectories))
+                        {
+                            dir.Attributes &= ~FileAttributes.ReadOnly;
+                        }
+                        dirInfo.Attributes &= ~FileAttributes.ReadOnly;
+
                         // Il 'true' serve per eliminare la cartella e tutto il suo contenuto (file zip, sottocartelle, ecc.)
                         Directory.Delete(path, true);
                     }

@@ -1127,14 +1127,17 @@ namespace PersonalAutomationTool.Modules.Excel
                     return;
                 }
 
+                dynamic? workbookInterop = null;
+                dynamic? worksheetInterop = null;
+
                 try
                 {
                     ExecuteComWithRetry(() => excelApp.Visible = false);
                     ExecuteComWithRetry(() => excelApp.DisplayAlerts = false);
 
-                    dynamic? workbookInterop = null;
                     ExecuteComWithRetry(() => { workbookInterop = excelApp.Workbooks.Open(_currentExcelFilePath); });
-                    dynamic worksheetInterop = workbookInterop!.Worksheets[1]; // Interop è 1-based
+                    
+                    ExecuteComWithRetry(() => { worksheetInterop = workbookInterop!.Worksheets[1]; }); // Interop è 1-based
 
                     // Scrivi i valori
                     for (int i = 0; i < fieldsData.Count; i++)
@@ -1147,22 +1150,24 @@ namespace PersonalAutomationTool.Modules.Excel
                         {
                             if (DateTime.TryParseExact(val, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime parsedDate))
                             {
-                                ExecuteComWithRetry(() => worksheetInterop.Cells[targetRow, col].Value = parsedDate);
+                                ExecuteComWithRetry(() => worksheetInterop!.Cells[targetRow, col].Value = parsedDate);
                             }
                             else
                             {
-                                ExecuteComWithRetry(() => worksheetInterop.Cells[targetRow, col].Value = val);
+                                ExecuteComWithRetry(() => worksheetInterop!.Cells[targetRow, col].Value = val);
                             }
                         }
                     }
 
-                    ExecuteComWithRetry(() => workbookInterop.Save());
-                    ExecuteComWithRetry(() => workbookInterop.Close());
+                    ExecuteComWithRetry(() => workbookInterop!.Save());
+                    ExecuteComWithRetry(() => workbookInterop!.Close());
                 }
                 finally
                 {
                     ExecuteComWithRetry(() => excelApp.Quit());
-                    System.Runtime.InteropServices.Marshal.ReleaseComObject(excelApp);
+                    if (worksheetInterop != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(worksheetInterop);
+                    if (workbookInterop != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(workbookInterop);
+                    if (excelApp != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(excelApp);
                 }
                 }); // Fine Task.Run
                     
@@ -1297,7 +1302,7 @@ namespace PersonalAutomationTool.Modules.Excel
             }
         }
 
-        private static void ExecuteComWithRetry(Action action, int maxRetries = 3)
+        private static void ExecuteComWithRetry(Action action, int maxRetries = 10)
         {
             int retries = 0;
             while (true)
@@ -1307,7 +1312,7 @@ namespace PersonalAutomationTool.Modules.Excel
                     action();
                     break;
                 }
-                catch (System.Runtime.InteropServices.COMException ex) when ((uint)ex.ErrorCode == 0x8001010A && retries < maxRetries)
+                catch (Exception ex) when ((uint)ex.HResult == 0x8001010A && retries < maxRetries)
                 {
                     retries++;
                     System.Threading.Thread.Sleep(1000);

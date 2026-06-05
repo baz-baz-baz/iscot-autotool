@@ -272,41 +272,44 @@ namespace PersonalAutomationTool.Modules.Cartelle
                 string treno1 = await GetTrenoFromDbAsync(tipo, loco1);
                 string parentName1 = !string.IsNullOrWhiteSpace(treno1) ? $"{tipo} {treno1}".Trim() : $"{tipo} {loco1}".Trim();
 
-                string parentFolder1 = Path.Combine(baseLogDump, parentName1);
-                Directory.CreateDirectory(parentFolder1);
+                string l2 = string.IsNullOrWhiteSpace(loco2) ? loco1 : loco2;
+                string treno2 = string.IsNullOrWhiteSpace(ticket2) ? "" : await GetTrenoFromDbAsync(tipo, l2);
+                string parentName2 = !string.IsNullOrWhiteSpace(treno2) ? $"{tipo} {treno2}".Trim() : $"{tipo} {l2}".Trim();
 
-                string folderLog1 = Path.Combine(parentFolder1, $"SR{ticket1} LOG {tipo} {loco1} {software} {data} {utente}".Trim());
-                string folderDump1 = Path.Combine(parentFolder1, $"SR{ticket1} DUMP {tipo} {loco1} {software} {data} {utente}".Trim());
-                Directory.CreateDirectory(folderLog1);
-                Directory.CreateDirectory(folderDump1);
-
-                if (!string.IsNullOrWhiteSpace(scadenzaFrancia))
+                await System.Threading.Tasks.Task.Run(() =>
                 {
-                    string txtFile1 = Path.Combine(parentFolder1, $"{scadenzaFrancia}.txt");
-                    if (!File.Exists(txtFile1)) File.WriteAllText(txtFile1, "");
-                }
+                    string parentFolder1 = Path.Combine(baseLogDump, parentName1);
+                    Directory.CreateDirectory(parentFolder1);
 
-                // Se esiste Ticket 2, crea cartelle anche per quello usando Loco 2 (o Loco 1 se Loco 2 è vuoto)
-                if (!string.IsNullOrWhiteSpace(ticket2))
-                {
-                    string l2 = string.IsNullOrWhiteSpace(loco2) ? loco1 : loco2;
-                    string treno2 = await GetTrenoFromDbAsync(tipo, l2);
-                    string parentName2 = !string.IsNullOrWhiteSpace(treno2) ? $"{tipo} {treno2}".Trim() : $"{tipo} {l2}".Trim();
-
-                    string parentFolder2 = Path.Combine(baseLogDump, parentName2);
-                    Directory.CreateDirectory(parentFolder2);
-
-                    string folderLog2 = Path.Combine(parentFolder2, $"SR{ticket2} LOG {tipo} {l2} {software} {data} {utente}".Trim());
-                    string folderDump2 = Path.Combine(parentFolder2, $"SR{ticket2} DUMP {tipo} {l2} {software} {data} {utente}".Trim());
-                    Directory.CreateDirectory(folderLog2);
-                    Directory.CreateDirectory(folderDump2);
+                    string folderLog1 = Path.Combine(parentFolder1, $"SR{ticket1} LOG {tipo} {loco1} {software} {data} {utente}".Trim());
+                    string folderDump1 = Path.Combine(parentFolder1, $"SR{ticket1} DUMP {tipo} {loco1} {software} {data} {utente}".Trim());
+                    Directory.CreateDirectory(folderLog1);
+                    Directory.CreateDirectory(folderDump1);
 
                     if (!string.IsNullOrWhiteSpace(scadenzaFrancia))
                     {
-                        string txtFile2 = Path.Combine(parentFolder2, $"{scadenzaFrancia}.txt");
-                        if (!File.Exists(txtFile2)) File.WriteAllText(txtFile2, "");
+                        string txtFile1 = Path.Combine(parentFolder1, $"{scadenzaFrancia}.txt");
+                        if (!File.Exists(txtFile1)) File.WriteAllText(txtFile1, "");
                     }
-                }
+
+                    // Se esiste Ticket 2, crea cartelle anche per quello usando Loco 2 (o Loco 1 se Loco 2 è vuoto)
+                    if (!string.IsNullOrWhiteSpace(ticket2))
+                    {
+                        string parentFolder2 = Path.Combine(baseLogDump, parentName2);
+                        Directory.CreateDirectory(parentFolder2);
+
+                        string folderLog2 = Path.Combine(parentFolder2, $"SR{ticket2} LOG {tipo} {l2} {software} {data} {utente}".Trim());
+                        string folderDump2 = Path.Combine(parentFolder2, $"SR{ticket2} DUMP {tipo} {l2} {software} {data} {utente}".Trim());
+                        Directory.CreateDirectory(folderLog2);
+                        Directory.CreateDirectory(folderDump2);
+
+                        if (!string.IsNullOrWhiteSpace(scadenzaFrancia))
+                        {
+                            string txtFile2 = Path.Combine(parentFolder2, $"{scadenzaFrancia}.txt");
+                            if (!File.Exists(txtFile2)) File.WriteAllText(txtFile2, "");
+                        }
+                    }
+                });
 
                 // MessageBox.Show("Cartelle create con successo in LOG & DUMP!", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
             }

@@ -513,6 +513,10 @@ namespace PersonalAutomationTool.Modules.Email
                 }
 
                 mailItem.Display(false); // Mostra l'email in modo asincrono, non bloccare l'interfaccia utente in attesa di chiusura.
+                
+                System.Runtime.InteropServices.Marshal.ReleaseComObject(inspector);
+                System.Runtime.InteropServices.Marshal.ReleaseComObject(mailItem);
+                System.Runtime.InteropServices.Marshal.ReleaseComObject(outlookApp);
             }
             catch (Exception ex)
             {
