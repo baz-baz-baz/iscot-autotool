@@ -1204,7 +1204,7 @@ namespace PersonalAutomationTool.Modules.Excel
                 LoadingMessage = "Ripristino report in corso...";
 
                 // Trova il tecnico selezionato
-                var techField = FormFields.FirstOrDefault(f => f.FieldName.Contains("TECNICO", StringComparison.OrdinalIgnoreCase) && f.FieldName.Contains("ASTS", StringComparison.OrdinalIgnoreCase));
+                var techField = FormFields.FirstOrDefault(f => f.FieldName.Contains("TECNICO", StringComparison.OrdinalIgnoreCase) && (f.FieldName.Contains("ASTS", StringComparison.OrdinalIgnoreCase) || f.FieldName.Contains("STS", StringComparison.OrdinalIgnoreCase)));
                 string technician = techField?.FieldValue ?? "Tecnico";
                 
                 // Pulisci il nome del tecnico

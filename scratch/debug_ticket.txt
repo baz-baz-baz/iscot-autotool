@@ -534,3 +534,81 @@ ticketAstsField found: True
 ticketAstsField Name: TICKET HRI-STS SR
 ticketsList Count: 2
 ticketsList Content: 1247654, 1247655
+--- TICKET DEBUG ---
+combinedSearchString: ETR1000 4 SR1248637 DUMP ETR1000 104 04.03HR 040626 Sarubbi SR1248637 LOG ETR1000 104 04.03HR 040626 Sarubbi
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 1
+ticketsList Content: 1248637
+--- TICKET DEBUG ---
+combinedSearchString: ETR1000 I-F 31 SR1248601 DUMP ETR1000 I-F 131 BISTANDARD 040626 Sarubbi SR1248601 LOG ETR1000 I-F 131 BISTANDARD 040626 Sarubbi SR1248603 DUMP ETR1000 I-F 831 BISTANDARD 040626 Sarubbi SR1248603 LOG ETR1000 I-F 831 BISTANDARD 040626 Sarubbi
+ticketAstsField found: True
+ticketAstsField Name: TICKET
+ticketsList Count: 2
+ticketsList Content: 1248601, 1248603
+--- TICKET DEBUG ---
+combinedSearchString: ETR1000 31 SR1248605 DUMP ETR1000 131 04.01HR 040626 Sarubbi SR1248605 LOG ETR1000 131 04.01HR 040626 Sarubbi
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 1
+ticketsList Content: 1248605
+--- TICKET DEBUG ---
+combinedSearchString: ETR1000 31 SR1248605 DUMP ETR1000 131 04.01HR 040626 Sarubbi SR1248605 LOG ETR1000 131 04.01HR 040626 Sarubbi
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 1
+ticketsList Content: 1248605
+--- TICKET DEBUG ---
+combinedSearchString: ETR1000 33 SR1248659 LOG ETR1000 133 02.02CR3 040626 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 1
+ticketsList Content: 1248659
+--- TICKET DEBUG ---
+combinedSearchString: ETR700 2 SR1248663 DUMP ETR700 102 02.02CR3 040626 Bassetto SR1248663 LOG ETR700 102 02.02CR3 040626 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 1
+ticketsList Content: 1248663
+--- TICKET DEBUG ---
+combinedSearchString: E404P 30 SR1234567 DUMP E404P 618 04.02HR 050626 Bassetto SR1234567 LOG E404P 618 04.02HR 050626 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET HRI-STS SR
+ticketsList Count: 1
+ticketsList Content: 1234567
+--- TICKET DEBUG ---
+combinedSearchString: E404P 30 SR1234567 DUMP E404P 618 04.02HR 050626 Bassetto SR1234567 LOG E404P 618 04.02HR 050626 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET HRI-STS SR
+ticketsList Count: 1
+ticketsList Content: 1234567
+--- TICKET DEBUG ---
+combinedSearchString: E404P 30 SR1234567 DUMP E404P 618 04.02HR 050626 Bassetto SR1234567 LOG E404P 618 04.02HR 050626 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET HRI-STS SR
+ticketsList Count: 1
+ticketsList Content: 1234567
+--- TICKET DEBUG ---
+combinedSearchString: E404P 30 SR1234567 DUMP E404P 618 04.02HR 050626 Bassetto SR1234567 LOG E404P 618 04.02HR 050626 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET HRI-STS SR
+ticketsList Count: 1
+ticketsList Content: 1234567
+--- TICKET DEBUG ---
+combinedSearchString: E404P 30 SR1234567 DUMP E404P 618 04.02HR 050626 Bassetto SR1234567 LOG E404P 618 04.02HR 050626 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET HRI-STS SR
+ticketsList Count: 1
+ticketsList Content: 1234567
+--- TICKET DEBUG ---
+combinedSearchString: ETR700 2 SR1248663 DUMP ETR700 102 02.02CR3 040626 Bassetto SR1248663 LOG ETR700 102 02.02CR3 040626 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 1
+ticketsList Content: 1248663
+--- TICKET DEBUG ---
+combinedSearchString: ETR700 2 SR1248663 DUMP ETR700 102 02.02CR3 040626 Bassetto SR1248663 LOG ETR700 102 02.02CR3 040626 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET ASTS CS
+ticketsList Count: 1
+ticketsList Content: 1248663
