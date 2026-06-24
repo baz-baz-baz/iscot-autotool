@@ -61,7 +61,7 @@ namespace PersonalAutomationTool {
             
             #line default
             #line hidden
-            System.Uri resourceLocater = new System.Uri("/PersonalAutomationTool;V1.0.0.0;component/main/app.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/PersonalAutomationTool;component/main/app.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\main\App.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);

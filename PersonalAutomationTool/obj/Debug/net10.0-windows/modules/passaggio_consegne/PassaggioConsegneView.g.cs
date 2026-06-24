@@ -51,8 +51,8 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri(("/PersonalAutomationTool;V1.0.0.0;component/modules/passaggio_consegne/passaggioco" +
-                    "nsegneview.xaml"), System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri(("/PersonalAutomationTool;component/modules/passaggio_consegne/passaggioconsegnevie" +
+                    "w.xaml"), System.UriKind.Relative);
             
             #line 1 "..\..\..\..\..\modules\passaggio_consegne\PassaggioConsegneView.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);
