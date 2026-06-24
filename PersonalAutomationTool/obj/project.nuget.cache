@@ -34,5 +34,18 @@
     "C:\\Users\\Bassetto Alessio\\.nuget\\packages\\sqlitepclraw.provider.e_sqlite3\\2.1.11\\sqlitepclraw.provider.e_sqlite3.2.1.11.nupkg.sha512",
     "C:\\Users\\Bassetto Alessio\\.nuget\\packages\\system.xml.xpath.xmldocument\\4.3.0\\system.xml.xpath.xmldocument.4.3.0.nupkg.sha512"
   ],
-  "logs": []
+  "logs": [
+    {
+      "code": "NU1903",
+      "level": "Warning",
+      "message": "Il pacchetto 'SQLitePCLRaw.lib.e_sqlite3' 2.1.11 presenta una vulnerabilità nota di gravità alta, https://github.com/advisories/GHSA-2m69-gcr7-jv3q",
+      "projectPath": "C:\\Users\\Bassetto Alessio\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\Users\\Bassetto Alessio\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj",
+      "libraryId": "SQLitePCLRaw.lib.e_sqlite3",
+      "targetGraphs": [
+        "net10.0-windows7.0"
+      ]
+    }
+  ]
 }

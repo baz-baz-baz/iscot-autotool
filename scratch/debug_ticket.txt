@@ -612,3 +612,15 @@ ticketAstsField found: True
 ticketAstsField Name: TICKET ASTS CS
 ticketsList Count: 1
 ticketsList Content: 1248663
+--- TICKET DEBUG ---
+combinedSearchString: E404P 30 SR1234567 DUMP E404P 618 04.02HR 050626 Bassetto SR1234567 LOG E404P 618 04.02HR 050626 Bassetto
+ticketAstsField found: True
+ticketAstsField Name: TICKET HRI-STS SR
+ticketsList Count: 1
+ticketsList Content: 1234567
+--- TICKET DEBUG ---
+combinedSearchString: E404P 41 SR1250545 DUMP E404P 655 04.02HR 220626 Cellamare SR1250545 LOG E404P 655 04.02HR 220626 Cellamare
+ticketAstsField found: True
+ticketAstsField Name: TICKET HRI-STS SR
+ticketsList Count: 1
+ticketsList Content: 1250545

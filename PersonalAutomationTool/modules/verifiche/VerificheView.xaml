@@ -1,0 +1,146 @@
+<UserControl x:Class="PersonalAutomationTool.Modules.Verifiche.VerificheView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:PersonalAutomationTool.Modules.Verifiche"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+    <UserControl.DataContext>
+        <local:VerificheViewModel />
+    </UserControl.DataContext>
+    
+    <UserControl.Resources>
+        <Style x:Key="CenteredBoldTextStyle" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="5"/>
+        </Style>
+        <Style x:Key="CenteredBoldTextWrapStyle" TargetType="TextBlock" BasedOn="{StaticResource CenteredBoldTextStyle}">
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style x:Key="VerificheHeaderStyle" TargetType="DataGridColumnHeader">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="5,5,15,5"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="LightGray"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="20">
+            
+            <!-- Tabella Riassuntiva (Solo Treni) -->
+            <TextBlock Text="RIASSUNTO TRENI CON VERIFICHE" FontWeight="Bold" FontSize="16" Foreground="#333333" Margin="0,0,0,5" HorizontalAlignment="Center"/>
+            <Border BorderBrush="#9ACD32" BorderThickness="2" Margin="0,0,0,30" Background="White">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Intestazioni -->
+                    <Border Grid.Row="0" Grid.Column="0" Background="#9ACD32" Padding="8" BorderBrush="LightGray" BorderThickness="0,0,1,1">
+                        <TextBlock Text="500" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center"/>
+                    </Border>
+                    <Border Grid.Row="0" Grid.Column="1" Background="#9ACD32" Padding="8" BorderBrush="LightGray" BorderThickness="0,0,1,1">
+                        <TextBlock Text="700" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center"/>
+                    </Border>
+                    <Border Grid.Row="0" Grid.Column="2" Background="#9ACD32" Padding="8" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                        <TextBlock Text="1000" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center"/>
+                    </Border>
+
+                    <!-- Dati -->
+                    <ItemsControl Grid.Row="1" Grid.Column="0" ItemsSource="{Binding VerificheList500}" BorderBrush="LightGray" BorderThickness="0,0,1,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="#EEEEEE" BorderThickness="0,0,0,1" Padding="6">
+                                    <TextBlock Text="{Binding Treno}" HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <ItemsControl Grid.Row="1" Grid.Column="1" ItemsSource="{Binding VerificheList700}" BorderBrush="LightGray" BorderThickness="0,0,1,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="#EEEEEE" BorderThickness="0,0,0,1" Padding="6">
+                                    <TextBlock Text="{Binding Treno}" HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <ItemsControl Grid.Row="1" Grid.Column="2" ItemsSource="{Binding VerificheList1000}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="#EEEEEE" BorderThickness="0,0,0,1" Padding="6">
+                                    <TextBlock Text="{Binding Treno}" HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+            </Border>
+
+            <!-- Tabella ETR 500 -->
+            <Border Background="#9ACD32" Padding="10" CornerRadius="0">
+                <TextBlock Text="VERIFICHE ETR500" FontWeight="Bold" FontSize="16" Foreground="Black" HorizontalAlignment="Center"/>
+            </Border>
+            <DataGrid ItemsSource="{Binding VerificheList500}" AutoGenerateColumns="False" 
+                      CanUserAddRows="False" IsReadOnly="True" HeadersVisibility="Column"
+                      GridLinesVisibility="All" HorizontalGridLinesBrush="LightGray" VerticalGridLinesBrush="LightGray"
+                      BorderBrush="#9ACD32" BorderThickness="1" Background="White" RowBackground="White" AlternatingRowBackground="#F9F9F9"
+                      ColumnHeaderStyle="{StaticResource VerificheHeaderStyle}" Margin="0,0,0,20">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="TRENO" Binding="{Binding Treno}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
+                    <DataGridTextColumn Header="LOCO" Binding="{Binding Loco}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
+                    <DataGridTextColumn Header="Avaria segnalata da ING/SVI" Binding="{Binding Avaria}" Width="*" ElementStyle="{StaticResource CenteredBoldTextWrapStyle}"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Tabella ETR 700 -->
+            <Border Background="#9ACD32" Padding="10" CornerRadius="0">
+                <TextBlock Text="VERIFICHE ETR700" FontWeight="Bold" FontSize="16" Foreground="Black" HorizontalAlignment="Center"/>
+            </Border>
+            <DataGrid ItemsSource="{Binding VerificheList700}" AutoGenerateColumns="False" 
+                      CanUserAddRows="False" IsReadOnly="True" HeadersVisibility="Column"
+                      GridLinesVisibility="All" HorizontalGridLinesBrush="LightGray" VerticalGridLinesBrush="LightGray"
+                      BorderBrush="#9ACD32" BorderThickness="1" Background="White" RowBackground="White" AlternatingRowBackground="#F9F9F9"
+                      ColumnHeaderStyle="{StaticResource VerificheHeaderStyle}" Margin="0,0,0,20">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="TRENO" Binding="{Binding Treno}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
+                    <DataGridTextColumn Header="LOCO" Binding="{Binding Loco}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
+                    <DataGridTextColumn Header="Avaria segnalata da ING/SVI" Binding="{Binding Avaria}" Width="*" ElementStyle="{StaticResource CenteredBoldTextWrapStyle}"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Tabella ETR 1000 -->
+            <Border Background="#9ACD32" Padding="10" CornerRadius="0">
+                <TextBlock Text="VERIFICHE ETR1000" FontWeight="Bold" FontSize="16" Foreground="Black" HorizontalAlignment="Center"/>
+            </Border>
+            <DataGrid ItemsSource="{Binding VerificheList1000}" AutoGenerateColumns="False" 
+                      CanUserAddRows="False" IsReadOnly="True" HeadersVisibility="Column"
+                      GridLinesVisibility="All" HorizontalGridLinesBrush="LightGray" VerticalGridLinesBrush="LightGray"
+                      BorderBrush="#9ACD32" BorderThickness="1" Background="White" RowBackground="White" AlternatingRowBackground="#F9F9F9"
+                      ColumnHeaderStyle="{StaticResource VerificheHeaderStyle}" Margin="0,0,0,20">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="TRENO" Binding="{Binding Treno}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
+                    <DataGridTextColumn Header="LOCO" Binding="{Binding Loco}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
+                    <DataGridTextColumn Header="Avaria segnalata da ING/SVI" Binding="{Binding Avaria}" Width="*" ElementStyle="{StaticResource CenteredBoldTextWrapStyle}"/>
+                </DataGrid.Columns>
+            </DataGrid>
+            
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

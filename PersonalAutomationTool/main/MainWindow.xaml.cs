@@ -16,6 +16,8 @@ using PersonalAutomationTool.Modules.Email;
 using PersonalAutomationTool.Modules.Excel;
 using PersonalAutomationTool.Modules.Database;
 using PersonalAutomationTool.Modules.DestinatariMail;
+using PersonalAutomationTool.Modules.Verifiche;
+using PersonalAutomationTool.Modules.PassaggioConsegne;
 
 namespace PersonalAutomationTool
 {
@@ -42,5 +44,7 @@ namespace PersonalAutomationTool
         private void Nav_Excel(object sender, RoutedEventArgs e) => MainContentControl.Content = new ExcelView();
         private void Nav_DestinatariMail(object sender, RoutedEventArgs e) => MainContentControl.Content = new DestinatariMailView();
         private void Nav_Database(object sender, RoutedEventArgs e) => MainContentControl.Content = new DatabaseView();
+        private void Nav_Verifiche(object sender, RoutedEventArgs e) => MainContentControl.Content = new VerificheView();
+        private void Nav_PassaggioConsegne(object sender, RoutedEventArgs e) => MainContentControl.Content = new PassaggioConsegneView();
     }
 }

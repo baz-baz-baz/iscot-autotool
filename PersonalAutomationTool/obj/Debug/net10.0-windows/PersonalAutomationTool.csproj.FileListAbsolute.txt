@@ -504,3 +504,7 @@ C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\Microsoft.Extensions.FileSystemGlobbing.dll
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\Microsoft.Extensions.Primitives.dll
 C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\System.Xml.XPath.XmlDocument.dll
+c:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\passaggio_consegne\PassaggioConsegneView.baml
+c:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\verifiche\VerificheView.baml
+c:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\passaggio_consegne\PassaggioConsegneView.g.cs
+c:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\modules\verifiche\VerificheView.g.cs
