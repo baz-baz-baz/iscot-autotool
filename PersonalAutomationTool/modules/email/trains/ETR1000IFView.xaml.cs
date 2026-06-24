@@ -8,6 +8,12 @@ namespace PersonalAutomationTool.Modules.Email.Trains
 {
     public partial class ETR1000IFView : UserControl
     {
+        [System.Text.RegularExpressions.GeneratedRegex(@"\b\d{6}\b")]
+        private static partial System.Text.RegularExpressions.Regex DateRegex();
+
+        [System.Text.RegularExpressions.GeneratedRegex(@"\bBISTANDARD\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase)]
+        private static partial System.Text.RegularExpressions.Regex BistandardRegex();
+
         public ETR1000IFView()
         {
             InitializeComponent();
@@ -94,7 +100,7 @@ namespace PersonalAutomationTool.Modules.Email.Trains
                         string dirName = System.IO.Path.GetFileName(dir);
                         if (dirName.Contains(" LOG "))
                         {
-                            var dateMatch = System.Text.RegularExpressions.Regex.Match(dirName, @"\b\d{6}\b");
+                            var dateMatch = DateRegex().Match(dirName);
                             var parts = dirName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                             if (dateMatch.Success)
                             {
@@ -112,7 +118,7 @@ namespace PersonalAutomationTool.Modules.Email.Trains
                                     foreach(var s in splittedLocos) 
                                     {
                                         string cleanLoco = s.Trim();
-                                        cleanLoco = System.Text.RegularExpressions.Regex.Replace(cleanLoco, @"\bBISTANDARD\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+                                        cleanLoco = BistandardRegex().Replace(cleanLoco, "").Trim();
                                         if (!string.IsNullOrEmpty(cleanLoco))
                                         {
                                             locos.Add(cleanLoco);
@@ -131,7 +137,7 @@ namespace PersonalAutomationTool.Modules.Email.Trains
             if (locoList.Count == 0) 
             {
                 var parts = cartella.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                var dateMatch = System.Text.RegularExpressions.Regex.Match(cartella, @"\b\d{6}\b");
+                var dateMatch = DateRegex().Match(cartella);
                 string trainNumber = "";
                 
                 if (dateMatch.Success)
