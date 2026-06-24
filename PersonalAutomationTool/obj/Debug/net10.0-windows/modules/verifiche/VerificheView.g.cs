@@ -52,7 +52,7 @@ namespace PersonalAutomationTool.Modules.Verifiche {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/PersonalAutomationTool;V1.0.0.0;component/modules/verifiche/verificheview.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/PersonalAutomationTool;component/modules/verifiche/verificheview.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\..\modules\verifiche\VerificheView.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);
