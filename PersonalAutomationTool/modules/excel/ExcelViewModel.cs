@@ -135,6 +135,7 @@ namespace PersonalAutomationTool.Modules.Excel
                 
                 if (!Directory.Exists(hitachiDir))
                 {
+                    IsLoading = false;
                     MessageBox.Show("Cartella Hitachi non trovata:\n" + hitachiDir, "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
@@ -147,7 +148,11 @@ namespace PersonalAutomationTool.Modules.Excel
 
                 await Task.Run(() => 
                 {
-                    var files = Directory.GetFiles(hitachiDir, "Report Interventi*.xls*");
+                    var files = Directory.GetFiles(hitachiDir, "Report Interventi*.xls*")
+                        .Select(f => new FileInfo(f))
+                        .OrderByDescending(fi => fi.LastWriteTime)
+                        .Select(fi => fi.FullName)
+                        .ToArray();
                     if (files.Length == 0)
                     {
                         string searchDir = string.IsNullOrEmpty(currentSelectedFolder) ? AppConfig.LogAndDumpFolder : Path.Combine(AppConfig.LogAndDumpFolder, currentSelectedFolder);
@@ -155,6 +160,9 @@ namespace PersonalAutomationTool.Modules.Excel
                         {
                             var existingFiles = Directory.GetFiles(searchDir, "Report Interventi*.xls*")
                                 .Where(f => MatchesTrain(f, currentSelectedTrain))
+                                .Select(f => new FileInfo(f))
+                                .OrderByDescending(fi => fi.LastWriteTime)
+                                .Select(fi => fi.FullName)
                                 .ToArray();
                             if (existingFiles.Length > 0)
                             {
@@ -181,6 +189,7 @@ namespace PersonalAutomationTool.Modules.Excel
 
                 if (originalFile == null)
                 {
+                    IsLoading = false;
                     MessageBox.Show("File 'Report Interventi' non trovato nella cartella Hitachi né in LOG & DUMP:\n" + hitachiDir, "Attenzione", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
@@ -188,6 +197,7 @@ namespace PersonalAutomationTool.Modules.Excel
                 if (alreadyInLogDump)
                 {
                     await LoadExcelFieldsAsync(originalFile);
+                    IsLoading = false;
                     MessageBox.Show("Il file 'Report Interventi' era già presente in LOG & DUMP. I campi sono stati caricati.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
@@ -195,11 +205,13 @@ namespace PersonalAutomationTool.Modules.Excel
                 if (movedFile != null)
                 {
                     await LoadExcelFieldsAsync(movedFile);
+                    IsLoading = false;
                     MessageBox.Show("Report spostato e campi caricati con successo!", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
             {
+                IsLoading = false;
                 MessageBox.Show($"Si è verificato un errore durante l'operazione:\n{ex.Message}", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
@@ -442,6 +454,7 @@ namespace PersonalAutomationTool.Modules.Excel
             }
             catch (Exception ex)
             {
+                IsLoading = false;
                 MessageBox.Show($"Errore durante la lettura del file Excel:\n{ex.Message}", "Errore Excel", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -467,6 +480,9 @@ namespace PersonalAutomationTool.Modules.Excel
                     {
                         var existingFiles = Directory.GetFiles(searchDir, "Report Interventi*.xls*")
                             .Where(f => MatchesTrain(f, currentTrain))
+                            .Select(f => new FileInfo(f))
+                            .OrderByDescending(fi => fi.LastWriteTime)
+                            .Select(fi => fi.FullName)
                             .ToArray();
                         if (existingFiles.Length > 0) return existingFiles[0];
                     }
@@ -475,6 +491,9 @@ namespace PersonalAutomationTool.Modules.Excel
                     {
                         var rootFiles = Directory.GetFiles(AppConfig.LogAndDumpFolder, "Report Interventi*.xls*")
                             .Where(f => MatchesTrain(f, currentTrain))
+                            .Select(f => new FileInfo(f))
+                            .OrderByDescending(fi => fi.LastWriteTime)
+                            .Select(fi => fi.FullName)
                             .ToArray();
                         if (rootFiles.Length > 0) return rootFiles[0];
                     }
@@ -1047,18 +1066,11 @@ namespace PersonalAutomationTool.Modules.Excel
                     if (ws != null)
                     {
                         int lastRow = 1;
-                        for (int col = 2; col <= 27; col++)
+                        // Cerca in tutte le celle del foglio per non escludere colonne (come la A o colonne oltre la AA)
+                        var cellsWithValues = ws.CellsUsed(c => !c.Value.IsBlank && c.Address.RowNumber < 900000);
+                        if (cellsWithValues.Any())
                         {
-                            // Escludi righe oltre la 900.000 per evitare falsi positivi dovuti a "Ctrl+Giù" accidentali
-                            var cellsWithValues = ws.Column(col).CellsUsed(c => !c.Value.IsBlank && c.Address.RowNumber < 900000);
-                            if (cellsWithValues.Any())
-                            {
-                                int maxRow = cellsWithValues.Max(c => c.Address.RowNumber);
-                                if (maxRow > lastRow)
-                                {
-                                    lastRow = maxRow;
-                                }
-                            }
+                            lastRow = cellsWithValues.Max(c => c.Address.RowNumber);
                         }
                         targetRow = lastRow + 1;
                     }
@@ -1123,16 +1135,19 @@ namespace PersonalAutomationTool.Modules.Excel
                 }
                 }); // Fine Task.Run
                     
+                IsLoading = false;
                 MessageBox.Show($"Report salvato con successo alla riga {targetRow}.", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
                     
                 // (I campi non vengono puliti automaticamente qui per permettere il 'Riporta Report')
             }
             catch (IOException ioEx)
             {
+                IsLoading = false;
                 MessageBox.Show($"Impossibile salvare il report perché il file Excel è attualmente aperto. Chiudi Excel e riprova.\n\nDettaglio: {ioEx.Message}", "File Aperto", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             catch (Exception ex)
             {
+                IsLoading = false;
                 MessageBox.Show($"Errore durante il salvataggio nel file Excel:\n{ex.Message}\n{ex.StackTrace}", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
@@ -1220,6 +1235,7 @@ namespace PersonalAutomationTool.Modules.Excel
 
                 if (!Directory.Exists(hitachiDir))
                 {
+                    IsLoading = false;
                     MessageBox.Show("Cartella d'origine Hitachi non trovata:\n" + hitachiDir, "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
@@ -1231,6 +1247,7 @@ namespace PersonalAutomationTool.Modules.Excel
                     File.Move(_currentExcelFilePath, destinationPath, true);
                 });
 
+                IsLoading = false;
                 MessageBox.Show($"Report riportato con successo nella cartella d'origine come:\n{newFileName}", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
                 
                 _currentExcelFilePath = null;
@@ -1238,6 +1255,7 @@ namespace PersonalAutomationTool.Modules.Excel
             }
             catch (Exception ex)
             {
+                IsLoading = false;
                 MessageBox.Show($"Si è verificato un errore durante l'operazione:\n{ex.Message}", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally

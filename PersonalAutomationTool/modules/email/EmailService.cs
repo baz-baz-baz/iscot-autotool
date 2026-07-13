@@ -429,16 +429,24 @@ namespace PersonalAutomationTool.Modules.Email
                     string dataOra = input.DataOra ?? string.Empty;
                     string avaria = input.Avaria ?? string.Empty;
                     
-                    string combinedAvaria = avaria;
-                    if (actionType.Equals("Chiusura Ticket", StringComparison.OrdinalIgnoreCase))
+                    var prefixParts = new List<string>();
+                    if (!string.IsNullOrWhiteSpace(avviso))
                     {
-                        combinedAvaria = $"Avviso={avviso} Data={dataOra}\n\n{avaria}".Trim();
+                        prefixParts.Add($"Avviso={avviso.Trim()}");
                     }
-                    else if (actionType.Equals("Log Dump", StringComparison.OrdinalIgnoreCase))
+                    if (!string.IsNullOrWhiteSpace(dataOra))
                     {
-                        if (!string.IsNullOrWhiteSpace(avviso) || !string.IsNullOrWhiteSpace(dataOra))
+                        prefixParts.Add($"Data: {dataOra.Trim()}");
+                    }
+                    
+                    string prefix = string.Join(" ", prefixParts);
+                    string combinedAvaria = avaria;
+                    if (actionType.Equals("Chiusura Ticket", StringComparison.OrdinalIgnoreCase) ||
+                        actionType.Equals("Log Dump", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (!string.IsNullOrEmpty(prefix))
                         {
-                            combinedAvaria = $"Avviso={avviso} Data={dataOra}\n\n{avaria}".Trim();
+                            combinedAvaria = $"{prefix}\n\n{avaria}".Trim();
                         }
                     }
                     
