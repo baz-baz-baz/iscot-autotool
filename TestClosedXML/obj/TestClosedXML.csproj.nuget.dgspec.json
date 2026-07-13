@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\basset\\Documents\\GitHub\\iscot-autotool\\TestClosedXML\\TestClosedXML.csproj": {}
+    "C:\\Users\\peli\\Documents\\GitHub\\iscot-autotool\\TestClosedXML\\TestClosedXML.csproj": {}
   },
   "projects": {
-    "C:\\Users\\basset\\Documents\\GitHub\\iscot-autotool\\TestClosedXML\\TestClosedXML.csproj": {
+    "C:\\Users\\peli\\Documents\\GitHub\\iscot-autotool\\TestClosedXML\\TestClosedXML.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\basset\\Documents\\GitHub\\iscot-autotool\\TestClosedXML\\TestClosedXML.csproj",
+        "projectUniqueName": "C:\\Users\\peli\\Documents\\GitHub\\iscot-autotool\\TestClosedXML\\TestClosedXML.csproj",
         "projectName": "TestClosedXML",
-        "projectPath": "C:\\Users\\basset\\Documents\\GitHub\\iscot-autotool\\TestClosedXML\\TestClosedXML.csproj",
-        "packagesPath": "C:\\Users\\basset\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\basset\\Documents\\GitHub\\iscot-autotool\\TestClosedXML\\obj\\",
+        "projectPath": "C:\\Users\\peli\\Documents\\GitHub\\iscot-autotool\\TestClosedXML\\TestClosedXML.csproj",
+        "packagesPath": "C:\\Users\\peli\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\peli\\Documents\\GitHub\\iscot-autotool\\TestClosedXML\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\basset\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "C:\\Users\\peli\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net10.0"
@@ -53,6 +53,10 @@
             "EPPlus": {
               "target": "Package",
               "version": "[4.5.3.3, )"
+            },
+            "System.Drawing.Common": {
+              "target": "Package",
+              "version": "[4.7.2, )"
             }
           },
           "imports": [

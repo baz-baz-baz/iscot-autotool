@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "Z/Ny+S4MHjg=",
+  "dgSpecHash": "3Q3dDuPQZlk=",
   "success": true,
   "projectFilePath": "C:\\Users\\peli\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj",
   "expectedPackageFiles": [
@@ -28,24 +28,12 @@
     "C:\\Users\\peli\\.nuget\\packages\\pdfsharp\\6.2.4\\pdfsharp.6.2.4.nupkg.sha512",
     "C:\\Users\\peli\\.nuget\\packages\\rbush.signed\\4.0.0\\rbush.signed.4.0.0.nupkg.sha512",
     "C:\\Users\\peli\\.nuget\\packages\\sixlabors.fonts\\1.0.0\\sixlabors.fonts.1.0.0.nupkg.sha512",
-    "C:\\Users\\peli\\.nuget\\packages\\sqlitepclraw.bundle_e_sqlite3\\2.1.11\\sqlitepclraw.bundle_e_sqlite3.2.1.11.nupkg.sha512",
-    "C:\\Users\\peli\\.nuget\\packages\\sqlitepclraw.core\\2.1.11\\sqlitepclraw.core.2.1.11.nupkg.sha512",
-    "C:\\Users\\peli\\.nuget\\packages\\sqlitepclraw.lib.e_sqlite3\\2.1.11\\sqlitepclraw.lib.e_sqlite3.2.1.11.nupkg.sha512",
-    "C:\\Users\\peli\\.nuget\\packages\\sqlitepclraw.provider.e_sqlite3\\2.1.11\\sqlitepclraw.provider.e_sqlite3.2.1.11.nupkg.sha512",
+    "C:\\Users\\peli\\.nuget\\packages\\sourcegear.sqlite3\\3.50.4.5\\sourcegear.sqlite3.3.50.4.5.nupkg.sha512",
+    "C:\\Users\\peli\\.nuget\\packages\\sqlitepclraw.bundle_e_sqlite3\\3.0.3\\sqlitepclraw.bundle_e_sqlite3.3.0.3.nupkg.sha512",
+    "C:\\Users\\peli\\.nuget\\packages\\sqlitepclraw.config.e_sqlite3\\3.0.3\\sqlitepclraw.config.e_sqlite3.3.0.3.nupkg.sha512",
+    "C:\\Users\\peli\\.nuget\\packages\\sqlitepclraw.core\\3.0.3\\sqlitepclraw.core.3.0.3.nupkg.sha512",
+    "C:\\Users\\peli\\.nuget\\packages\\sqlitepclraw.provider.e_sqlite3\\3.0.3\\sqlitepclraw.provider.e_sqlite3.3.0.3.nupkg.sha512",
     "C:\\Users\\peli\\.nuget\\packages\\system.xml.xpath.xmldocument\\4.3.0\\system.xml.xpath.xmldocument.4.3.0.nupkg.sha512"
   ],
-  "logs": [
-    {
-      "code": "NU1903",
-      "level": "Warning",
-      "message": "Il pacchetto 'SQLitePCLRaw.lib.e_sqlite3' 2.1.11 presenta una vulnerabilità nota di gravità alta, https://github.com/advisories/GHSA-2m69-gcr7-jv3q",
-      "projectPath": "C:\\Users\\peli\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj",
-      "warningLevel": 1,
-      "filePath": "C:\\Users\\peli\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj",
-      "libraryId": "SQLitePCLRaw.lib.e_sqlite3",
-      "targetGraphs": [
-        "net10.0-windows7.0"
-      ]
-    }
-  ]
+  "logs": []
 }
