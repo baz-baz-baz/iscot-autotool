@@ -139,8 +139,9 @@ namespace PersonalAutomationTool.Modules.Cartelle
             {
                 try
                 {
-                    string query = $"SELECT treno FROM flotte WHERE tipo = '{tipo}' AND loco = '{loco}' LIMIT 1;";
-                    var dataTable = _dbManager.ExecuteQuery(query);
+                    string query = "SELECT treno FROM flotte WHERE tipo = @tipo AND loco = @loco LIMIT 1;";
+                    var parameters = new System.Collections.Generic.Dictionary<string, object?> { { "@tipo", tipo }, { "@loco", loco } };
+                    var dataTable = _dbManager.ExecuteQuery(query, parameters);
                     if (dataTable.Rows.Count > 0 && dataTable.Rows[0]["treno"] != DBNull.Value)
                     {
                         return dataTable.Rows[0]["treno"].ToString()?.Trim() ?? "";
@@ -227,8 +228,9 @@ namespace PersonalAutomationTool.Modules.Cartelle
                 string softwareValue = await System.Threading.Tasks.Task.Run(() =>
                 {
                     // Cerchiamo il software incrociando "tipo" e "loco"
-                    string query = $"SELECT software FROM flotte WHERE tipo = '{selectedTipo}' AND loco = '{loco1}' LIMIT 1;";
-                    var dataTable = _dbManager.ExecuteQuery(query);
+                    string query = "SELECT software FROM flotte WHERE tipo = @tipo AND loco = @loco LIMIT 1;";
+                    var parameters = new System.Collections.Generic.Dictionary<string, object?> { { "@tipo", selectedTipo }, { "@loco", loco1 } };
+                    var dataTable = _dbManager.ExecuteQuery(query, parameters);
 
                     if (dataTable.Rows.Count > 0 && dataTable.Rows[0]["software"] != DBNull.Value)
                     {

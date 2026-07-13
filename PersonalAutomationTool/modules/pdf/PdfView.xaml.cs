@@ -282,7 +282,7 @@ namespace PersonalAutomationTool.Modules.Pdf
                         }
                     }
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Error retrieving train types: {ex.Message}"); }
                 return tipi;
             });
         }

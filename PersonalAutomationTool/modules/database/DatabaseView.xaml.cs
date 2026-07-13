@@ -218,9 +218,6 @@ namespace PersonalAutomationTool.Modules.Database
             }
         }
 
-        private void MainDataGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
-        {
-        }
 
         private void BtnSaveChanges_Click(object sender, RoutedEventArgs e)
         {

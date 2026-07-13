@@ -71,7 +71,7 @@ namespace PersonalAutomationTool.Modules.Home
             EliminaCommand = new RelayCommand(OnElimina);
             AggiornaDataCommand = new RelayCommand(OnAggiornaData);
 
-            LoadPendingItems();
+            _ = LoadPendingItemsAsync();
         }
 
         private void UpdateClock()
@@ -81,49 +81,82 @@ namespace PersonalAutomationTool.Modules.Home
             CurrentDate = now.ToString("dddd d MMMM yyyy", new System.Globalization.CultureInfo("it-IT"));
         }
 
-        private void LoadPendingItems()
+        private async System.Threading.Tasks.Task LoadPendingItemsAsync()
         {
-            PendingItems.Clear();
             if (!Directory.Exists(AppConfig.LogAndDumpFolder))
+            {
+                PendingItems.Clear();
                 return;
+            }
 
             try
             {
-                var mainDirs = Directory.GetDirectories(AppConfig.LogAndDumpFolder);
-                foreach (var dir in mainDirs)
+                string folder = AppConfig.LogAndDumpFolder;
+                var items = await System.Threading.Tasks.Task.Run(() =>
                 {
-                    var dirInfo = new DirectoryInfo(dir);
-                    var subDirs = dirInfo.GetDirectories();
-                    if (subDirs.Length == 0) continue; // Mostra solo chi ha sottocartelle o tutti?
-                    // Secondo lo screen, se ha file o cartelle, contiamole
-                    
-                    var data = dirInfo.LastWriteTime; // O CreationTime, ma LastWriteTime è più affidabile
-                    int giorni = (DateTime.Now - data).Days;
+                    var resultList = new System.Collections.Generic.List<PendingMaintenanceModel>();
+                    var mainDirs = Directory.GetDirectories(folder);
+                    foreach (var dir in mainDirs)
+                    {
+                        var dirInfo = new DirectoryInfo(dir);
+                        var subDirs = dirInfo.GetDirectories();
+                        if (subDirs.Length == 0) continue;
 
-                    var model = new PendingMaintenanceModel
-                    {
-                        TipoTreno = dirInfo.Name,
-                        NumeroCartelle = subDirs.Length,
-                        Data = data.ToString("dd/MM/yyyy"),
-                        Giorni = Math.Max(0, giorni),
-                        Percorso = dirInfo.FullName
-                    };
-                    
-                    foreach (var subDir in subDirs)
-                    {
-                        string name = subDir.Name.ToUpper();
-                        if (name.Contains("LOG") || name.Contains("DUMP"))
+                        var data = dirInfo.LastWriteTime;
+                        int giorni = (DateTime.Now - data).Days;
+
+                        var model = new PendingMaintenanceModel
                         {
-                            model.SubFolders.Add($"- {subDir.Name}");
+                            TipoTreno = dirInfo.Name,
+                            NumeroCartelle = subDirs.Length,
+                            Data = data.ToString("dd/MM/yyyy"),
+                            Giorni = Math.Max(0, giorni),
+                            Percorso = dirInfo.FullName
+                        };
+
+                        foreach (var subDir in subDirs)
+                        {
+                            string name = subDir.Name.ToUpper();
+                            if (name.Contains("LOG") || name.Contains("DUMP"))
+                            {
+                                model.SubFolders.Add($"- {subDir.Name}");
+                            }
                         }
+
+                        resultList.Add(model);
                     }
-                    
-                    PendingItems.Add(model);
+                    return resultList;
+                });
+
+                PendingItems.Clear();
+                foreach (var item in items)
+                {
+                    PendingItems.Add(item);
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Errore caricamento Home: {ex.Message}");
+            }
+        }
+
+        private async System.Threading.Tasks.Task ReloadAndPreserveStateAsync()
+        {
+            var expandedItems = PendingItems.Where(p => p.IsExpanded).Select(p => p.TipoTreno).ToList();
+            string? selectedTreno = SelectedItem?.TipoTreno;
+
+            await LoadPendingItemsAsync();
+
+            foreach (var item in PendingItems)
+            {
+                if (expandedItems.Contains(item.TipoTreno))
+                {
+                    item.IsExpanded = true;
+                }
+            }
+            if (selectedTreno != null)
+            {
+                SelectedItem = PendingItems.FirstOrDefault(p => p.TipoTreno == selectedTreno);
             }
         }
 
@@ -193,25 +226,7 @@ namespace PersonalAutomationTool.Modules.Home
                         }
                     });
                     
-                    // Salva lo stato prima di ricaricare
-                    var expandedItems = PendingItems.Where(p => p.IsExpanded).Select(p => p.TipoTreno).ToList();
-                    string? selectedTreno = SelectedItem?.TipoTreno;
-
-                    // Ricarica la lista per mostrare i cambiamenti
-                    LoadPendingItems();
-                    
-                    // Ripristina lo stato di espansione e la selezione
-                    foreach (var item in PendingItems)
-                    {
-                        if (expandedItems.Contains(item.TipoTreno))
-                        {
-                            item.IsExpanded = true;
-                        }
-                    }
-                    if (selectedTreno != null)
-                    {
-                        SelectedItem = PendingItems.FirstOrDefault(p => p.TipoTreno == selectedTreno);
-                    }
+                    await ReloadAndPreserveStateAsync();
                     
                     // Ripulisci i campi
                     OldTicket = string.Empty;
@@ -260,22 +275,7 @@ namespace PersonalAutomationTool.Modules.Home
                         }
                     });
                     
-                    var expandedItems = PendingItems.Where(p => p.IsExpanded).Select(p => p.TipoTreno).ToList();
-                    string? selectedTreno = SelectedItem?.TipoTreno;
-
-                    LoadPendingItems();
-                    
-                    foreach (var item in PendingItems)
-                    {
-                        if (expandedItems.Contains(item.TipoTreno))
-                        {
-                            item.IsExpanded = true;
-                        }
-                    }
-                    if (selectedTreno != null)
-                    {
-                        SelectedItem = PendingItems.FirstOrDefault(p => p.TipoTreno == selectedTreno);
-                    }
+                    await ReloadAndPreserveStateAsync();
                 }
                 catch (Exception ex)
                 {
@@ -447,7 +447,7 @@ namespace PersonalAutomationTool.Modules.Home
             }
         }
 
-        private void OnElimina(object? parameter)
+        private async void OnElimina(object? parameter)
         {
             if (SelectedItem == null)
                 return;
@@ -483,7 +483,7 @@ namespace PersonalAutomationTool.Modules.Home
                     }
                     
                     // Ricarichiamo la lista per far sparire la cartella eliminata dalla UI
-                    LoadPendingItems();
+                    await LoadPendingItemsAsync();
                 }
                 catch (Exception ex)
                 {

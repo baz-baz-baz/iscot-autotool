@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "targets": {
     "net10.0": {
       "ClosedXML/0.105.0": {
@@ -847,19 +847,19 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Bassetto Alessio\\.nuget\\packages\\": {}
+    "C:\\Users\\basset\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Bassetto Alessio\\Documents\\GitHub\\iscot-autotool\\TestClosedXML\\TestClosedXML.csproj",
+      "projectUniqueName": "C:\\Users\\basset\\Documents\\GitHub\\iscot-autotool\\TestClosedXML\\TestClosedXML.csproj",
       "projectName": "TestClosedXML",
-      "projectPath": "C:\\Users\\Bassetto Alessio\\Documents\\GitHub\\iscot-autotool\\TestClosedXML\\TestClosedXML.csproj",
-      "packagesPath": "C:\\Users\\Bassetto Alessio\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Bassetto Alessio\\Documents\\GitHub\\iscot-autotool\\TestClosedXML\\obj\\",
+      "projectPath": "C:\\Users\\basset\\Documents\\GitHub\\iscot-autotool\\TestClosedXML\\TestClosedXML.csproj",
+      "packagesPath": "C:\\Users\\basset\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\basset\\Documents\\GitHub\\iscot-autotool\\TestClosedXML\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\Bassetto Alessio\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\basset\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
@@ -869,6 +869,7 @@
       },
       "frameworks": {
         "net10.0": {
+          "framework": "net10.0",
           "targetAlias": "net10.0",
           "projectReferences": {}
         }
@@ -883,10 +884,11 @@
         "auditLevel": "low",
         "auditMode": "all"
       },
-      "SdkAnalysisLevel": "10.0.100"
+      "SdkAnalysisLevel": "10.0.300"
     },
     "frameworks": {
       "net10.0": {
+        "framework": "net10.0",
         "targetAlias": "net10.0",
         "dependencies": {
           "ClosedXML": {
@@ -914,7 +916,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.103/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.301/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.CSharp": "(,4.7.32767]",
           "Microsoft.VisualBasic": "(,10.4.32767]",
@@ -1197,7 +1199,7 @@
       "code": "NU1904",
       "level": "Warning",
       "warningLevel": 1,
-      "message": "Il pacchetto 'System.Drawing.Common' 4.7.0 presenta una vulnerabilità nota di gravità critica, https://github.com/advisories/GHSA-rxg9-xrhp-64gj",
+      "message": "Il pacchetto 'System.Drawing.Common' 4.7.0 presenta una vulnerabilità nota di gravità critico, https://github.com/advisories/GHSA-rxg9-xrhp-64gj",
       "libraryId": "System.Drawing.Common",
       "targetGraphs": [
         "net10.0"

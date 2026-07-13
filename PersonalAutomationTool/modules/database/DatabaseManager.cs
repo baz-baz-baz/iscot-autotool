@@ -7,6 +7,7 @@ namespace PersonalAutomationTool.Modules.Database
 {
     public class DatabaseManager : IDisposable
     {
+        private static readonly object _dbLock = new();
         private readonly string connectionString;
         private SqliteConnection? _connection;
 
@@ -18,53 +19,69 @@ namespace PersonalAutomationTool.Modules.Database
 
         private void OpenConnection()
         {
-            try
+            lock (_dbLock)
             {
-                _connection ??= new SqliteConnection(connectionString);
-
-                if (_connection.State != ConnectionState.Open)
+                try
                 {
-                    _connection.Open();
+                    _connection ??= new SqliteConnection(connectionString);
+
+                    if (_connection.State != ConnectionState.Open)
+                    {
+                        _connection.Open();
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"DB Connection Error: {ex.Message}");
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"DB Connection Error: {ex.Message}");
+                }
             }
         }
 
         public void Dispose()
         {
-            if (_connection != null)
+            lock (_dbLock)
             {
-                if (_connection.State == ConnectionState.Open)
+                if (_connection != null)
                 {
-                    _connection.Close();
+                    if (_connection.State == ConnectionState.Open)
+                    {
+                        _connection.Close();
+                    }
+                    _connection.Dispose();
+                    _connection = null;
                 }
-                _connection.Dispose();
-                _connection = null;
             }
             GC.SuppressFinalize(this);
         }
 
-        public DataTable ExecuteQuery(string query)
+        public DataTable ExecuteQuery(string query, Dictionary<string, object?>? parameters = null)
         {
             var dataTable = new DataTable();
 
-            try
+            lock (_dbLock)
             {
-                OpenConnection();
-                if (_connection == null) throw new InvalidOperationException("Connessione non inizializzata.");
+                try
+                {
+                    OpenConnection();
+                    if (_connection == null) throw new InvalidOperationException("Connessione non inizializzata.");
 
-                using var command = new SqliteCommand(query, _connection);
-                using var reader = command.ExecuteReader();
-                dataTable.Load(reader);
-            }
-            catch (Exception ex)
-            {
-                // Gestione semplice dell'errore restituendo il messaggio nella tabella
-                dataTable.Columns.Add("Errore");
-                dataTable.Rows.Add(ex.Message);
+                    using var command = new SqliteCommand(query, _connection);
+                    if (parameters != null)
+                    {
+                        foreach (var param in parameters)
+                        {
+                            command.Parameters.AddWithValue(param.Key, param.Value ?? DBNull.Value);
+                        }
+                    }
+                    using var reader = command.ExecuteReader();
+                    dataTable.Load(reader);
+                }
+                catch (Exception ex)
+                {
+                    // Gestione semplice dell'errore restituendo il messaggio nella tabella
+                    dataTable.Columns.Add("Errore");
+                    dataTable.Rows.Add(ex.Message);
+                }
             }
 
             return dataTable;
@@ -89,24 +106,27 @@ namespace PersonalAutomationTool.Modules.Database
 
         public int ExecuteNonQuery(string query, Dictionary<string, object?>? parameters = null)
         {
-            try
+            lock (_dbLock)
             {
-                OpenConnection();
-                if (_connection == null) throw new InvalidOperationException("Connessione non inizializzata.");
-
-                using var command = new SqliteCommand(query, _connection);
-                if (parameters != null)
+                try
                 {
-                    foreach (var param in parameters)
+                    OpenConnection();
+                    if (_connection == null) throw new InvalidOperationException("Connessione non inizializzata.");
+
+                    using var command = new SqliteCommand(query, _connection);
+                    if (parameters != null)
                     {
-                        command.Parameters.AddWithValue(param.Key, param.Value ?? DBNull.Value);
+                        foreach (var param in parameters)
+                        {
+                            command.Parameters.AddWithValue(param.Key, param.Value ?? DBNull.Value);
+                        }
                     }
+                    return command.ExecuteNonQuery();
                 }
-                return command.ExecuteNonQuery();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Errore SQL: {ex.Message}");
+                catch (Exception ex)
+                {
+                    throw new Exception($"Errore SQL: {ex.Message}");
+                }
             }
         }
     }

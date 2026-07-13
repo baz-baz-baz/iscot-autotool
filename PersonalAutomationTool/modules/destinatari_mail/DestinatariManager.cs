@@ -1,57 +1,51 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.IO;
 using System.Text.Json;
+using PersonalAutomationTool.Core;
 
 namespace PersonalAutomationTool.Modules.DestinatariMail
 {
-    public class EmailActionConfig : INotifyPropertyChanged
+    public class EmailActionConfig : ViewModelBase
     {
         private string _actionName = string.Empty;
         public string ActionName
         {
             get => _actionName;
-            set { _actionName = value; OnPropertyChanged(nameof(ActionName)); }
+            set => SetProperty(ref _actionName, value);
         }
 
         private string _toRecipients = string.Empty;
         public string ToRecipients
         {
             get => _toRecipients;
-            set { _toRecipients = value; OnPropertyChanged(nameof(ToRecipients)); }
+            set => SetProperty(ref _toRecipients, value);
         }
 
         private string _ccRecipients = string.Empty;
         public string CcRecipients
         {
             get => _ccRecipients;
-            set { _ccRecipients = value; OnPropertyChanged(nameof(CcRecipients)); }
+            set => SetProperty(ref _ccRecipients, value);
         }
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-        protected void OnPropertyChanged(string propertyName) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    public class TrainConfig : INotifyPropertyChanged
+    public class TrainConfig : ViewModelBase
     {
         private string _trainName = string.Empty;
         public string TrainName
         {
             get => _trainName;
-            set { _trainName = value; OnPropertyChanged(nameof(TrainName)); }
+            set => SetProperty(ref _trainName, value);
         }
 
         private ObservableCollection<EmailActionConfig> _actions = [];
         public ObservableCollection<EmailActionConfig> Actions
         {
             get => _actions;
-            set { _actions = value; OnPropertyChanged(nameof(Actions)); }
+            set => SetProperty(ref _actions, value);
         }
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-        protected void OnPropertyChanged(string propertyName) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
     public static class DestinatariManager

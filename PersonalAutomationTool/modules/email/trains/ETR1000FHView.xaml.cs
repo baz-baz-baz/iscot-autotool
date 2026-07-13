@@ -1,6 +1,3 @@
-using System;
-using System.IO;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -11,72 +8,22 @@ namespace PersonalAutomationTool.Modules.Email.Trains
         public ETR1000FHView()
         {
             InitializeComponent();
-            LoadCartelle();
+            TrainViewHelper.LoadCartelle(CmbCartelle, "ETR1000FH", "ETR1000 FH");
         }
 
-        private void LoadCartelle()
-        {
-            string baseLogDump = PersonalAutomationTool.Core.AppConfig.LogAndDumpFolder;
-            if (Directory.Exists(baseLogDump))
-            {
-                var directoryInfo = new DirectoryInfo(baseLogDump);
-                var directories = directoryInfo.GetDirectories()
-                    .Where(d => d.Name.StartsWith("ETR1000FH", StringComparison.OrdinalIgnoreCase) ||
-                                d.Name.StartsWith("ETR1000 FH", StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-
-                var filteredNames = directories.Select(d => d.Name).ToList();
-                CmbCartelle.ItemsSource = filteredNames;
-
-                var lastCreated = directories.OrderByDescending(d => d.CreationTime).FirstOrDefault();
-                if (lastCreated != null)
-                {
-                    CmbCartelle.SelectedItem = lastCreated.Name;
-                }
-            }
-        }
-
-        private void BtnBack_Click(object sender, RoutedEventArgs e)
-        {
-            if (Application.Current.MainWindow is MainWindow mainWindow)
-            {
-                mainWindow.MainContentControl.Content = new EmailView();
-            }
-        }
+        private void BtnBack_Click(object sender, RoutedEventArgs e) => TrainViewHelper.NavigateBack();
 
         private void BtnChiusuraTicket_Click(object sender, RoutedEventArgs e)
         {
             string cartella = CmbCartelle.SelectedItem?.ToString() ?? "";
             bool isNd = ChkPrefissoND.IsChecked == true;
-            var dialog = new PersonalAutomationTool.Modules.Email.Dialogs.ChiusuraTicketDialog(cartella, "ETR1000FH", isNd)
-            {
-                Owner = Application.Current.MainWindow
-            };
-            
-            if (dialog.ShowDialog() == true)
-            {
-                // MessageBox.Show("Dati confermati! Implementare la generazione email.", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
+            TrainViewHelper.OpenChiusuraTicketDialog(cartella, "ETR1000FH", isNd);
         }
+
         private void BtnScadenza6Mesi_Click(object sender, RoutedEventArgs e) { }
         private void BtnScadenza12Mesi_Click(object sender, RoutedEventArgs e) { }
 
-        private void ChkPrefissoND_Checked(object sender, RoutedEventArgs e)
-        {
-            if (TxtPrefissoND != null)
-            {
-                TxtPrefissoND.Text = "ON";
-                TxtPrefissoND.Foreground = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#3B82F6"));
-            }
-        }
-
-        private void ChkPrefissoND_Unchecked(object sender, RoutedEventArgs e)
-        {
-            if (TxtPrefissoND != null)
-            {
-                TxtPrefissoND.Text = "OFF";
-                TxtPrefissoND.Foreground = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#7F8C8D"));
-            }
-        }
+        private void ChkPrefissoND_Checked(object sender, RoutedEventArgs e) => TrainViewHelper.SetNdCheckboxState(TxtPrefissoND, true);
+        private void ChkPrefissoND_Unchecked(object sender, RoutedEventArgs e) => TrainViewHelper.SetNdCheckboxState(TxtPrefissoND, false);
     }
 }

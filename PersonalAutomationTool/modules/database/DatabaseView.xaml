@@ -40,7 +40,6 @@
                       IsReadOnly="False" 
                       CanUserAddRows="False"
                       CanUserDeleteRows="False"
-                      CellEditEnding="MainDataGrid_CellEditEnding"
                       HeadersVisibility="Column" 
                       RowBackground="#FFF"
                       AlternatingRowBackground="#F9F9F9"

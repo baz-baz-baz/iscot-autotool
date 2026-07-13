@@ -344,88 +344,38 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
             }
         }
 
+        private static readonly HashSet<string> _standardTrainTypes = new(StringComparer.OrdinalIgnoreCase)
+            { "ETR1000", "ETR1000IF", "ETR1000FH" };
+
         private static string GetMacroText(string macroName, string trainType)
         {
             if (trainType == "E404P")
             {
-                switch (macroName)
+                return macroName switch
                 {
-                    case "Nulla Riscontrato":
-                        return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguite prove con esito positivo come da check-list allegata.";
-                    case "Nulla Riscontrato Dati":
-                        return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguito scarico dati diagnostici per analisi da parte dell'ingegneria. Eseguite prove con esito positivo come da check-list allegata.";
-                    case "Sost. Componente":
-                        return "Dai controlli Statici effettuati si rende necessaria la sostituzione XXX. Dopo la sostituzione non emergono ulteriori anomalie al SSB. Eseguito scarico dati per analisi da parte dell'ingegneria HR-STS. Eseguite prove con esito positivo come da Check List allegata";
-                    case "SIM-GIT":
-                        return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguiti controlli con SIM-GIT con esito positivo. Eseguiti controlli con esito positivo come da Checklist allegata";
-                    case "SIM-GIT con Dati":
-                        return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguiti controlli con SIM-GIT con esito positivo. Eseguito scarico dati diagnostici per ingegneria.  Eseguiti controlli con esito positivo come da Checklist allegata.";
-                }
+                    "Nulla Riscontrato" => "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguite prove con esito positivo come da check-list allegata.",
+                    "Nulla Riscontrato Dati" => "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguito scarico dati diagnostici per analisi da parte dell'ingegneria. Eseguite prove con esito positivo come da check-list allegata.",
+                    "Sost. Componente" => "Dai controlli Statici effettuati si rende necessaria la sostituzione XXX. Dopo la sostituzione non emergono ulteriori anomalie al SSB. Eseguito scarico dati per analisi da parte dell'ingegneria HR-STS. Eseguite prove con esito positivo come da Check List allegata",
+                    "SIM-GIT" => "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguiti controlli con SIM-GIT con esito positivo. Eseguiti controlli con esito positivo come da Checklist allegata",
+                    "SIM-GIT con Dati" => "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguiti controlli con SIM-GIT con esito positivo. Eseguito scarico dati diagnostici per ingegneria.  Eseguiti controlli con esito positivo come da Checklist allegata.",
+                    _ => macroName
+                };
             }
-            else if (trainType == "ETR700")
+
+            // ETR700, ETR1000, ETR1000IF, ETR1000FH condividono lo stesso testo
+            if (trainType == "ETR700" || _standardTrainTypes.Contains(trainType))
             {
-                switch (macroName)
+                return macroName switch
                 {
-                    case "Nulla Riscontrato":
-                        return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Con riferimento al SSB il treno è conforme all'esercizio commerciale";
-                    case "Nulla Riscontrato Dati":
-                        return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguito scarico dati. Con riferimento al SSB, il treno è conforme all'esercizio commerciale.";
-                    case "Sost. Componente":
-                        return "Dai controlli Statici effettuati si rende necessaria la sostituzione XXX. Dopo la sostituzione non emergono ulteriori anomalie al SSB. Eseguito scarico dati. Con riferimento al SSB, il treno è conforme all'esercizio commerciale.";
-                    case "SIM-GIT":
-                        return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguiti controlli con SIM-GIT con esito positivo. Con riferimento al SSB il treno è conforme all'esercizio commerciale.";
-                    case "SIM-GIT con Dati":
-                        return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguiti controlli con SIM-GIT con esito positivo. Eseguito scarico dati diagnostici per ingegneria. Con ferimento al SSB il treno è conforme all'esercizio commerciale.";
-                }
+                    "Nulla Riscontrato" => "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Con riferimento al SSB il treno è conforme all'esercizio commerciale",
+                    "Nulla Riscontrato Dati" => "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguito scarico dati. Con riferimento al SSB, il treno è conforme all'esercizio commerciale.",
+                    "Sost. Componente" => "Dai controlli Statici effettuati si rende necessaria la sostituzione XXX. Dopo la sostituzione non emergono ulteriori anomalie al SSB. Eseguito scarico dati. Con riferimento al SSB, il treno è conforme all'esercizio commerciale.",
+                    "SIM-GIT" => "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguiti controlli con SIM-GIT con esito positivo. Con riferimento al SSB il treno è conforme all'esercizio commerciale.",
+                    "SIM-GIT con Dati" => "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguiti controlli con SIM-GIT con esito positivo. Eseguito scarico dati diagnostici per ingegneria. Con ferimento al SSB il treno è conforme all'esercizio commerciale.",
+                    _ => macroName
+                };
             }
-            else if (trainType == "ETR1000")
-            {
-                switch (macroName)
-                {
-                    case "Nulla Riscontrato":
-                        return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Con riferimento al SSB il treno è conforme all'esercizio commerciale";
-                    case "Nulla Riscontrato Dati":
-                        return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguito scarico dati. Con riferimento al SSB, il treno è conforme all'esercizio commerciale.";
-                    case "Sost. Componente":
-                        return "Dai controlli Statici effettuati si rende necessaria la sostituzione XXX. Dopo la sostituzione non emergono ulteriori anomalie al SSB. Eseguito scarico dati. Con riferimento al SSB, il treno è conforme all'esercizio commerciale.";
-                    case "SIM-GIT":
-                        return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguiti controlli con SIM-GIT con esito positivo. Con riferimento al SSB il treno è conforme all'esercizio commerciale.";
-                    case "SIM-GIT con Dati":
-                        return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguiti controlli con SIM-GIT con esito positivo. Eseguito scarico dati diagnostici per ingegneria. Con ferimento al SSB il treno è conforme all'esercizio commerciale.";
-                }
-            }
-            else if (trainType == "ETR1000IF")
-            {
-                switch (macroName)
-                {
-                    case "Nulla Riscontrato":
-                        return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Con riferimento al SSB il treno è conforme all'esercizio commerciale";
-                    case "Nulla Riscontrato Dati":
-                        return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguito scarico dati. Con riferimento al SSB, il treno è conforme all'esercizio commerciale.";
-                    case "Sost. Componente":
-                        return "Dai controlli Statici effettuati si rende necessaria la sostituzione XXX. Dopo la sostituzione non emergono ulteriori anomalie al SSB. Eseguito scarico dati. Con riferimento al SSB, il treno è conforme all'esercizio commerciale.";
-                    case "SIM-GIT":
-                        return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguiti controlli con SIM-GIT con esito positivo. Con riferimento al SSB il treno è conforme all'esercizio commerciale.";
-                    case "SIM-GIT con Dati":
-                        return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguiti controlli con SIM-GIT con esito positivo. Eseguito scarico dati diagnostici per ingegneria. Con ferimento al SSB il treno è conforme all'esercizio commerciale.";
-                }
-            }
-            else if (trainType == "ETR1000FH")
-            {
-                switch (macroName)
-                {
-                    case "Nulla Riscontrato":
-                        return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Con riferimento al SSB il treno è conforme all'esercizio commerciale";
-                    case "Nulla Riscontrato Dati":
-                        return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguito scarico dati. Con riferimento al SSB, il treno è conforme all'esercizio commerciale.";
-                    case "Sost. Componente":
-                        return "Dai controlli Statici effettuati si rende necessaria la sostituzione XXX. Dopo la sostituzione non emergono ulteriori anomalie al SSB. Eseguito scarico dati. Con riferimento al SSB, il treno è conforme all'esercizio commerciale.";
-                    case "SIM-GIT":
-                        return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguiti controlli con SIM-GIT con esito positivo. Con riferimento al SSB il treno è conforme all'esercizio commerciale.";
-                    case "SIM-GIT con Dati":
-                        return "Dai controlli statici effettuati non si riscontrano anomalie al SSB. Eseguiti controlli con SIM-GIT con esito positivo. Eseguito scarico dati diagnostici per ingegneria. Con ferimento al SSB il treno è conforme all'esercizio commerciale.";
-                }
-            }
+
             return macroName;
         }
 

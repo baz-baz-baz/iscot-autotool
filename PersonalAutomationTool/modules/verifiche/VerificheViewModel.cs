@@ -44,9 +44,9 @@ namespace PersonalAutomationTool.Modules.Verifiche
                         var level1 = Directory.GetDirectories(folderPath);
                         allFolders.AddRange(level1);
                         foreach (var d1 in level1) {
-                            try { allFolders.AddRange(Directory.GetDirectories(d1)); } catch { }
+                            try { allFolders.AddRange(Directory.GetDirectories(d1)); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex.Message); }
                         }
-                    } catch { }
+                    } catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex.Message); }
                     
                     foreach (var dir in allFolders)
                     {
@@ -165,14 +165,15 @@ namespace PersonalAutomationTool.Modules.Verifiche
                 if (File.Exists(dbPath))
                 {
                     using var db = new PersonalAutomationTool.Modules.Database.DatabaseManager(dbPath);
-                    string safeLoco = loco.Replace("'", "''");
-                    string query = $"SELECT treno FROM flotte WHERE loco = '{safeLoco}'";
+                    string query = "SELECT treno FROM flotte WHERE loco = @loco";
+                    var parameters = new System.Collections.Generic.Dictionary<string, object?> { { "@loco", loco } };
                     if (int.TryParse(loco, out int locoInt))
                     {
-                        query += $" OR loco = {locoInt}";
+                        query += " OR loco = @locoInt";
+                        parameters["@locoInt"] = locoInt;
                     }
 
-                    var data = db.ExecuteQuery(query);
+                    var data = db.ExecuteQuery(query, parameters);
                     if (data.Rows.Count > 0 && !data.Columns.Contains("Errore"))
                     {
                         string trenoDb = data.Rows[0]["treno"]?.ToString() ?? "";
@@ -183,7 +184,7 @@ namespace PersonalAutomationTool.Modules.Verifiche
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Db search error: {ex.Message}"); }
             return "";
         }
     }

@@ -154,10 +154,7 @@ namespace PersonalAutomationTool.Modules.Excel
                         if (Directory.Exists(searchDir))
                         {
                             var existingFiles = Directory.GetFiles(searchDir, "Report Interventi*.xls*")
-                                .Where(f => currentSelectedTrain == "E404P" ? (f.Contains("ETR500", StringComparison.OrdinalIgnoreCase) || f.Contains("E404P", StringComparison.OrdinalIgnoreCase)) : 
-                                            currentSelectedTrain == "ETR1000 / 1000FH" ? ((f.Contains("ETR1000", StringComparison.OrdinalIgnoreCase) || f.Contains("1001", StringComparison.OrdinalIgnoreCase) || f.Contains("1000FH", StringComparison.OrdinalIgnoreCase)) && !f.Contains("Italia", StringComparison.OrdinalIgnoreCase) && !f.Contains("Francia", StringComparison.OrdinalIgnoreCase) && !f.Contains("ITA-FRA", StringComparison.OrdinalIgnoreCase) && !f.Contains("1000IF", StringComparison.OrdinalIgnoreCase) && !f.Contains("I-F", StringComparison.OrdinalIgnoreCase)) : 
-                                            currentSelectedTrain == "ETR1000 I-F" ? (f.Contains("1000IF", StringComparison.OrdinalIgnoreCase) || f.Contains("Italia", StringComparison.OrdinalIgnoreCase) || f.Contains("Francia", StringComparison.OrdinalIgnoreCase) || f.Contains("ITA-FRA", StringComparison.OrdinalIgnoreCase) || f.Contains("I-F", StringComparison.OrdinalIgnoreCase)) : 
-                                            f.Contains(currentSelectedTrain ?? "", StringComparison.OrdinalIgnoreCase))
+                                .Where(f => MatchesTrain(f, currentSelectedTrain))
                                 .ToArray();
                             if (existingFiles.Length > 0)
                             {
@@ -469,10 +466,7 @@ namespace PersonalAutomationTool.Modules.Excel
                     if (Directory.Exists(searchDir))
                     {
                         var existingFiles = Directory.GetFiles(searchDir, "Report Interventi*.xls*")
-                            .Where(f => currentTrain == "E404P" ? (f.Contains("ETR500", StringComparison.OrdinalIgnoreCase) || f.Contains("E404P", StringComparison.OrdinalIgnoreCase)) : 
-                                        currentTrain == "ETR1000 / 1000FH" ? ((f.Contains("ETR1000", StringComparison.OrdinalIgnoreCase) || f.Contains("1001", StringComparison.OrdinalIgnoreCase) || f.Contains("1000FH", StringComparison.OrdinalIgnoreCase)) && !f.Contains("Italia", StringComparison.OrdinalIgnoreCase) && !f.Contains("Francia", StringComparison.OrdinalIgnoreCase) && !f.Contains("ITA-FRA", StringComparison.OrdinalIgnoreCase) && !f.Contains("1000IF", StringComparison.OrdinalIgnoreCase) && !f.Contains("I-F", StringComparison.OrdinalIgnoreCase)) : 
-                                        currentTrain == "ETR1000 I-F" ? (f.Contains("1000IF", StringComparison.OrdinalIgnoreCase) || f.Contains("Italia", StringComparison.OrdinalIgnoreCase) || f.Contains("Francia", StringComparison.OrdinalIgnoreCase) || f.Contains("ITA-FRA", StringComparison.OrdinalIgnoreCase) || f.Contains("I-F", StringComparison.OrdinalIgnoreCase)) : 
-                                        f.Contains(currentTrain ?? "", StringComparison.OrdinalIgnoreCase))
+                            .Where(f => MatchesTrain(f, currentTrain))
                             .ToArray();
                         if (existingFiles.Length > 0) return existingFiles[0];
                     }
@@ -480,10 +474,7 @@ namespace PersonalAutomationTool.Modules.Excel
                     if (Directory.Exists(AppConfig.LogAndDumpFolder))
                     {
                         var rootFiles = Directory.GetFiles(AppConfig.LogAndDumpFolder, "Report Interventi*.xls*")
-                            .Where(f => currentTrain == "E404P" ? (f.Contains("ETR500", StringComparison.OrdinalIgnoreCase) || f.Contains("E404P", StringComparison.OrdinalIgnoreCase)) : 
-                                        currentTrain == "ETR1000 / 1000FH" ? ((f.Contains("ETR1000", StringComparison.OrdinalIgnoreCase) || f.Contains("1001", StringComparison.OrdinalIgnoreCase) || f.Contains("1000FH", StringComparison.OrdinalIgnoreCase)) && !f.Contains("Italia", StringComparison.OrdinalIgnoreCase) && !f.Contains("Francia", StringComparison.OrdinalIgnoreCase) && !f.Contains("ITA-FRA", StringComparison.OrdinalIgnoreCase) && !f.Contains("1000IF", StringComparison.OrdinalIgnoreCase) && !f.Contains("I-F", StringComparison.OrdinalIgnoreCase)) : 
-                                        currentTrain == "ETR1000 I-F" ? (f.Contains("1000IF", StringComparison.OrdinalIgnoreCase) || f.Contains("Italia", StringComparison.OrdinalIgnoreCase) || f.Contains("Francia", StringComparison.OrdinalIgnoreCase) || f.Contains("ITA-FRA", StringComparison.OrdinalIgnoreCase) || f.Contains("I-F", StringComparison.OrdinalIgnoreCase)) : 
-                                        f.Contains(currentTrain ?? "", StringComparison.OrdinalIgnoreCase))
+                            .Where(f => MatchesTrain(f, currentTrain))
                             .ToArray();
                         if (rootFiles.Length > 0) return rootFiles[0];
                     }
@@ -740,17 +731,7 @@ namespace PersonalAutomationTool.Modules.Excel
             }
             formDict.TryGetValue("N. ODL Trenitalia", out var odlField);
             var ticketAstsField = FormFields.FirstOrDefault(f => f.FieldName.Equals("TICKET", StringComparison.OrdinalIgnoreCase) || (f.FieldName.Contains("TICKET", StringComparison.OrdinalIgnoreCase) && (f.FieldName.Contains("ASTS", StringComparison.OrdinalIgnoreCase) || f.FieldName.Contains("STS", StringComparison.OrdinalIgnoreCase))));
-            
-            // DEBUG LOGGING
-            try {
-                var logLines = new List<string> {
-                    $"--- TICKET DEBUG ---",
-                    $"combinedSearchString: {combinedSearchString}",
-                    $"ticketAstsField found: {ticketAstsField != null}",
-                    $"ticketAstsField Name: {ticketAstsField?.FieldName ?? "NULL"}"
-                };
-                System.IO.File.AppendAllLines(@"C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\scratch\debug_ticket.txt", logLines);
-            } catch { }
+
 
             formDict.TryGetValue("AVARIA SEGNALATA", out var avariaField);
             formDict.TryGetValue("DESCRIZIONE INTERVENTO EFFETTUATO", out var interventoField);
@@ -805,12 +786,7 @@ namespace PersonalAutomationTool.Modules.Excel
                 }
             }
 
-            try {
-                System.IO.File.AppendAllLines(@"C:\Users\Bassetto Alessio\Documents\GitHub\iscot-autotool\scratch\debug_ticket.txt", [
-                    $"ticketsList Count: {ticketsList.Count}",
-                    $"ticketsList Content: {string.Join(", ", ticketsList)}"
-                ]);
-            } catch { }
+
 
             string jsonPath = Path.Combine(folderPath, "info_ticket.json");
             var allInputsWithLoco = new List<(LocoGroupModel Group, TicketInputModel Input)>();
@@ -1018,31 +994,7 @@ namespace PersonalAutomationTool.Modules.Excel
                     var dirName = Path.GetFileName(dir);
                     if (string.IsNullOrEmpty(dirName)) continue;
 
-                    // Filter based on the selected train name
-                    if (SelectedTrain == "ETR1000 / 1000FH")
-                    {
-                        if ((dirName.Contains("ETR1000", StringComparison.OrdinalIgnoreCase) || 
-                            dirName.Contains("1001", StringComparison.OrdinalIgnoreCase) || 
-                            dirName.Contains("1000FH", StringComparison.OrdinalIgnoreCase)) &&
-                            !dirName.Contains("Italia", StringComparison.OrdinalIgnoreCase) &&
-                            !dirName.Contains("Francia", StringComparison.OrdinalIgnoreCase) &&
-                            !dirName.Contains("ITA-FRA", StringComparison.OrdinalIgnoreCase) &&
-                            !dirName.Contains("1000IF", StringComparison.OrdinalIgnoreCase) &&
-                            !dirName.Contains("I-F", StringComparison.OrdinalIgnoreCase))
-                        {
-                            AvailableFolders.Add(dirName);
-                        }
-                    }
-                    else if (SelectedTrain == "ETR1000 I-F")
-                    {
-                        if (dirName.Contains("ETR1000 I-F", StringComparison.OrdinalIgnoreCase) || 
-                            dirName.Contains("1000IF", StringComparison.OrdinalIgnoreCase) || 
-                            dirName.Contains("ITA-FRA", StringComparison.OrdinalIgnoreCase))
-                        {
-                            AvailableFolders.Add(dirName);
-                        }
-                    }
-                    else if (dirName.Contains(SelectedTrain, StringComparison.OrdinalIgnoreCase))
+                    if (MatchesTrain(dirName, SelectedTrain))
                     {
                         AvailableFolders.Add(dirName);
                     }
@@ -1318,6 +1270,37 @@ namespace PersonalAutomationTool.Modules.Excel
                     System.Threading.Thread.Sleep(1000);
                 }
             }
+        }
+
+        private static bool MatchesTrain(string name, string? trainType)
+        {
+            if (string.IsNullOrEmpty(trainType)) return false;
+
+            if (trainType == "E404P")
+            {
+                return name.Contains("ETR500", StringComparison.OrdinalIgnoreCase) || 
+                       name.Contains("E404P", StringComparison.OrdinalIgnoreCase);
+            }
+            if (trainType == "ETR1000 / 1000FH")
+            {
+                return (name.Contains("ETR1000", StringComparison.OrdinalIgnoreCase) || 
+                        name.Contains("1001", StringComparison.OrdinalIgnoreCase) || 
+                        name.Contains("1000FH", StringComparison.OrdinalIgnoreCase)) &&
+                       !name.Contains("Italia", StringComparison.OrdinalIgnoreCase) &&
+                       !name.Contains("Francia", StringComparison.OrdinalIgnoreCase) &&
+                       !name.Contains("ITA-FRA", StringComparison.OrdinalIgnoreCase) &&
+                       !name.Contains("1000IF", StringComparison.OrdinalIgnoreCase) &&
+                       !name.Contains("I-F", StringComparison.OrdinalIgnoreCase);
+            }
+            if (trainType == "ETR1000 I-F")
+            {
+                return name.Contains("1000IF", StringComparison.OrdinalIgnoreCase) || 
+                       name.Contains("Italia", StringComparison.OrdinalIgnoreCase) || 
+                       name.Contains("Francia", StringComparison.OrdinalIgnoreCase) || 
+                       name.Contains("ITA-FRA", StringComparison.OrdinalIgnoreCase) || 
+                       name.Contains("I-F", StringComparison.OrdinalIgnoreCase);
+            }
+            return name.Contains(trainType, StringComparison.OrdinalIgnoreCase);
         }
 
         public void Dispose()

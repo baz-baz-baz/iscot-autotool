@@ -7,6 +7,8 @@ namespace PersonalAutomationTool.Core
     public static class AppWatcher
     {
         private static FileSystemWatcher? _watcher;
+        private static System.Threading.Timer? _debounceTimer;
+        private static readonly object _timerLock = new();
 
         public static event Action? OnLogDumpFolderChanged;
 
@@ -42,7 +44,22 @@ namespace PersonalAutomationTool.Core
 
         private static void OnChanged(object sender, FileSystemEventArgs e)
         {
-            // Debounce or dispatch directly to UI thread
+            lock (_timerLock)
+            {
+                _debounceTimer?.Dispose();
+                _debounceTimer = new System.Threading.Timer(DebounceTimerCallback, null, 300, System.Threading.Timeout.Infinite);
+            }
+        }
+
+        private static void DebounceTimerCallback(object? state)
+        {
+            lock (_timerLock)
+            {
+                _debounceTimer?.Dispose();
+                _debounceTimer = null;
+            }
+
+            // Dispatch directly to UI thread
             Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 OnLogDumpFolderChanged?.Invoke();

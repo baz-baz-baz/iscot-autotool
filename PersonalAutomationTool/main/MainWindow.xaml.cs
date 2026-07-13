@@ -1,13 +1,7 @@
-using System.Text;
+using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 using PersonalAutomationTool.Modules.Home;
 using PersonalAutomationTool.Modules.Cartelle;
@@ -26,6 +20,8 @@ namespace PersonalAutomationTool
     /// </summary>
     public partial class MainWindow : Window
     {
+        private readonly Dictionary<Type, UserControl> _viewCache = new();
+
         public MainWindow()
         {
             InitializeComponent();
@@ -34,17 +30,31 @@ namespace PersonalAutomationTool
             Core.AppWatcher.Initialize();
 
             // Carica la Home all'avvio
-            MainContentControl.Content = new HomeView();
+            NavigateTo<HomeView>();
         }
 
-        private void Nav_Home(object sender, RoutedEventArgs e) => MainContentControl.Content = new HomeView();
-        private void Nav_Cartelle(object sender, RoutedEventArgs e) => MainContentControl.Content = new CartelleView();
-        private void Nav_Pdf(object sender, RoutedEventArgs e) => MainContentControl.Content = new PdfView();
-        private void Nav_Email(object sender, RoutedEventArgs e) => MainContentControl.Content = new EmailView();
-        private void Nav_Excel(object sender, RoutedEventArgs e) => MainContentControl.Content = new ExcelView();
-        private void Nav_DestinatariMail(object sender, RoutedEventArgs e) => MainContentControl.Content = new DestinatariMailView();
-        private void Nav_Database(object sender, RoutedEventArgs e) => MainContentControl.Content = new DatabaseView();
-        private void Nav_Verifiche(object sender, RoutedEventArgs e) => MainContentControl.Content = new VerificheView();
-        private void Nav_PassaggioConsegne(object sender, RoutedEventArgs e) => MainContentControl.Content = new PassaggioConsegneView();
+        /// <summary>
+        /// Naviga verso una View, riutilizzando l'istanza già creata se presente in cache.
+        /// Evita la ricreazione inutile delle View e preserva lo stato dell'utente.
+        /// </summary>
+        private void NavigateTo<T>() where T : UserControl, new()
+        {
+            if (!_viewCache.TryGetValue(typeof(T), out var view))
+            {
+                view = new T();
+                _viewCache[typeof(T)] = view;
+            }
+            MainContentControl.Content = view;
+        }
+
+        private void Nav_Home(object sender, RoutedEventArgs e) => NavigateTo<HomeView>();
+        private void Nav_Cartelle(object sender, RoutedEventArgs e) => NavigateTo<CartelleView>();
+        private void Nav_Pdf(object sender, RoutedEventArgs e) => NavigateTo<PdfView>();
+        private void Nav_Email(object sender, RoutedEventArgs e) => NavigateTo<EmailView>();
+        private void Nav_Excel(object sender, RoutedEventArgs e) => NavigateTo<ExcelView>();
+        private void Nav_DestinatariMail(object sender, RoutedEventArgs e) => NavigateTo<DestinatariMailView>();
+        private void Nav_Database(object sender, RoutedEventArgs e) => NavigateTo<DatabaseView>();
+        private void Nav_Verifiche(object sender, RoutedEventArgs e) => NavigateTo<VerificheView>();
+        private void Nav_PassaggioConsegne(object sender, RoutedEventArgs e) => NavigateTo<PassaggioConsegneView>();
     }
 }
