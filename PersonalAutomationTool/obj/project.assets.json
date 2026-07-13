@@ -1,7 +1,7 @@
 {
-  "version": 4,
+  "version": 3,
   "targets": {
-    "net10.0-windows": {
+    "net10.0-windows7.0": {
       "ClosedXML/0.105.0": {
         "type": "package",
         "dependencies": {
@@ -1337,7 +1337,7 @@
     }
   },
   "projectFileDependencyGroups": {
-    "net10.0-windows": [
+    "net10.0-windows7.0": [
       "ClosedXML >= 0.105.0",
       "EPPlus >= 4.5.3.3",
       "MaterialDesignThemes >= 4.9.0",
@@ -1346,19 +1346,19 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\basset\\.nuget\\packages\\": {}
+    "C:\\Users\\peli\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\basset\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj",
+      "projectUniqueName": "C:\\Users\\peli\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj",
       "projectName": "PersonalAutomationTool",
-      "projectPath": "C:\\Users\\basset\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj",
-      "packagesPath": "C:\\Users\\basset\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\basset\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\obj\\",
+      "projectPath": "C:\\Users\\peli\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\PersonalAutomationTool.csproj",
+      "packagesPath": "C:\\Users\\peli\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\peli\\Documents\\GitHub\\iscot-autotool\\PersonalAutomationTool\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\basset\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\peli\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net10.0-windows"
@@ -1367,8 +1367,7 @@
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
-        "net10.0-windows": {
-          "framework": "net10.0-windows7.0",
+        "net10.0-windows7.0": {
           "targetAlias": "net10.0-windows",
           "projectReferences": {}
         }
@@ -1383,11 +1382,10 @@
         "auditLevel": "low",
         "auditMode": "all"
       },
-      "SdkAnalysisLevel": "10.0.300"
+      "SdkAnalysisLevel": "10.0.100"
     },
     "frameworks": {
-      "net10.0-windows": {
-        "framework": "net10.0-windows7.0",
+      "net10.0-windows7.0": {
         "targetAlias": "net10.0-windows",
         "dependencies": {
           "ClosedXML": {
@@ -1430,7 +1428,7 @@
             "privateAssets": "none"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.301/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.109/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.CSharp": "(,4.7.32767]",
           "Microsoft.VisualBasic": "(,10.4.32767]",
@@ -1732,7 +1730,7 @@
       "message": "Il pacchetto 'SQLitePCLRaw.lib.e_sqlite3' 2.1.11 presenta una vulnerabilità nota di gravità alta, https://github.com/advisories/GHSA-2m69-gcr7-jv3q",
       "libraryId": "SQLitePCLRaw.lib.e_sqlite3",
       "targetGraphs": [
-        "net10.0-windows"
+        "net10.0-windows7.0"
       ]
     }
   ]
