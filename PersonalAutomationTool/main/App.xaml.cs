@@ -11,5 +11,6 @@ public partial class App : Application
     {
         base.OnStartup(e);
         PersonalAutomationTool.Core.AppConfig.Initialize();
+        PersonalAutomationTool.Core.MouseWheelScrollBehavior.InitializeGlobalMouseWheelHandler();
     }
 }

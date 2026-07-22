@@ -101,7 +101,8 @@
                       CanUserAddRows="False" IsReadOnly="True" HeadersVisibility="Column"
                       GridLinesVisibility="All" HorizontalGridLinesBrush="LightGray" VerticalGridLinesBrush="LightGray"
                       BorderBrush="#9ACD32" BorderThickness="1" Background="White" RowBackground="White" AlternatingRowBackground="#F9F9F9"
-                      ColumnHeaderStyle="{StaticResource VerificheHeaderStyle}" Margin="0,0,0,20">
+                      ColumnHeaderStyle="{StaticResource VerificheHeaderStyle}" Margin="0,0,0,20"
+                      ScrollViewer.CanContentScroll="False">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="TRENO" Binding="{Binding Treno}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
                     <DataGridTextColumn Header="LOCO" Binding="{Binding Loco}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
@@ -117,7 +118,8 @@
                       CanUserAddRows="False" IsReadOnly="True" HeadersVisibility="Column"
                       GridLinesVisibility="All" HorizontalGridLinesBrush="LightGray" VerticalGridLinesBrush="LightGray"
                       BorderBrush="#9ACD32" BorderThickness="1" Background="White" RowBackground="White" AlternatingRowBackground="#F9F9F9"
-                      ColumnHeaderStyle="{StaticResource VerificheHeaderStyle}" Margin="0,0,0,20">
+                      ColumnHeaderStyle="{StaticResource VerificheHeaderStyle}" Margin="0,0,0,20"
+                      ScrollViewer.CanContentScroll="False">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="TRENO" Binding="{Binding Treno}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
                     <DataGridTextColumn Header="LOCO" Binding="{Binding Loco}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
@@ -133,7 +135,8 @@
                       CanUserAddRows="False" IsReadOnly="True" HeadersVisibility="Column"
                       GridLinesVisibility="All" HorizontalGridLinesBrush="LightGray" VerticalGridLinesBrush="LightGray"
                       BorderBrush="#9ACD32" BorderThickness="1" Background="White" RowBackground="White" AlternatingRowBackground="#F9F9F9"
-                      ColumnHeaderStyle="{StaticResource VerificheHeaderStyle}" Margin="0,0,0,20">
+                      ColumnHeaderStyle="{StaticResource VerificheHeaderStyle}" Margin="0,0,0,20"
+                      ScrollViewer.CanContentScroll="False">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="TRENO" Binding="{Binding Treno}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
                     <DataGridTextColumn Header="LOCO" Binding="{Binding Loco}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>

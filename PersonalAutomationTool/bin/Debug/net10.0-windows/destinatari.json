@@ -36,6 +36,11 @@
         "ActionName": "R2",
         "ToRecipients": "vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com",
         "CcRecipients": "Service_ISCOT_IMC_AV_Milano@it.iscot.com"
+      },
+      {
+        "ActionName": "Passaggio di consegne",
+        "ToRecipients": "Service_ISCOT_IMC_AV_Milano@it.iscot.com",
+        "CcRecipients": "vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com; matteo.masciocchi@iscot.it"
       }
     ]
   },
@@ -46,6 +51,11 @@
         "ActionName": "Chiusura Ticket",
         "ToRecipients": "etr700_analisidiagssb_sts@hitachirail.com",
         "CcRecipients": "Service_ISCOT_IMC_AV_Milano@it.iscot.com; vincenzo.loporchio@hitachirail.com; salvatore.cascegna@hitachirail.com; francesco.montanaro@hitachirail.com; team-adv@advservicesrl.it; salvatore.demartino@hitachirail.com; mario.arcini@hitachirail.com"
+      },
+      {
+        "ActionName": "Passaggio di consegne",
+        "ToRecipients": "Service_ISCOT_IMC_AV_Milano@it.iscot.com",
+        "CcRecipients": "vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com; matteo.masciocchi@iscot.it; mario.arcini@hitachirail.com"
       }
     ]
   },
@@ -71,6 +81,11 @@
         "ActionName": "3R1",
         "ToRecipients": "etr1000_analisidiagssb_sts@hitachirail.com",
         "CcRecipients": "Service_ISCOT_IMC_AV_Milano@it.iscot.com; vincenzo.loporchio@hitachirail.com; salvatore.cascegna@hitachirail.com; francesco.montanaro@hitachirail.com; team-adv@advservicesrl.it; salvatore.demartino@hitachirail.com; mario.arcini@hitachirail.com"
+      },
+      {
+        "ActionName": "Passaggio di consegne",
+        "ToRecipients": "Service_ISCOT_IMC_AV_Milano@it.iscot.com",
+        "CcRecipients": "vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com; matteo.masciocchi@iscot.it; mario.arcini@hitachirail.com"
       }
     ]
   },
@@ -96,6 +111,11 @@
         "ActionName": "Scadenze Francesi",
         "ToRecipients": "etr1000_analisidiagssb_sts@hitachirail.com",
         "CcRecipients": "Service_ISCOT_IMC_AV_Milano@it.iscot.com; vincenzo.loporchio@hitachirail.com; salvatore.cascegna@hitachirail.com; francesco.montanaro@hitachirail.com; team-adv@advservicesrl.it; salvatore.demartino@hitachirail.com; mario.arcini@hitachirail.com"
+      },
+      {
+        "ActionName": "Passaggio di consegne",
+        "ToRecipients": "Service_ISCOT_IMC_AV_Milano@it.iscot.com",
+        "CcRecipients": "vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com; matteo.masciocchi@iscot.it; mario.arcini@hitachirail.com"
       }
     ]
   },
@@ -116,6 +136,11 @@
         "ActionName": "Scadenza 12 mesi",
         "ToRecipients": "etr1000_analisidiagssb_sts@hitachirail.com",
         "CcRecipients": "Service_ISCOT_IMC_AV_Milano@it.iscot.com; vincenzo.loporchio@hitachirail.com; salvatore.cascegna@hitachirail.com; francesco.montanaro@hitachirail.com; team-adv@advservicesrl.it; salvatore.demartino@hitachirail.com; mario.arcini@hitachirail.com"
+      },
+      {
+        "ActionName": "Passaggio di consegne",
+        "ToRecipients": "vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com; matteo.masciocchi@iscot.it; mario.arcini@hitachirail.com",
+        "CcRecipients": "vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com; matteo.masciocchi@iscot.it; mario.arcini@hitachirail.com"
       }
     ]
   }

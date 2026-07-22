@@ -8,8 +8,11 @@ using PersonalAutomationTool.Core;
 
 namespace PersonalAutomationTool.Modules.Home
 {
-    public class HomeViewModel : ViewModelBase
+    public partial class HomeViewModel : ViewModelBase
     {
+        [System.Text.RegularExpressions.GeneratedRegex(@"\b\d{6}\b")]
+        private static partial System.Text.RegularExpressions.Regex MyDateRegex();
+
         private readonly DispatcherTimer _timer;
 
         private string _currentTime = string.Empty;
@@ -72,6 +75,13 @@ namespace PersonalAutomationTool.Modules.Home
             AggiornaDataCommand = new RelayCommand(OnAggiornaData);
 
             _ = LoadPendingItemsAsync();
+
+            AppWatcher.OnLogDumpFolderChanged += AppWatcher_OnLogDumpFolderChanged;
+        }
+
+        private void AppWatcher_OnLogDumpFolderChanged()
+        {
+            _ = ReloadAndPreserveStateAsync();
         }
 
         private void UpdateClock()
@@ -253,17 +263,15 @@ namespace PersonalAutomationTool.Modules.Home
                     {
                         var subDirs = Directory.GetDirectories(path);
                         string todayString = DateTime.Now.ToString("ddMMyy");
-                        var dateRegex = new System.Text.RegularExpressions.Regex(@"\b\d{6}\b");
-
                         foreach (var subDir in subDirs)
                         {
                             var dirInfo = new DirectoryInfo(subDir);
                             string currentName = dirInfo.Name;
                             
-                            var match = dateRegex.Match(currentName);
+                            var match = MyDateRegex().Match(currentName);
                             if (match.Success)
                             {
-                                string newName = currentName.Substring(0, match.Index) + todayString + currentName.Substring(match.Index + match.Length);
+                                string newName = string.Concat(currentName.AsSpan(0, match.Index), todayString, currentName.AsSpan(match.Index + match.Length));
                                 string? parentFolder = dirInfo.Parent?.FullName;
                                 if (parentFolder != null)
                                 {
@@ -330,28 +338,25 @@ namespace PersonalAutomationTool.Modules.Home
 
             try
             {
-                // Identifica la cartella base di rete (assumiamo sia nel profilo utente)
-                string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                string basePath = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - LOG_DUMP_per_Reale");
+                // Identifica in modo dinamico la cartella base di rete
+                string basePath = GetLogDumpReteBasePath();
 
                 if (!Directory.Exists(basePath))
                 {
-                    System.Windows.MessageBox.Show($"La cartella di rete di base non esiste:\n{basePath}", "Errore", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                    System.Windows.MessageBox.Show($"La cartella di rete di base non esiste:\n{basePath}", "Attenzione", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
                     return;
                 }
 
-                // Estrai il Tipo Treno dal nome della riga selezionata (es: "E404P 30" -> "E404P")
+                // Estrai il Tipo Treno dal nome della riga selezionata (es: "E404P 30" -> "E404P", "ETR700 12" -> "ETR700")
                 string rawTrainType = SelectedItem.TipoTreno.Split(' ').FirstOrDefault()?.ToUpper() ?? string.Empty;
                 if (string.IsNullOrEmpty(rawTrainType))
                     return;
 
-                // Mappatura specifica per 1000FH
-                string networkTrainType = rawTrainType == "1000FH" ? "ETR1001" : rawTrainType;
-
-                string trainTypePath = Path.Combine(basePath, networkTrainType);
-                if (!Directory.Exists(trainTypePath))
+                // Risolvi la cartella del tipo treno ESISTENTE in rete (senza mai crearne di nuove)
+                string? trainTypePath = ResolveTrainTypePath(basePath, rawTrainType);
+                if (string.IsNullOrEmpty(trainTypePath) || !Directory.Exists(trainTypePath))
                 {
-                    System.Windows.MessageBox.Show($"La cartella del tipo treno ({networkTrainType}) non esiste nel percorso di rete.", "Attenzione", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                    System.Windows.MessageBox.Show($"La cartella del tipo treno ({rawTrainType}) non è stata trovata nei percorsi di rete esistenti.", "Attenzione", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
                     return;
                 }
 
@@ -363,6 +368,8 @@ namespace PersonalAutomationTool.Modules.Home
                 }
 
                 int movedCount = 0;
+                var skippedLog = new System.Collections.Generic.List<string>();
+
                 await System.Threading.Tasks.Task.Run(() =>
                 {
                     foreach (var zipFile in zipFiles)
@@ -370,81 +377,260 @@ namespace PersonalAutomationTool.Modules.Home
                         string fileName = Path.GetFileNameWithoutExtension(zipFile);
                         var parts = fileName.Split(' ');
                     
-                    // Ci aspettiamo un nome del tipo: [Ticket] [LOG/DUMP] [Treno] [Loco] ...
-                    // Es: "1247654 DUMP E404P 627 04.02HR 300526 Todde"
-                    if (parts.Length >= 4)
-                    {
-                        string logOrDump = parts[1].ToUpper(); // "LOG" o "DUMP"
-                        string fileTrainType = parts[2].ToUpper(); // "E404P" o "1000FH"
-                        string loco = parts[3]; // "627"
-
-                        string networkFileTrainType = fileTrainType == "1000FH" ? "ETR1001" : fileTrainType;
-
-                        if ((logOrDump == "LOG" || logOrDump == "DUMP") && networkFileTrainType == networkTrainType)
+                        // Ci aspettiamo un nome del tipo: [Ticket] [LOG/DUMP] [Treno] [Loco] ...
+                        // Es: "1247654 DUMP ETR700 117 04.02HR 300526 Todde"
+                        if (parts.Length >= 4)
                         {
-                            // Ricerca elastica della cartella della loco all'interno di trainTypePath
-                            string[] possibleDirNames = [
-                                loco,                                      // es. "101" o "627"
-                                $"{networkFileTrainType}_{loco}",          // es. "ETR1001_31" o "E404P_627"
-                                $"{fileTrainType}_{loco}",                 // es. "1000FH_31"
-                                $"{networkFileTrainType} {loco}",          // es. "ETR1001 31"
-                                $"{fileTrainType} {loco}"                  // es. "1000FH 31"
-                            ];
+                            string logOrDump = parts[1].ToUpper(); // "LOG" o "DUMP"
+                            string fileTrainType = parts[2].ToUpper(); // "ETR700", "E404P", "1000FH"
+                            string loco = parts[3]; // "117", "627"
 
-                            string locoFolderName = string.Empty;
-                            if (Directory.Exists(trainTypePath))
+                            if ((logOrDump == "LOG" || logOrDump == "DUMP") && AreTrainTypesCompatible(fileTrainType, rawTrainType))
                             {
-                                foreach (var dir in Directory.GetDirectories(trainTypePath))
+                                // Cerca la cartella della loco ESISTENTE (es. "ETR700-117", "E404P_627", "117", ecc.)
+                                string? locoFolderPath = FindExistingLocoFolder(trainTypePath, loco, rawTrainType, fileTrainType);
+                                if (string.IsNullOrEmpty(locoFolderPath))
                                 {
-                                    string dirName = Path.GetFileName(dir);
-                                    if (possibleDirNames.Contains(dirName, StringComparer.OrdinalIgnoreCase))
-                                    {
-                                        locoFolderName = dirName;
-                                        break;
-                                    }
+                                    skippedLog.Add($"File {Path.GetFileName(zipFile)}: Cartella per loco '{loco}' non trovata in rete in '{Path.GetFileName(trainTypePath)}'.");
+                                    continue;
                                 }
-                            }
 
-                            if (string.IsNullOrEmpty(locoFolderName))
-                            {
-                                System.Diagnostics.Debug.WriteLine($"Cartella della loco ({loco}) non trovata in {trainTypePath}, lo zip viene ignorato.");
-                                continue;
-                            }
+                                // Cerca la sottocartella ESISTENTE ("Log", "Dump", "LOG", "DUMP")
+                                string? targetDir = FindExistingTargetSubfolder(locoFolderPath, logOrDump);
+                                if (string.IsNullOrEmpty(targetDir))
+                                {
+                                    skippedLog.Add($"File {Path.GetFileName(zipFile)}: Sottocartella '{logOrDump}' non trovata in '{Path.GetFileName(locoFolderPath)}'.");
+                                    continue;
+                                }
 
-                            string targetDir = Path.Combine(trainTypePath, locoFolderName, logOrDump);
-                            
-                            if (!Directory.Exists(targetDir))
-                            {
-                                System.Diagnostics.Debug.WriteLine($"Cartella di destinazione LOG/DUMP non trovata, lo zip viene ignorato: {targetDir}");
-                                continue;
-                            }
-
-                            string destFile = Path.Combine(targetDir, Path.GetFileName(zipFile));
-                            
-                            // Spostiamo il file (sovrascrivendo se esiste)
-                            if (File.Exists(destFile))
-                                File.Delete(destFile);
+                                string destFile = Path.Combine(targetDir, Path.GetFileName(zipFile));
                                 
-                            File.Move(zipFile, destFile);
-                            movedCount++;
+                                // Spostiamo il file (sovrascrivendo se esiste già)
+                                if (File.Exists(destFile))
+                                    File.Delete(destFile);
+                                    
+                                File.Move(zipFile, destFile);
+                                movedCount++;
+                            }
                         }
                     }
-                }
                 });
 
                 if (movedCount > 0)
                 {
-                    System.Windows.MessageBox.Show($"Operazione completata! {movedCount} file ZIP sono stati spostati in rete.", "Successo", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+                    string msg = $"Operazione completata! {movedCount} file ZIP sono stati spostati in rete nelle cartelle esistenti.";
+                    if (skippedLog.Count > 0)
+                    {
+                        msg += "\n\nFile non spostati:\n" + string.Join("\n", skippedLog);
+                    }
+                    System.Windows.MessageBox.Show(msg, "Esito Spostamento", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
                 }
                 else
                 {
-                    System.Windows.MessageBox.Show("Nessun file ZIP è stato spostato. Verifica che le cartelle di destinazione in rete esistano già e che i nomi corrispondano.", "Attenzione", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                    string msg = "Nessun file ZIP è stato spostato.";
+                    if (skippedLog.Count > 0)
+                    {
+                        msg += "\n\nDettagli:\n" + string.Join("\n", skippedLog);
+                    }
+                    else
+                    {
+                        msg += "\nVerifica che il nome del file ZIP rispetti la convenzione '[Ticket] [LOG/DUMP] [Treno] [Loco]...'.";
+                    }
+                    System.Windows.MessageBox.Show(msg, "Attenzione", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
                 }
             }
             catch (Exception ex)
             {
                 System.Windows.MessageBox.Show($"Errore durante lo spostamento in rete:\n{ex.Message}", "Errore", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             }
+        }
+
+        private static string? FindExistingLocoFolder(string trainTypePath, string loco, string rawTrainType, string fileTrainType)
+        {
+            if (!Directory.Exists(trainTypePath))
+                return null;
+
+            var existingDirs = Directory.GetDirectories(trainTypePath);
+            
+            string[] exactCandidates = [
+                $"{rawTrainType}-{loco}",
+                $"{fileTrainType}-{loco}",
+                $"{rawTrainType}_{loco}",
+                $"{fileTrainType}_{loco}",
+                $"{rawTrainType} {loco}",
+                $"{fileTrainType} {loco}",
+                loco
+            ];
+
+            foreach (var dir in existingDirs)
+            {
+                string dirName = Path.GetFileName(dir);
+                if (exactCandidates.Any(c => dirName.Equals(c, StringComparison.OrdinalIgnoreCase)))
+                {
+                    return dir;
+                }
+            }
+
+            string cleanLoco = loco.Trim();
+            foreach (var dir in existingDirs)
+            {
+                string dirName = Path.GetFileName(dir);
+                var tokens = dirName.Split(['-', '_', ' '], StringSplitOptions.RemoveEmptyEntries);
+                if (tokens.Contains(cleanLoco, StringComparer.OrdinalIgnoreCase))
+                {
+                    return dir;
+                }
+            }
+
+            foreach (var dir in existingDirs)
+            {
+                string dirName = Path.GetFileName(dir);
+                if (dirName.EndsWith(cleanLoco, StringComparison.OrdinalIgnoreCase))
+                {
+                    return dir;
+                }
+            }
+
+            return null;
+        }
+
+        private static string? FindExistingTargetSubfolder(string locoFolderPath, string logOrDump)
+        {
+            if (!Directory.Exists(locoFolderPath))
+                return null;
+
+            var existingSubDirs = Directory.GetDirectories(locoFolderPath);
+            foreach (var subDir in existingSubDirs)
+            {
+                string subDirName = Path.GetFileName(subDir);
+                if (subDirName.Equals(logOrDump, StringComparison.OrdinalIgnoreCase))
+                {
+                    return subDir;
+                }
+            }
+
+            return null;
+        }
+
+        private static string GetLogDumpReteBasePath()
+        {
+            string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            string[] subPaths = [
+                Path.Combine("Hitachi Group", "SSB_SST - LOG_DUMP_per_Reale"),
+                "SSB_SST - LOG_DUMP_per_Reale"
+            ];
+
+            var searchRoots = new System.Collections.Generic.List<string> { userProfile };
+
+            string[] envVars = [ "OneDriveCommercial", "OneDrive", "OneDriveConsumer", "USERPROFILE" ];
+            foreach (var envVar in envVars)
+            {
+                string? val = Environment.GetEnvironmentVariable(envVar);
+                if (!string.IsNullOrEmpty(val) && Directory.Exists(val))
+                {
+                    searchRoots.Add(val);
+                }
+            }
+
+            if (Directory.Exists(userProfile))
+            {
+                try
+                {
+                    foreach (var dir in Directory.GetDirectories(userProfile, "OneDrive*"))
+                    {
+                        searchRoots.Add(dir);
+                    }
+                }
+                catch { }
+            }
+
+            foreach (var root in searchRoots.Distinct())
+            {
+                foreach (var sub in subPaths)
+                {
+                    string candidate = Path.Combine(root, sub);
+                    if (Directory.Exists(candidate))
+                        return candidate;
+                }
+            }
+
+            return Path.Combine(userProfile, "Hitachi Group", "SSB_SST - LOG_DUMP_per_Reale");
+        }
+
+        private static readonly string[] Etr1000Candidates = ["ETR1001", "ETR1000", "1000FH", "ETR1000_1001"];
+        private static readonly string[] Etr500Candidates = ["E404P", "ETR500", "E404"];
+        private static readonly string[] Etr700Candidates = ["ETR700", "700"];
+        private static readonly string[] Etr421Candidates = ["ETR421", "421"];
+        private static readonly string[] Etr521Candidates = ["ETR521", "521"];
+        private static readonly string[] Etr522Candidates = ["ETR522", "522"];
+
+        private static string? ResolveTrainTypePath(string basePath, string rawTrainType)
+        {
+            string primaryName = rawTrainType == "1000FH" ? "ETR1001" : rawTrainType;
+            var candidateNames = new System.Collections.Generic.List<string> { primaryName, rawTrainType };
+
+            if (rawTrainType.Contains("1000") || rawTrainType.Contains("1001") || rawTrainType == "1000FH")
+            {
+                candidateNames.AddRange(Etr1000Candidates);
+            }
+            else if (rawTrainType.Contains("500") || rawTrainType.Contains("404") || rawTrainType == "E404P")
+            {
+                candidateNames.AddRange(Etr500Candidates);
+            }
+            else if (rawTrainType.Contains("700"))
+            {
+                candidateNames.AddRange(Etr700Candidates);
+            }
+            else if (rawTrainType.Contains("421"))
+            {
+                candidateNames.AddRange(Etr421Candidates);
+            }
+            else if (rawTrainType.Contains("521"))
+            {
+                candidateNames.AddRange(Etr521Candidates);
+            }
+            else if (rawTrainType.Contains("522"))
+            {
+                candidateNames.AddRange(Etr522Candidates);
+            }
+
+            if (Directory.Exists(basePath))
+            {
+                var existingDirs = Directory.GetDirectories(basePath);
+                foreach (var candidate in candidateNames.Distinct())
+                {
+                    foreach (var dir in existingDirs)
+                    {
+                        string dirName = Path.GetFileName(dir);
+                        if (dirName.Equals(candidate, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return dir;
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static bool AreTrainTypesCompatible(string type1, string type2)
+        {
+            if (string.Equals(type1, type2, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            static string Normalize(string t)
+            {
+                t = t.ToUpper();
+                if (t.Contains("1000") || t.Contains("1001") || t == "1000FH") return "ETR1000";
+                if (t.Contains("500") || t.Contains("404") || t == "E404P") return "ETR500";
+                if (t.Contains("700")) return "ETR700";
+                if (t.Contains("421")) return "ETR421";
+                if (t.Contains("521")) return "ETR521";
+                if (t.Contains("522")) return "ETR522";
+                return t;
+            }
+
+            return Normalize(type1) == Normalize(type2);
         }
 
         private async void OnElimina(object? parameter)

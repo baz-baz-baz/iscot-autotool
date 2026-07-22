@@ -1,0 +1,617 @@
+{
+  "Etr700": {
+    "TipoTreno": "ETR 700",
+    "NotaUfficioCt": "ETR 700 (da aggiornare durante il turno con verifica presso ufficio CT Hitachi)",
+    "Nome": "",
+    "Cognome": "",
+    "OraInizio": "",
+    "OraFine": "",
+    "OraInizioFine": "",
+    "Data": "22/07/2026",
+    "Movimenti": [
+      {
+        "Numero": 1,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 2,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 3,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 4,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 5,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 6,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 7,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 8,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 9,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 10,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      }
+    ],
+    "Interventi": [],
+    "InterventiNonSvolti": [
+      {
+        "Numero": 1,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 2,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 3,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 4,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 5,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 6,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 7,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 8,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 9,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 10,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      }
+    ]
+  },
+  "Etr1000": {
+    "TipoTreno": "ETR 1000",
+    "NotaUfficioCt": "ETR 1000 (da aggiornare durante il turno con verifica presso ufficio CT Hitachi)",
+    "Nome": "",
+    "Cognome": "",
+    "OraInizio": "",
+    "OraFine": "",
+    "OraInizioFine": "",
+    "Data": "22/07/2026",
+    "Movimenti": [
+      {
+        "Numero": 1,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 2,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 3,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 4,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 5,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 6,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 7,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 8,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 9,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 10,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      }
+    ],
+    "Interventi": [],
+    "InterventiNonSvolti": [
+      {
+        "Numero": 1,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 2,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 3,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 4,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 5,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 6,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 7,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 8,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 9,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 10,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      }
+    ]
+  },
+  "Etr500": {
+    "TipoTreno": "ETR 500",
+    "NotaUfficioCt": "ETR 500 (da aggiornare durante il turno con verifica presso ufficio CT Trenitalia)",
+    "Nome": "",
+    "Cognome": "",
+    "OraInizio": "",
+    "OraFine": "",
+    "OraInizioFine": "",
+    "Data": "22/07/2026",
+    "Movimenti": [
+      {
+        "Numero": 1,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 2,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 3,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 4,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 5,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 6,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 7,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 8,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 9,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      },
+      {
+        "Numero": 10,
+        "Treno": "",
+        "Loco": "",
+        "DataIngresso": "",
+        "OraIngresso": "",
+        "DataUscita": "",
+        "OraUscita": ""
+      }
+    ],
+    "Interventi": [],
+    "InterventiNonSvolti": [
+      {
+        "Numero": 1,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 2,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 3,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 4,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 5,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 6,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 7,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 8,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 9,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      },
+      {
+        "Numero": 10,
+        "TrenoLoco": "",
+        "Motivazione": "",
+        "OraRichiesta": "",
+        "Referente": "",
+        "InviataEmailBool": false,
+        "InviataEmail": "NO",
+        "PassaggioConsegna": ""
+      }
+    ]
+  }
+}

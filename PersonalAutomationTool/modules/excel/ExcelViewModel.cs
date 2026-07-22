@@ -367,7 +367,7 @@ namespace PersonalAutomationTool.Modules.Excel
                             fieldViewModel.Options = [];
                         }
 
-                        if (fieldName.Contains("Sito", StringComparison.OrdinalIgnoreCase) && fieldName.Contains("Intervento", StringComparison.OrdinalIgnoreCase))
+                        if (fieldName.Contains("Sito", StringComparison.OrdinalIgnoreCase))
                         {
                             fieldViewModel.IsComboBox = true;
                             fieldViewModel.Options = ["Pistoia", "Napoli Gianturco", "Milano Martesana", "Roma S.Lorenzo", "Piacenza", "Firenze", "OMC ETR Vicenza", "IMC AV Mestre"];
@@ -434,7 +434,7 @@ namespace PersonalAutomationTool.Modules.Excel
                         }
 
                         string[] importantKeywords = [
-                            "DATA CHIAMATA", "SITO INTERVENTO", "TICKET", "N. ODL", "Cliente",
+                            "DATA CHIAMATA", "SITO INTERVENTO", "SITO", "TICKET", "N. ODL", "Cliente",
                             "DATA INTERVENTO", "Inizio", "Fine", "ROTABILE", "SN", "LOCO",
                             "Tipologia", "AVARIA SEGNALATA", "CATEGORIA AVARIA", "Scarico Dati",
                             "Descrizione intervento effettuato", "TECNICO ASTS", "VERSIONE SW", "TECNICO HRSTS", "SW Installato"
@@ -601,8 +601,11 @@ namespace PersonalAutomationTool.Modules.Excel
             if (formDict.TryGetValue("DATA CHIAMATA", out var dataChiamata)) dataChiamata.FieldValue = folderDate;
             if (formDict.TryGetValue("DATA INTERVENTO", out var dataIntervento)) dataIntervento.FieldValue = folderDate;
 
-            // Sito Intervento
-            if (formDict.TryGetValue("SITO INTERVENTO", out var sito)) sito.FieldValue = "Milano Martesana";
+            // Sito Intervento / Sito
+            if (formDict.TryGetValue("SITO INTERVENTO", out var sito) || formDict.TryGetValue("SITO", out sito))
+            {
+                sito.FieldValue = "Milano Martesana";
+            }
 
             // (Ticket ASTS extraction is moved down to be handled together with info_ticket.json)
 

@@ -55,7 +55,8 @@
                 <!-- DataGrid -->
                 <DataGrid Grid.Row="2" ItemsSource="{Binding PendingItems}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}" AutoGenerateColumns="False" CanUserAddRows="False" 
                           HeadersVisibility="Column" Background="White" RowBackground="White" AlternatingRowBackground="#FAFAFA"
-                          BorderBrush="#EEEEEE" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#EEEEEE">
+                          BorderBrush="#EEEEEE" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#EEEEEE"
+                          ScrollViewer.CanContentScroll="False">
                     <DataGrid.Resources>
                         <Style TargetType="DataGridColumnHeader">
                             <Setter Property="Background" Value="White"/>

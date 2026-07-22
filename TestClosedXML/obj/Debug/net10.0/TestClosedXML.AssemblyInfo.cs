@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TestClosedXML")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+07b60fba5418a5c869044eca85878c20479fc444")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f326a8d993fe52f3f79860c1bcbf4bdcedba9d84")]
 [assembly: System.Reflection.AssemblyProductAttribute("TestClosedXML")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TestClosedXML")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
