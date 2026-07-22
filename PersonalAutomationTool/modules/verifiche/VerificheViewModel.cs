@@ -19,12 +19,16 @@ namespace PersonalAutomationTool.Modules.Verifiche
         private static readonly object _timerLock = new();
         private System.Threading.Timer? _debounceTimer;
 
+        public static VerificheViewModel? Instance { get; private set; }
+        public static event Action? OnVerificheDataUpdated;
+
         public ObservableCollection<VerificheModel> VerificheList500 { get; } = [];
         public ObservableCollection<VerificheModel> VerificheList700 { get; } = [];
         public ObservableCollection<VerificheModel> VerificheList1000 { get; } = [];
 
         public VerificheViewModel()
         {
+            Instance = this;
             _ = ReloadAllDataAsync();
 
             SetupWatchers();
@@ -35,6 +39,26 @@ namespace PersonalAutomationTool.Modules.Verifiche
             };
             _refreshTimer.Tick += (s, e) => CheckForFileUpdates();
             _refreshTimer.Start();
+        }
+
+        public static List<VerificheModel> GetVerificheForFleetStatic(string fleetIdentifier)
+        {
+            if (Instance != null)
+            {
+                if (fleetIdentifier == "500") return Instance.VerificheList500.ToList();
+                if (fleetIdentifier == "700") return Instance.VerificheList700.ToList();
+                if (fleetIdentifier == "1000") return Instance.VerificheList1000.ToList();
+            }
+
+            var list = new List<VerificheModel>();
+            if (fleetIdentifier == "500")
+                LoadDataForFleet(@"Hitachi Group\SSB_SST - Interventi ETR500\Censimento ETR500\Verifiche ETR500", "500", list);
+            else if (fleetIdentifier == "700")
+                LoadDataForFleet(@"Hitachi Group\SSB_SST - INTERVENTI ETR700 ELO BL3", "700", list);
+            else if (fleetIdentifier == "1000")
+                LoadDataForFleet(@"Hitachi Group\SSB_SST - Interventi ETR1000", "1000", list);
+
+            return list;
         }
 
         public async Task ReloadAllDataAsync()
@@ -54,6 +78,7 @@ namespace PersonalAutomationTool.Modules.Verifiche
                     UpdateCollection(VerificheList500, list500);
                     UpdateCollection(VerificheList700, list700);
                     UpdateCollection(VerificheList1000, list1000);
+                    OnVerificheDataUpdated?.Invoke();
                 });
             });
         }
@@ -126,7 +151,9 @@ namespace PersonalAutomationTool.Modules.Verifiche
             string[] relativePaths = [
                 @"Hitachi Group\SSB_SST - Interventi ETR500",
                 @"Hitachi Group\SSB_SST - INTERVENTI ETR700 ELO BL3",
-                @"Hitachi Group\SSB_SST - Interventi ETR1000"
+                @"Hitachi Group\SSB_SST - Interventi ETR700",
+                @"Hitachi Group\SSB_SST - Interventi ETR1000",
+                @"Hitachi Group\SSB_SST - Interventi ETR1000FH"
             ];
 
             bool hasChanges = false;
@@ -138,7 +165,10 @@ namespace PersonalAutomationTool.Modules.Verifiche
                     try
                     {
                         var files = Directory.GetFiles(folderPath, "*Verifiche*.xlsx", SearchOption.AllDirectories)
-                                             .Where(f => !Path.GetFileName(f).StartsWith("~$"));
+                                             .Where(f => !Path.GetFileName(f).StartsWith("~$") &&
+                                                         !f.Contains("OLD", StringComparison.OrdinalIgnoreCase) &&
+                                                         !f.Contains("VECCH", StringComparison.OrdinalIgnoreCase) &&
+                                                         !f.Contains("ARCHIV", StringComparison.OrdinalIgnoreCase));
 
                         foreach (var file in files)
                         {
@@ -172,51 +202,71 @@ namespace PersonalAutomationTool.Modules.Verifiche
             try
             {
                 string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                string folderPath = Path.Combine(userProfile, relativePath);
-                string filePath = string.Empty;
+                var folderPaths = new List<string> { Path.Combine(userProfile, relativePath) };
 
-                if (!Directory.Exists(folderPath))
+                if (fleetIdentifier == "1000")
                 {
-                    string fallbackPath = Path.Combine(userProfile, @"Hitachi Group\SSB_SST - Interventi ETR" + fleetIdentifier);
-                    if (fleetIdentifier == "700") fallbackPath = Path.Combine(userProfile, @"Hitachi Group\SSB_SST - INTERVENTI ETR700 ELO BL3");
-                    if (Directory.Exists(fallbackPath)) folderPath = fallbackPath;
+                    folderPaths.Add(Path.Combine(userProfile, @"Hitachi Group\SSB_SST - Interventi ETR1000FH"));
+                    folderPaths.Add(Path.Combine(userProfile, @"Hitachi Group\SSB_SST - Interventi ETR1000 FH"));
+                    folderPaths.Add(Path.Combine(userProfile, @"Hitachi Group\SSB_SST - Interventi ETR1000IF"));
+                }
+                else if (fleetIdentifier == "700")
+                {
+                    folderPaths.Add(Path.Combine(userProfile, @"Hitachi Group\SSB_SST - INTERVENTI ETR700 ELO BL3"));
+                    folderPaths.Add(Path.Combine(userProfile, @"Hitachi Group\SSB_SST - Interventi ETR700"));
+                }
+                else if (fleetIdentifier == "500")
+                {
+                    folderPaths.Add(Path.Combine(userProfile, @"Hitachi Group\SSB_SST - Interventi ETR500"));
                 }
 
-                if (Directory.Exists(folderPath))
+                foreach (var folder in folderPaths.Distinct())
                 {
-                    var allFolders = new System.Collections.Generic.List<string> { folderPath };
-                    try {
-                        var level1 = Directory.GetDirectories(folderPath);
-                        allFolders.AddRange(level1);
-                        foreach (var d1 in level1) {
-                            try { allFolders.AddRange(Directory.GetDirectories(d1)); } catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex.Message); }
-                        }
-                    } catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex.Message); }
-                    
-                    foreach (var dir in allFolders)
+                    if (!Directory.Exists(folder)) continue;
+
+                    var validSubFolders = new List<string> { folder };
+                    try
                     {
-                        try 
+                        var subDirs = Directory.GetDirectories(folder, "*", SearchOption.AllDirectories)
+                                               .Where(d => !d.Contains("OLD", StringComparison.OrdinalIgnoreCase) &&
+                                                           !d.Contains("VECCH", StringComparison.OrdinalIgnoreCase) &&
+                                                           !d.Contains("ARCHIV", StringComparison.OrdinalIgnoreCase));
+                        validSubFolders.AddRange(subDirs);
+                    }
+                    catch { }
+
+                    var candidateFiles = new List<string>();
+                    foreach (var dir in validSubFolders)
+                    {
+                        try
                         {
                             var files = Directory.GetFiles(dir, "*Verifiche*.xlsx")
-                                                 .Where(f => !Path.GetFileName(f).StartsWith("~$"))
-                                                 .ToArray();
-                            if (files.Length > 0)
-                            {
-                                var recentFile = files.OrderByDescending(f => File.GetLastWriteTime(f)).First();
-                                filePath = recentFile;
-                                break;
-                            }
+                                                 .Where(f => !Path.GetFileName(f).StartsWith("~$") &&
+                                                             !f.Contains("OLD", StringComparison.OrdinalIgnoreCase) &&
+                                                             !f.Contains("VECCH", StringComparison.OrdinalIgnoreCase) &&
+                                                             !f.Contains("ARCHIV", StringComparison.OrdinalIgnoreCase));
+                            candidateFiles.AddRange(files);
                         }
                         catch { }
                     }
-                }
 
-                if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
-                {
-                    System.Diagnostics.Debug.WriteLine($"File Verifiche non trovato per la flotta {fleetIdentifier}");
-                    return;
+                    var mostRecentFile = candidateFiles.OrderByDescending(f => File.GetLastWriteTime(f)).FirstOrDefault();
+                    if (mostRecentFile != null)
+                    {
+                        ParseExcelFile(mostRecentFile, fleetIdentifier, collection);
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Errore caricamento Verifiche {fleetIdentifier}: {ex.Message}");
+            }
+        }
 
+        private static void ParseExcelFile(string filePath, string fleetIdentifier, List<VerificheModel> collection)
+        {
+            try
+            {
                 using var workbook = new XLWorkbook(filePath);
                 var worksheet = workbook.Worksheet(1);
                 var rowsUsed = worksheet.RowsUsed().ToList();
@@ -297,7 +347,7 @@ namespace PersonalAutomationTool.Modules.Verifiche
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Errore caricamento Verifiche {fleetIdentifier}: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Errore parse file Excel {filePath}: {ex.Message}");
             }
         }
 

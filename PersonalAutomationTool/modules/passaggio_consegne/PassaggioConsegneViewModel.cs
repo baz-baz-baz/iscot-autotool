@@ -1,8 +1,10 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using PersonalAutomationTool.Core;
+using PersonalAutomationTool.Modules.Verifiche;
 
 namespace PersonalAutomationTool.Modules.PassaggioConsegne
 {
@@ -41,6 +43,7 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
         public ICommand ResetCommand { get; }
 
         public ObservableCollection<string> OpzioniSiNo { get; } = new() { "", "SI", "NO" };
+        public ObservableCollection<string> OpzioniTurno { get; } = new() { "", "1° Turno", "Turno CS", "2° Turno", "3° Turno" };
 
         public PassaggioConsegneViewModel()
         {
@@ -115,10 +118,62 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
                         n.InviataEmail = string.Empty;
                         n.PassaggioConsegna = string.Empty;
                     }
+
+                    AutoCompilaTreniDaVerifiche();
                 }
             });
 
             CaricaDati();
+            AutoCompilaTreniDaVerifiche();
+
+            VerificheViewModel.OnVerificheDataUpdated += () =>
+            {
+                Application.Current?.Dispatcher.InvokeAsync(() =>
+                {
+                    AutoCompilaTreniDaVerifiche();
+                });
+            };
+        }
+
+        public void AutoCompilaTreniDaVerifiche()
+        {
+            AutoCompilaRapportino(RapportinoEtr700, "700");
+            AutoCompilaRapportino(RapportinoEtr1000, "1000");
+            AutoCompilaRapportino(RapportinoEtr500, "500");
+        }
+
+        private static void AutoCompilaRapportino(RapportinoTurnoModel rapportino, string fleetIdentifier)
+        {
+            var rawList = VerificheViewModel.GetVerificheForFleetStatic(fleetIdentifier);
+            if (rawList == null || rawList.Count == 0) return;
+
+            var grouped = rawList
+                .Where(v => !string.IsNullOrWhiteSpace(v.Treno))
+                .GroupBy(v => v.Treno.Trim(), StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (grouped.Count == 0) return;
+
+            for (int i = 0; i < grouped.Count; i++)
+            {
+                var grp = grouped[i];
+                string trenoName = grp.Key;
+
+                var locos = grp.Select(v => v.Loco?.Trim())
+                               .Where(l => !string.IsNullOrWhiteSpace(l))
+                               .Distinct(StringComparer.OrdinalIgnoreCase)
+                               .ToList();
+
+                string combinedLoco = string.Join(" - ", locos);
+
+                if (i >= rapportino.Movimenti.Count)
+                {
+                    rapportino.Movimenti.Add(new MovimentoTrenoRow { Numero = i + 1 });
+                }
+
+                rapportino.Movimenti[i].Treno = trenoName;
+                rapportino.Movimenti[i].Loco = combinedLoco;
+            }
         }
 
         public void SalvaDati(bool showNotification = true)
@@ -168,10 +223,26 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
                         if (container.Etr1000 != null) RapportinoEtr1000 = container.Etr1000;
                         if (container.Etr500 != null) RapportinoEtr500 = container.Etr500;
                         SelectedRapportino = RapportinoEtr700;
+
+                        PulisciInviataEmail(RapportinoEtr700);
+                        PulisciInviataEmail(RapportinoEtr1000);
+                        PulisciInviataEmail(RapportinoEtr500);
                     }
                 }
             }
             catch { }
+        }
+
+        private static void PulisciInviataEmail(RapportinoTurnoModel? model)
+        {
+            if (model?.InterventiNonSvolti == null) return;
+            foreach (var item in model.InterventiNonSvolti)
+            {
+                if (item.InviataEmail == "NO")
+                {
+                    item.InviataEmail = string.Empty;
+                }
+            }
         }
     }
 

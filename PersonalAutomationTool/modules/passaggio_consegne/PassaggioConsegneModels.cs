@@ -189,20 +189,11 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
             set => SetProperty(ref _referente, value);
         }
 
-        private bool _inviataEmailBool;
-        public bool InviataEmailBool
-        {
-            get => _inviataEmailBool;
-            set
-            {
-                if (SetProperty(ref _inviataEmailBool, value))
-                    OnPropertyChanged(nameof(InviataEmail));
-            }
-        }
+        private string _inviataEmail = string.Empty;
         public string InviataEmail
         {
-            get => InviataEmailBool ? "SI" : "NO";
-            set => InviataEmailBool = (value == "SI");
+            get => _inviataEmail;
+            set => SetProperty(ref _inviataEmail, value);
         }
 
         private string _passaggioConsegna = string.Empty;
@@ -241,6 +232,42 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
         {
             get => _cognome;
             set => SetProperty(ref _cognome, value);
+        }
+
+        private string _turnoPredefinito = string.Empty;
+        public string TurnoPredefinito
+        {
+            get => _turnoPredefinito;
+            set
+            {
+                if (SetProperty(ref _turnoPredefinito, value))
+                {
+                    ApplicaOrariTurno(value);
+                }
+            }
+        }
+
+        private void ApplicaOrariTurno(string turno)
+        {
+            switch (turno)
+            {
+                case "1° Turno":
+                    OraInizio = "06:00";
+                    OraFine = "14:00";
+                    break;
+                case "Turno CS":
+                    OraInizio = "08:00";
+                    OraFine = "16:30";
+                    break;
+                case "2° Turno":
+                    OraInizio = "14:00";
+                    OraFine = "22:00";
+                    break;
+                case "3° Turno":
+                    OraInizio = "22:00";
+                    OraFine = "06:00";
+                    break;
+            }
         }
 
         private string _oraInizio = string.Empty;

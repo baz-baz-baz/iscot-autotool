@@ -132,6 +132,16 @@
                         </Button>
                     </StackPanel>
 
+                    <!-- Selezione Turno Predefinito (Invisibile nel PDF) -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="10,0">
+                        <TextBlock Text="Turno Predefinito:" VerticalAlignment="Center" FontWeight="Bold" FontSize="13" Foreground="#333333" Margin="0,0,8,0"/>
+                        <ComboBox ItemsSource="{Binding OpzioniTurno}" 
+                                  SelectedItem="{Binding SelectedRapportino.TurnoPredefinito, Mode=TwoWay}"
+                                  Width="130" Height="38" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                                  FontSize="13" FontWeight="Bold" Background="#FFF8E1" BorderBrush="#FFB300" BorderThickness="1">
+                        </ComboBox>
+                    </StackPanel>
+
                     <!-- Bottoni Azione -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button Content="+ Aggiungi Intervento" Command="{Binding AggiungiInterventoCommand}" 
@@ -363,6 +373,7 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <CheckBox IsChecked="{Binding CompilazioneOdlBool, UpdateSourceTrigger=PropertyChanged}" 
+                                                  Content="{Binding CompilazioneOdl}" FontWeight="Bold"
                                                   HorizontalAlignment="Center" VerticalAlignment="Center" Cursor="Hand"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -371,6 +382,7 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <CheckBox IsChecked="{Binding ChiusuraTicketBool, UpdateSourceTrigger=PropertyChanged}" 
+                                                  Content="{Binding ChiusuraTicket}" FontWeight="Bold"
                                                   HorizontalAlignment="Center" VerticalAlignment="Center" Cursor="Hand"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -379,6 +391,7 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <CheckBox IsChecked="{Binding CompReportBool, UpdateSourceTrigger=PropertyChanged}" 
+                                                  Content="{Binding CompReport}" FontWeight="Bold"
                                                   HorizontalAlignment="Center" VerticalAlignment="Center" Cursor="Hand"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -387,6 +400,7 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <CheckBox IsChecked="{Binding EmailIngegneriaBool, UpdateSourceTrigger=PropertyChanged}" 
+                                                  Content="{Binding EmailIngegneria}" FontWeight="Bold"
                                                   HorizontalAlignment="Center" VerticalAlignment="Center" Cursor="Hand"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -395,6 +409,7 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <CheckBox IsChecked="{Binding AggiornareVerificheBool, UpdateSourceTrigger=PropertyChanged}" 
+                                                  Content="{Binding AggiornareVerifiche}" FontWeight="Bold"
                                                   HorizontalAlignment="Center" VerticalAlignment="Center" Cursor="Hand"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
@@ -446,8 +461,7 @@
                             <DataGridTemplateColumn Header="INVIATA EMAIL AD&#10;INGEGNERIA" Width="140">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <CheckBox IsChecked="{Binding InviataEmailBool, UpdateSourceTrigger=PropertyChanged}" 
-                                                  HorizontalAlignment="Center" VerticalAlignment="Center" Cursor="Hand"/>
+                                        <TextBox Text="{Binding InviataEmail, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource CellTextBoxStyle}"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
