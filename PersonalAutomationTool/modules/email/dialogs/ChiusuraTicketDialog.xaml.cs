@@ -180,36 +180,41 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
                                 var parts = dirName.Split(" LOG ", StringSplitOptions.None);
                                 if (parts.Length > 1)
                                 {
-                                var dateMatch = SixDigitsRegex().Match(dirName);
-                                var infoParts = dirName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                                if (dateMatch.Success)
-                                {
-                                    int dateIndex = Array.IndexOf(infoParts, dateMatch.Value);
-                                    int locoStartIndex = 3;
-                                    if (infoParts.Length > 3 && (infoParts[3].Equals("I-F", StringComparison.OrdinalIgnoreCase) || infoParts[3].Equals("FH", StringComparison.OrdinalIgnoreCase)))
+                                    var subParts = parts[1].Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                                    if (subParts.Length >= 3)
                                     {
-                                        locoStartIndex = 4;
-                                    }
-                                    
-                                    if (dateIndex > locoStartIndex)
-                                    {
-                                        string locoString = string.Join(" ", infoParts.Skip(locoStartIndex).Take(dateIndex - locoStartIndex));
-                                        var splittedLocos = locoString.Split('-', StringSplitOptions.RemoveEmptyEntries);
-                                        foreach(var s in splittedLocos) 
+                                        int locoIndex = 2;
+                                        // If train is "ETR1000 I-F" or "ETR1000 FH", the loco is shifted by one
+                                        if (subParts[1].Equals("I-F", StringComparison.OrdinalIgnoreCase) || subParts[1].Equals("FH", StringComparison.OrdinalIgnoreCase))
                                         {
-                                            string cleanLoco = s.Trim();
-                                            cleanLoco = BistandardRegex().Replace(cleanLoco, "").Trim();
-                                            if (cleanLoco.Contains(' '))
+                                            locoIndex = 3;
+                                        }
+
+                                        // If date is missing after LOG, train might be at index 0
+                                        if (!SixDigitsRegex().IsMatch(subParts[0]))
+                                        {
+                                            locoIndex--;
+                                        }
+
+                                        if (locoIndex < subParts.Length)
+                                        {
+                                            string locoString = subParts[locoIndex];
+                                            var splittedLocos = locoString.Split('-', StringSplitOptions.RemoveEmptyEntries);
+                                            foreach (var s in splittedLocos)
                                             {
-                                                cleanLoco = cleanLoco.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
-                                            }
-                                            if (!string.IsNullOrEmpty(cleanLoco))
-                                            {
-                                                locos.Add(cleanLoco);
+                                                string cleanLoco = s.Trim();
+                                                cleanLoco = BistandardRegex().Replace(cleanLoco, "").Trim();
+                                                if (cleanLoco.Contains(' '))
+                                                {
+                                                    cleanLoco = cleanLoco.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
+                                                }
+                                                if (!string.IsNullOrEmpty(cleanLoco))
+                                                {
+                                                    locos.Add(cleanLoco);
+                                                }
                                             }
                                         }
                                     }
-                                }
                                 }
                             }
                         }

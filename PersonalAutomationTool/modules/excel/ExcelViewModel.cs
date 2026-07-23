@@ -190,6 +190,7 @@ namespace PersonalAutomationTool.Modules.Excel
                 if (originalFile == null)
                 {
                     IsLoading = false;
+                    await Task.Delay(100);
                     MessageBox.Show("File 'Report Interventi' non trovato nella cartella Hitachi né in LOG & DUMP:\n" + hitachiDir, "Attenzione", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
@@ -197,7 +198,9 @@ namespace PersonalAutomationTool.Modules.Excel
                 if (alreadyInLogDump)
                 {
                     await LoadExcelFieldsAsync(originalFile);
+                    await AutoFillReportFieldsAsync();
                     IsLoading = false;
+                    await Task.Delay(100);
                     MessageBox.Show("Il file 'Report Interventi' era già presente in LOG & DUMP. I campi sono stati caricati.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
@@ -205,13 +208,16 @@ namespace PersonalAutomationTool.Modules.Excel
                 if (movedFile != null)
                 {
                     await LoadExcelFieldsAsync(movedFile);
+                    await AutoFillReportFieldsAsync();
                     IsLoading = false;
+                    await Task.Delay(100);
                     MessageBox.Show("Report spostato e campi caricati con successo!", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
             {
                 IsLoading = false;
+                await Task.Delay(100);
                 MessageBox.Show($"Si è verificato un errore durante l'operazione:\n{ex.Message}", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
@@ -340,7 +346,11 @@ namespace PersonalAutomationTool.Modules.Excel
                                         string val = c.GetString();
                                         if (!string.IsNullOrWhiteSpace(val))
                                         {
-                                            allOptions.Add(val.Trim());
+                                            val = val.Trim();
+                                            if (!val.StartsWith('#') && !val.StartsWith('='))
+                                            {
+                                                allOptions.Add(val);
+                                            }
                                         }
                                     }
                                 }
@@ -350,7 +360,10 @@ namespace PersonalAutomationTool.Modules.Excel
                                     var opts = listValue.Trim('"').Split([',', ';'], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim());
                                     foreach (var o in opts)
                                     {
-                                        allOptions.Add(o);
+                                        if (!o.StartsWith('#') && !o.StartsWith('='))
+                                        {
+                                            allOptions.Add(o);
+                                        }
                                     }
                                 }
                             }
@@ -361,16 +374,34 @@ namespace PersonalAutomationTool.Modules.Excel
                         // Forza campi specifici ad essere sempre una TextBox (non ComboBox) 
                         // anche se nel file Excel originale c'è una convalida dati, per permettere l'autocompilazione libera.
                         if (fieldName.Contains("Descrizione intervento effettuato", StringComparison.OrdinalIgnoreCase) || 
+                            fieldName.Contains("LRU", StringComparison.OrdinalIgnoreCase) ||
                             fieldName.Equals("Rev.", StringComparison.OrdinalIgnoreCase))
                         {
                             fieldViewModel.IsComboBox = false;
                             fieldViewModel.Options = [];
                         }
 
+                        if (fieldName.Equals("Cliente", StringComparison.OrdinalIgnoreCase) || fieldName.Contains("Cliente", StringComparison.OrdinalIgnoreCase))
+                        {
+                            fieldViewModel.IsComboBox = true;
+                            fieldViewModel.Options = ["Hitachi", "Trenitalia"];
+                        }
+
                         if (fieldName.Contains("Sito", StringComparison.OrdinalIgnoreCase))
                         {
                             fieldViewModel.IsComboBox = true;
                             fieldViewModel.Options = ["Pistoia", "Napoli Gianturco", "Milano Martesana", "Roma S.Lorenzo", "Piacenza", "Firenze", "OMC ETR Vicenza", "IMC AV Mestre"];
+                        }
+
+                        if (fieldName.Contains("TECNICO", StringComparison.OrdinalIgnoreCase) && !fieldName.Contains("Cliente", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (fieldViewModel.Options != null && fieldViewModel.Options.Count > 0)
+                            {
+                                fieldViewModel.Options = [.. fieldViewModel.Options
+                                    .Where(opt => !opt.StartsWith('#') 
+                                               && !SoftwareVersionRegex().IsMatch(opt) 
+                                               && !opt.Contains("ELO BL", StringComparison.OrdinalIgnoreCase))];
+                            }
                         }
 
                         if (fieldName.Contains("Tipologia", StringComparison.OrdinalIgnoreCase))
@@ -856,12 +887,20 @@ namespace PersonalAutomationTool.Modules.Excel
                 {
                     if (snField != null) snField.FieldValue = targetLoco;
                     
-                    var infoMatch = allInputsWithLoco.FirstOrDefault(x => x.Group.GroupLocoName == targetLoco);
-                    if (infoMatch.Group != null && infoMatch.Input != null)
+                    var ticketsForLoco = ticketsList.Where(t => ticketLocoMap.ContainsKey(t) && ticketLocoMap[t] == targetLoco).ToList();
+                    int ticketIndex = ticketsForLoco.IndexOf(ticketSelezionato);
+                    if (ticketIndex < 0) ticketIndex = 0;
+                    
+                    var inputsForLoco = allInputsWithLoco.Where(x => x.Group.GroupLocoName == targetLoco).ToList();
+                    if (inputsForLoco.Count > 0)
                     {
-                        if (avariaField != null) avariaField.FieldValue = infoMatch.Input.Avaria;
-                        if (interventoField != null) interventoField.FieldValue = infoMatch.Input.Intervento;
-                        if (odlField != null) odlField.FieldValue = infoMatch.Input.Avviso;
+                        var infoMatch = ticketIndex < inputsForLoco.Count ? inputsForLoco[ticketIndex] : inputsForLoco.Last();
+                        if (infoMatch.Group != null && infoMatch.Input != null)
+                        {
+                            if (avariaField != null && !string.IsNullOrWhiteSpace(infoMatch.Input.Avaria)) avariaField.FieldValue = infoMatch.Input.Avaria;
+                            if (interventoField != null && !string.IsNullOrWhiteSpace(infoMatch.Input.Intervento)) interventoField.FieldValue = infoMatch.Input.Intervento;
+                            if (odlField != null && !string.IsNullOrWhiteSpace(infoMatch.Input.Avviso)) odlField.FieldValue = infoMatch.Input.Avviso;
+                        }
                     }
                 }
                 
@@ -1062,27 +1101,57 @@ namespace PersonalAutomationTool.Modules.Excel
                 await Task.Run(() => 
                 {
                     // 1. Usa ClosedXML per trovare l'ultima riga reale in modo veloce e preciso, ignorando spazi vuoti o formattazione.
-                    {
                     using var fs = new FileStream(_currentExcelFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                     using var workbook = new XLWorkbook(fs);
                     var ws = workbook.Worksheets.FirstOrDefault();
                     if (ws != null)
                     {
-                        int lastRow = 1;
-                        // Cerca in tutte le celle del foglio per non escludere colonne (come la A o colonne oltre la AA)
-                        var cellsWithValues = ws.CellsUsed(c => !c.Value.IsBlank && c.Address.RowNumber < 900000);
-                        if (cellsWithValues.Any())
+                        int maxFilledRow = 1;
+                        int scanLimit = ws.RangeUsed()?.LastRow()?.RowNumber() ?? 1;
+                        // Trova l'ultima riga compilata della tabella analizzando le colonne chiave (B: Data, C: Sito, D: Ticket, G: Loco)
+                        for (int r = 2; r <= scanLimit; r++)
                         {
-                            lastRow = cellsWithValues.Max(c => c.Address.RowNumber);
+                            bool hasData = (!ws.Cell(r, 2).IsEmpty() && !string.IsNullOrWhiteSpace(ws.Cell(r, 2).GetString())) ||
+                                           (!ws.Cell(r, 3).IsEmpty() && !string.IsNullOrWhiteSpace(ws.Cell(r, 3).GetString())) ||
+                                           (!ws.Cell(r, 4).IsEmpty() && !string.IsNullOrWhiteSpace(ws.Cell(r, 4).GetString())) ||
+                                           (!ws.Cell(r, 7).IsEmpty() && !string.IsNullOrWhiteSpace(ws.Cell(r, 7).GetString()));
+
+                            if (hasData)
+                            {
+                                maxFilledRow = r;
+                            }
+                            else
+                            {
+                                // Controlla le successive 20 righe per assicurarsi che non ci siano righe vuote in mezzo
+                                bool anyDataAhead = false;
+                                for (int ahead = 1; ahead <= 20; ahead++)
+                                {
+                                    int checkRow = r + ahead;
+                                    if ((!ws.Cell(checkRow, 2).IsEmpty() && !string.IsNullOrWhiteSpace(ws.Cell(checkRow, 2).GetString())) ||
+                                        (!ws.Cell(checkRow, 3).IsEmpty() && !string.IsNullOrWhiteSpace(ws.Cell(checkRow, 3).GetString())) ||
+                                        (!ws.Cell(checkRow, 4).IsEmpty() && !string.IsNullOrWhiteSpace(ws.Cell(checkRow, 4).GetString())))
+                                    {
+                                        anyDataAhead = true;
+                                        break;
+                                    }
+                                }
+
+                                if (!anyDataAhead)
+                                {
+                                    break;
+                                }
+                            }
                         }
-                        targetRow = lastRow + 1;
+                        targetRow = maxFilledRow + 1;
                     }
-                }
+                }); // Fine Task.Run ClosedXML - file completamente rilasciato
 
                 // 2. Usa Excel Interop per scrivere i valori in modo nativo, per NON alterare in alcun modo la formattazione e la struttura del file
                 Type? excelType = Type.GetTypeFromProgID("Excel.Application");
                 if (excelType == null)
                 {
+                    IsLoading = false;
+                    await Task.Delay(100);
                     MessageBox.Show("Excel non risulta installato. Impossibile salvare senza alterare il file.", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
@@ -1090,10 +1159,14 @@ namespace PersonalAutomationTool.Modules.Excel
                 dynamic? excelApp = Activator.CreateInstance(excelType);
                 if (excelApp == null)
                 {
+                    IsLoading = false;
+                    await Task.Delay(100);
                     MessageBox.Show("Impossibile avviare Excel.", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
 
+                await Task.Run(() =>
+                {
                 dynamic? workbookInterop = null;
                 dynamic? worksheetInterop = null;
 
@@ -1136,9 +1209,10 @@ namespace PersonalAutomationTool.Modules.Excel
                     if (workbookInterop != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(workbookInterop);
                     if (excelApp != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(excelApp);
                 }
-                }); // Fine Task.Run
+                }); // Fine Task.Run Interop
                     
                 IsLoading = false;
+                await Task.Delay(100);
                 MessageBox.Show($"Report salvato con successo alla riga {targetRow}.", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
                     
                 // (I campi non vengono puliti automaticamente qui per permettere il 'Riporta Report')
@@ -1146,11 +1220,13 @@ namespace PersonalAutomationTool.Modules.Excel
             catch (IOException ioEx)
             {
                 IsLoading = false;
+                await Task.Delay(100);
                 MessageBox.Show($"Impossibile salvare il report perché il file Excel è attualmente aperto. Chiudi Excel e riprova.\n\nDettaglio: {ioEx.Message}", "File Aperto", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             catch (Exception ex)
             {
                 IsLoading = false;
+                await Task.Delay(100);
                 MessageBox.Show($"Errore durante il salvataggio nel file Excel:\n{ex.Message}\n{ex.StackTrace}", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
@@ -1239,6 +1315,7 @@ namespace PersonalAutomationTool.Modules.Excel
                 if (!Directory.Exists(hitachiDir))
                 {
                     IsLoading = false;
+                    await Task.Delay(100);
                     MessageBox.Show("Cartella d'origine Hitachi non trovata:\n" + hitachiDir, "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
@@ -1251,6 +1328,7 @@ namespace PersonalAutomationTool.Modules.Excel
                 });
 
                 IsLoading = false;
+                await Task.Delay(100);
                 MessageBox.Show($"Report riportato con successo nella cartella d'origine come:\n{newFileName}", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
                 
                 _currentExcelFilePath = null;
@@ -1259,6 +1337,7 @@ namespace PersonalAutomationTool.Modules.Excel
             catch (Exception ex)
             {
                 IsLoading = false;
+                await Task.Delay(100);
                 MessageBox.Show($"Si è verificato un errore durante l'operazione:\n{ex.Message}", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
@@ -1297,31 +1376,33 @@ namespace PersonalAutomationTool.Modules.Excel
         {
             if (string.IsNullOrEmpty(trainType)) return false;
 
+            string fileName = Path.GetFileName(name);
+
             if (trainType == "E404P")
             {
-                return name.Contains("ETR500", StringComparison.OrdinalIgnoreCase) || 
-                       name.Contains("E404P", StringComparison.OrdinalIgnoreCase);
+                return fileName.Contains("ETR500", StringComparison.OrdinalIgnoreCase) || 
+                       fileName.Contains("E404P", StringComparison.OrdinalIgnoreCase);
             }
             if (trainType == "ETR1000 / 1000FH")
             {
-                return (name.Contains("ETR1000", StringComparison.OrdinalIgnoreCase) || 
-                        name.Contains("1001", StringComparison.OrdinalIgnoreCase) || 
-                        name.Contains("1000FH", StringComparison.OrdinalIgnoreCase)) &&
-                       !name.Contains("Italia", StringComparison.OrdinalIgnoreCase) &&
-                       !name.Contains("Francia", StringComparison.OrdinalIgnoreCase) &&
-                       !name.Contains("ITA-FRA", StringComparison.OrdinalIgnoreCase) &&
-                       !name.Contains("1000IF", StringComparison.OrdinalIgnoreCase) &&
-                       !name.Contains("I-F", StringComparison.OrdinalIgnoreCase);
+                return (fileName.Contains("ETR1000", StringComparison.OrdinalIgnoreCase) || 
+                        fileName.Contains("1001", StringComparison.OrdinalIgnoreCase) || 
+                        fileName.Contains("1000FH", StringComparison.OrdinalIgnoreCase)) &&
+                       !fileName.Contains("Italia", StringComparison.OrdinalIgnoreCase) &&
+                       !fileName.Contains("Francia", StringComparison.OrdinalIgnoreCase) &&
+                       !fileName.Contains("ITA-FRA", StringComparison.OrdinalIgnoreCase) &&
+                       !fileName.Contains("1000IF", StringComparison.OrdinalIgnoreCase) &&
+                       !fileName.Contains("I-F", StringComparison.OrdinalIgnoreCase);
             }
             if (trainType == "ETR1000 I-F")
             {
-                return name.Contains("1000IF", StringComparison.OrdinalIgnoreCase) || 
-                       name.Contains("Italia", StringComparison.OrdinalIgnoreCase) || 
-                       name.Contains("Francia", StringComparison.OrdinalIgnoreCase) || 
-                       name.Contains("ITA-FRA", StringComparison.OrdinalIgnoreCase) || 
-                       name.Contains("I-F", StringComparison.OrdinalIgnoreCase);
+                return fileName.Contains("1000IF", StringComparison.OrdinalIgnoreCase) || 
+                       fileName.Contains("Italia", StringComparison.OrdinalIgnoreCase) || 
+                       fileName.Contains("Francia", StringComparison.OrdinalIgnoreCase) || 
+                       fileName.Contains("ITA-FRA", StringComparison.OrdinalIgnoreCase) || 
+                       fileName.Contains("I-F", StringComparison.OrdinalIgnoreCase);
             }
-            return name.Contains(trainType, StringComparison.OrdinalIgnoreCase);
+            return fileName.Contains(trainType, StringComparison.OrdinalIgnoreCase);
         }
 
         public void Dispose()
@@ -1347,5 +1428,8 @@ namespace PersonalAutomationTool.Modules.Excel
 
         [GeneratedRegex(@"\b\d{2,4}\b")]
         private static partial Regex StandaloneLocoRegex();
+
+        [GeneratedRegex(@"^\d{2}\.\d{2}")]
+        private static partial Regex SoftwareVersionRegex();
     }
 }

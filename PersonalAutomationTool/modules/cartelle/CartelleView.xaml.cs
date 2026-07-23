@@ -23,8 +23,17 @@ namespace PersonalAutomationTool.Modules.Cartelle
             };
             _debounceTimer.Tick += DebounceTimer_Tick;
 
-            PersonalAutomationTool.Core.AppWatcher.OnLogDumpFolderChanged += RefreshData;
-            this.Unloaded += (s, e) => PersonalAutomationTool.Core.AppWatcher.OnLogDumpFolderChanged -= RefreshData;
+            this.Loaded += (s, e) =>
+            {
+                PersonalAutomationTool.Core.AppWatcher.OnLogDumpFolderChanged -= RefreshData;
+                PersonalAutomationTool.Core.AppWatcher.OnLogDumpFolderChanged += RefreshData;
+                UpdatePreviews();
+            };
+
+            this.Unloaded += (s, e) =>
+            {
+                PersonalAutomationTool.Core.AppWatcher.OnLogDumpFolderChanged -= RefreshData;
+            };
         }
 
         private void RefreshData()

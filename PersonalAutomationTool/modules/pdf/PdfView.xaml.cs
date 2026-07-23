@@ -16,16 +16,26 @@ namespace PersonalAutomationTool.Modules.Pdf
         {
             InitializeComponent();
             ItemsControlCards.ItemsSource = TrainCards;
-            LoadFolders();
 
-            PersonalAutomationTool.Core.AppWatcher.OnLogDumpFolderChanged += RefreshData;
-            this.Unloaded += (s, e) => PersonalAutomationTool.Core.AppWatcher.OnLogDumpFolderChanged -= RefreshData;
+            this.Loaded += (s, e) =>
+            {
+                PersonalAutomationTool.Core.AppWatcher.OnLogDumpFolderChanged -= RefreshData;
+                PersonalAutomationTool.Core.AppWatcher.OnLogDumpFolderChanged += RefreshData;
+                LoadFolders();
+            };
+
+            this.Unloaded += (s, e) =>
+            {
+                PersonalAutomationTool.Core.AppWatcher.OnLogDumpFolderChanged -= RefreshData;
+            };
         }
 
         private void RefreshData()
         {
-            // Debounce load or just reload
-            LoadFolders();
+            Dispatcher.InvokeAsync(() =>
+            {
+                LoadFolders();
+            });
         }
 
         private async void LoadFolders()

@@ -1,51 +1,129 @@
 using System;
+using System.Reflection;
 using System.IO;
+using System.Collections.Generic;
 using System.Linq;
-using ClosedXML.Excel;
+using System.Threading;
+using System.Windows.Threading;
 
-class Program
+namespace TestClosedXML
 {
-    static void Main()
+    class Program
     {
-        try
+        [STAThread]
+        static void Main()
         {
-            var dir = new DirectoryInfo(@"C:\Users\Bassetto Alessio\Desktop\LOG & DUMP");
-            var file = dir.GetFiles("Report Interventi*.xlsx").FirstOrDefault();
+            Console.WriteLine("Iniziando i test...");
             
-            if (file == null)
+            try
             {
-                Console.WriteLine("File non trovato.");
-                return;
+                TestMatchesTrain();
+                TestChiusuraTicketDialogParsing();
+                TestDestinatariManager();
             }
-
-            using var fs = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            using var workbook = new XLWorkbook(fs);
-            var ws = workbook.Worksheets.FirstOrDefault();
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Errore: {ex}");
+            }
             
-            if (ws == null)
-            {
-                Console.WriteLine("Worksheet non trovato.");
-                return;
-            }
+            Console.WriteLine("Test completati.");
+        }
 
-            int lastRow = 1;
-            for (int col = 2; col <= 27; col++)
+        static void TestMatchesTrain()
+        {
+            Console.WriteLine("--- Test MatchesTrain ---");
+            var assembly = typeof(PersonalAutomationTool.Modules.Excel.ExcelViewModel).Assembly;
+            var type = assembly.GetType("PersonalAutomationTool.Modules.Excel.ExcelViewModel");
+            var method = type?.GetMethod("MatchesTrain", BindingFlags.NonPublic | BindingFlags.Static);
+            
+            bool matchesTrain(string name, string trainType) => method?.Invoke(null, [name, trainType]) is bool b && b;
+
+
+            AssertTrue(matchesTrain("Report Interventi ETR500 230726 04_04.xlsx", "E404P"), "E404P");
+            AssertTrue(matchesTrain("Report 1001.xlsx", "ETR1000 / 1000FH"), "ETR1000");
+            AssertFalse(matchesTrain("Report 1000IF.xlsx", "ETR1000 / 1000FH"), "ETR1000 excludes 1000IF");
+            Console.WriteLine("Test MatchesTrain completato con successo.\n");
+        }
+
+        static void TestChiusuraTicketDialogParsing()
+        {
+            Console.WriteLine("--- Test ChiusuraTicketDialog Parsing ---");
+            
+            string testDir = Path.Combine(Path.GetTempPath(), "TestLogDump");
+            if (Directory.Exists(testDir)) Directory.Delete(testDir, true);
+            Directory.CreateDirectory(testDir);
+            
+            var appConfigType = typeof(PersonalAutomationTool.Core.AppConfig);
+            var logAndDumpProp = appConfigType.GetProperty("LogAndDumpFolder", BindingFlags.Public | BindingFlags.Static);
+            logAndDumpProp?.SetValue(null, testDir);
+
+            string cartella = "ETR700 101 230726";
+            string fullPath = Path.Combine(testDir, cartella);
+            Directory.CreateDirectory(fullPath);
+            Directory.CreateDirectory(Path.Combine(fullPath, "Ticket 1234567 LOG 230726 ETR700 101 04_04"));
+            Directory.CreateDirectory(Path.Combine(fullPath, "Ticket 1234568 LOG 230726 ETR700 101-102 BISTANDARD 04_04"));
+            
+            var dialog = new PersonalAutomationTool.Modules.Email.Dialogs.ChiusuraTicketDialog(cartella, "ETR700", false, "Log Dump");
+            
+            var locos = dialog.LocoGroups.Select(l => l.GroupLocoName).ToList();
+            Console.WriteLine($"Trovati locos: {string.Join(", ", locos)}");
+            AssertTrue(locos.Contains("101"), "Loco 101 trovato");
+            AssertTrue(locos.Contains("102"), "Loco 102 trovato");
+            
+            Directory.Delete(testDir, true);
+            Console.WriteLine("Test ChiusuraTicketDialog Parsing completato con successo.\n");
+        }
+
+        static void TestDestinatariManager()
+        {
+            Console.WriteLine("--- Test DestinatariManager ---");
+            
+            string destFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "destinatari.json");
+            string backupFile = destFile + ".bak";
+            if (File.Exists(destFile))
             {
-                var cellsWithValues = ws.Column(col).CellsUsed(c => !c.Value.IsBlank && c.Address.RowNumber < 900000);
-                if (cellsWithValues.Any())
+                File.Copy(destFile, backupFile, true);
+                File.Delete(destFile);
+            }
+            
+            try 
+            {
+                var config = PersonalAutomationTool.Modules.DestinatariMail.DestinatariManager.LoadConfig();
+                
+                var action = PersonalAutomationTool.Modules.DestinatariMail.DestinatariManager.GetRecipients("ETR700", "Chiusura Ticket");
+                AssertTrue(action != null, "Recipients per ETR700 Chiusura Ticket caricati.");
+                
+                if (action != null)
                 {
-                    int maxRow = cellsWithValues.Max(c => c.Address.RowNumber);
-                    if (maxRow > lastRow)
-                    {
-                        lastRow = maxRow;
-                    }
+                    action.ToRecipients = "test@test.com";
+                    PersonalAutomationTool.Modules.DestinatariMail.DestinatariManager.SaveConfig(config);
+                    
+                    var newAction = PersonalAutomationTool.Modules.DestinatariMail.DestinatariManager.GetRecipients("ETR700", "Chiusura Ticket");
+                    AssertTrue(newAction?.ToRecipients == "test@test.com", "Destinatario modificato e salvato correttamente.");
                 }
             }
-            Console.WriteLine("Ultima riga reale (escludendo fondo): " + lastRow);
+            finally
+            {
+                if (File.Exists(backupFile))
+                {
+                    File.Copy(backupFile, destFile, true);
+                    File.Delete(backupFile);
+                }
+            }
+            
+            Console.WriteLine("Test DestinatariManager completato con successo.\n");
         }
-        catch (Exception ex)
+
+        static void AssertTrue(bool condition, string message)
         {
-            Console.WriteLine(ex.Message);
+            if (!condition) throw new Exception($"Assertion failed: {message}");
+            Console.WriteLine($"[PASS] {message}");
+        }
+
+        static void AssertFalse(bool condition, string message)
+        {
+            if (condition) throw new Exception($"Assertion failed: {message}");
+            Console.WriteLine($"[PASS] {message}");
         }
     }
 }
