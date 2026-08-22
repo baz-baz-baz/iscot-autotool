@@ -17,6 +17,18 @@ namespace PersonalAutomationTool.Modules.Excel
     {
         private static readonly char[] TechNameSeparators = [' ', '-', '_'];
         private static readonly char[] SwVersionSeparators = [' ', '_'];
+
+        /// <summary>
+        /// Campi evidenziati in giallo nel form. Era un array allocato dentro il ciclo sulle colonne
+        /// (una nuova istanza per ognuna delle ~26 colonne, a ogni caricamento del report).
+        /// </summary>
+        private static readonly string[] ImportantKeywords = [
+            "DATA CHIAMATA", "SITO INTERVENTO", "SITO", "TICKET", "N. ODL", "Cliente",
+            "DATA INTERVENTO", "Inizio", "Fine", "ROTABILE", "SN", "LOCO",
+            "Tipologia", "AVARIA SEGNALATA", "CATEGORIA AVARIA", "Scarico Dati",
+            "Descrizione intervento effettuato", "TECNICO ASTS", "VERSIONE SW", "TECNICO HRSTS", "SW Installato"
+        ];
+
         public List<string> Trains { get; } =
         [
             "E404P",
@@ -242,7 +254,15 @@ namespace PersonalAutomationTool.Modules.Excel
 
                     string currentTrain = SelectedTrain ?? "";
                     int maxCol = currentTrain == "ETR1000 I-F" ? 24 : 27;
-                    
+
+                    // Le convalide dati di tipo "lista" vengono raccolte UNA volta sola: prima la
+                    // collezione worksheet.DataValidations veniva rienumerata da capo per ognuna
+                    // delle ~26 colonne. L'ordine sorgente è preservato, quindi le opzioni
+                    // risultanti sono identiche.
+                    var listValidations = worksheet.DataValidations
+                        .Where(dv => dv.AllowedValues == XLAllowedValues.List)
+                        .ToList();
+
                     // Colonne da B a X o AA
                     for (int col = 2; col <= maxCol; col++)
                     {
@@ -285,8 +305,8 @@ namespace PersonalAutomationTool.Modules.Excel
                         };
 
                         // Cerca tutte le Data Validation applicate a questa colonna
-                        var columnValidations = worksheet.DataValidations
-                            .Where(dv => dv.Ranges.Any(r => r.RangeAddress.FirstAddress.ColumnNumber <= col && r.RangeAddress.LastAddress.ColumnNumber >= col) && dv.AllowedValues == XLAllowedValues.List)
+                        var columnValidations = listValidations
+                            .Where(dv => dv.Ranges.Any(r => r.RangeAddress.FirstAddress.ColumnNumber <= col && r.RangeAddress.LastAddress.ColumnNumber >= col))
                             .ToList();
 
                         if (columnValidations.Count > 0)
@@ -464,14 +484,7 @@ namespace PersonalAutomationTool.Modules.Excel
                             }
                         }
 
-                        string[] importantKeywords = [
-                            "DATA CHIAMATA", "SITO INTERVENTO", "SITO", "TICKET", "N. ODL", "Cliente",
-                            "DATA INTERVENTO", "Inizio", "Fine", "ROTABILE", "SN", "LOCO",
-                            "Tipologia", "AVARIA SEGNALATA", "CATEGORIA AVARIA", "Scarico Dati",
-                            "Descrizione intervento effettuato", "TECNICO ASTS", "VERSIONE SW", "TECNICO HRSTS", "SW Installato"
-                        ];
-                        
-                        fieldViewModel.IsImportant = importantKeywords.Any(k => 
+                        fieldViewModel.IsImportant = ImportantKeywords.Any(k =>
                             (k == "SN" || k == "LOCO" || k == "Cliente") ? fieldName.Equals(k, StringComparison.OrdinalIgnoreCase) 
                                                                          : fieldName.Contains(k, StringComparison.OrdinalIgnoreCase));
 
@@ -575,7 +588,7 @@ namespace PersonalAutomationTool.Modules.Excel
             try
             {
                 var subDirs = Directory.GetDirectories(folderPath);
-                allSubfolderNames = string.Join(" ", subDirs.Select(d => new DirectoryInfo(d).Name));
+                allSubfolderNames = string.Join(" ", subDirs.Select(Path.GetFileName));
             }
             catch { }
 
@@ -605,7 +618,7 @@ namespace PersonalAutomationTool.Modules.Excel
                 var subDirs = Directory.GetDirectories(folderPath);
                 foreach (var subDir in subDirs)
                 {
-                    string subName = new DirectoryInfo(subDir).Name;
+                    string subName = Path.GetFileName(subDir);
                     var subDateMatch = FolderDateRegex().Match(subName);
                     if (subDateMatch.Success)
                     {
@@ -794,21 +807,26 @@ namespace PersonalAutomationTool.Modules.Excel
             try
             {
                 var subDirs = Directory.GetDirectories(folderPath);
+
+                // Il pattern dipende solo da SelectedTrain, costante per tutto il ciclo: costruirlo
+                // e ricercarlo nella cache statica di Regex a ogni sottocartella era lavoro sprecato.
+                var locoRegex = new Regex($@"{SelectedTrain}\s*[-_]?\s*(\d{{3,4}})", RegexOptions.IgnoreCase);
+
                 foreach(var subDir in subDirs)
                 {
                     string subName = Path.GetFileName(subDir);
-                    
+
                     string ticket = "";
                     var ticketMatch = TicketSrRegex().Match(subName);
                     if (ticketMatch.Success) ticket = ticketMatch.Groups[1].Value;
                     else {
                         var standaloneTicketMatch = StandaloneTicketRegex().Match(subName);
-                        if (standaloneTicketMatch.Success && !standaloneTicketMatch.Value.StartsWith("202")) 
+                        if (standaloneTicketMatch.Success && !standaloneTicketMatch.Value.StartsWith("202"))
                             ticket = standaloneTicketMatch.Value;
                     }
-                    
+
                     string loco = "";
-                    var locoMatch = Regex.Match(subName, $@"{SelectedTrain}\s*[-_]?\s*(\d{{3,4}})", RegexOptions.IgnoreCase);
+                    var locoMatch = locoRegex.Match(subName);
                     if (locoMatch.Success) loco = locoMatch.Groups[1].Value;
                     else
                     {
@@ -992,14 +1010,22 @@ namespace PersonalAutomationTool.Modules.Excel
                 {
                     try
                     {
+                        // Prima venivano costruiti DUE DirectoryInfo per ogni cartella (uno per
+                        // ciascun Contains) e l'elenco completo dei file veniva materializzato in
+                        // un array solo per controllarne la lunghezza. Ora si usa Path.GetFileName
+                        // e si esce al primo file trovato, senza enumerare l'intero sottoalbero.
                         var allDirs = Directory.GetDirectories(folderPath, "*", SearchOption.TopDirectoryOnly);
-                        var logDumpDirs = allDirs.Where(d => new DirectoryInfo(d).Name.Contains("LOG", StringComparison.OrdinalIgnoreCase) || 
-                                                             new DirectoryInfo(d).Name.Contains("DUMP", StringComparison.OrdinalIgnoreCase)).ToList();
-                        
-                        foreach (var ldDir in logDumpDirs)
+
+                        foreach (var ldDir in allDirs)
                         {
-                            var files = Directory.GetFiles(ldDir, "*", SearchOption.AllDirectories);
-                            if (files.Length > 0)
+                            string ldName = Path.GetFileName(ldDir);
+                            if (!ldName.Contains("LOG", StringComparison.OrdinalIgnoreCase) &&
+                                !ldName.Contains("DUMP", StringComparison.OrdinalIgnoreCase))
+                            {
+                                continue;
+                            }
+
+                            if (Directory.EnumerateFiles(ldDir, "*", SearchOption.AllDirectories).Any())
                             {
                                 hasLogs = true;
                                 break;
@@ -1032,10 +1058,9 @@ namespace PersonalAutomationTool.Modules.Excel
 
         private void UpdateFolders()
         {
-            AvailableFolders.Clear();
-
             if (string.IsNullOrWhiteSpace(SelectedTrain))
             {
+                AvailableFolders.Clear();
                 return;
             }
 
@@ -1044,11 +1069,19 @@ namespace PersonalAutomationTool.Modules.Excel
                 string logPath = AppConfig.LogAndDumpFolder;
                 if (!Directory.Exists(logPath))
                 {
+                    AvailableFolders.Clear();
                     return;
                 }
 
-                // Get all top-level directories
+                // La lista viene prima calcolata a parte, poi confrontata con quella corrente.
+                // Motivo: AvailableFolders.Clear() svuota l'ItemsSource della ComboBox, che azzera
+                // SelectedFolder; questo faceva partire CheckAndLoadExistingReportAsync una prima
+                // volta con folder null e una seconda volta subito dopo con la nuova selezione,
+                // cioè DUE aperture complete del workbook Excel per ogni singolo evento del
+                // FileSystemWatcher su LOG & DUMP (che scatta anche per modifiche nelle
+                // sottocartelle, del tutto irrilevanti per l'elenco di primo livello).
                 var directories = Directory.GetDirectories(logPath);
+                var newFolders = new List<string>(directories.Length);
 
                 foreach (var dir in directories)
                 {
@@ -1057,10 +1090,26 @@ namespace PersonalAutomationTool.Modules.Excel
 
                     if (MatchesTrain(dirName, SelectedTrain))
                     {
-                        AvailableFolders.Add(dirName);
+                        newFolders.Add(dirName);
                     }
                 }
-                
+
+                // Se l'elenco è invariato e la selezione è già quella che verrebbe riapplicata,
+                // il ciclo Clear/riempi/riseleziona terminerebbe esattamente nello stesso stato:
+                // lo si salta per intero.
+                if (FoldersUnchanged(newFolders) &&
+                    ((newFolders.Count > 0 && SelectedFolder == newFolders[0]) ||
+                     (newFolders.Count == 0 && SelectedFolder == null)))
+                {
+                    return;
+                }
+
+                AvailableFolders.Clear();
+                foreach (var name in newFolders)
+                {
+                    AvailableFolders.Add(name);
+                }
+
                 // Optional: Select the first one automatically if available
                 if (AvailableFolders.Count > 0)
                 {
@@ -1075,6 +1124,17 @@ namespace PersonalAutomationTool.Modules.Excel
             {
                 System.Diagnostics.Debug.WriteLine($"Error updating folders: {ex.Message}");
             }
+        }
+
+        private bool FoldersUnchanged(List<string> candidate)
+        {
+            if (AvailableFolders.Count != candidate.Count) return false;
+            for (int i = 0; i < candidate.Count; i++)
+            {
+                if (!string.Equals(AvailableFolders[i], candidate[i], StringComparison.Ordinal))
+                    return false;
+            }
+            return true;
         }
 
         private bool CanExecuteScriviReport(object? parameter)
@@ -1108,13 +1168,23 @@ namespace PersonalAutomationTool.Modules.Excel
                     {
                         int maxFilledRow = 1;
                         int scanLimit = ws.RangeUsed()?.LastRow()?.RowNumber() ?? 1;
+
+                        // Ogni cella viene recuperata una sola volta: la versione precedente chiamava
+                        // ws.Cell(r, c) due volte per colonna (IsEmpty + GetString). Inoltre le righe
+                        // oltre scanLimit non vengono più toccate: sono per definizione fuori dal
+                        // RangeUsed e quindi vuote, ma interrogarle costringeva ClosedXML a
+                        // materializzare in memoria fino a 60 celle fantasma per ogni riga scansionata.
+                        static bool HasValue(IXLWorksheet sheet, int row, int col)
+                        {
+                            var cell = sheet.Cell(row, col);
+                            return !cell.IsEmpty() && !string.IsNullOrWhiteSpace(cell.GetString());
+                        }
+
                         // Trova l'ultima riga compilata della tabella analizzando le colonne chiave (B: Data, C: Sito, D: Ticket, G: Loco)
                         for (int r = 2; r <= scanLimit; r++)
                         {
-                            bool hasData = (!ws.Cell(r, 2).IsEmpty() && !string.IsNullOrWhiteSpace(ws.Cell(r, 2).GetString())) ||
-                                           (!ws.Cell(r, 3).IsEmpty() && !string.IsNullOrWhiteSpace(ws.Cell(r, 3).GetString())) ||
-                                           (!ws.Cell(r, 4).IsEmpty() && !string.IsNullOrWhiteSpace(ws.Cell(r, 4).GetString())) ||
-                                           (!ws.Cell(r, 7).IsEmpty() && !string.IsNullOrWhiteSpace(ws.Cell(r, 7).GetString()));
+                            bool hasData = HasValue(ws, r, 2) || HasValue(ws, r, 3) ||
+                                           HasValue(ws, r, 4) || HasValue(ws, r, 7);
 
                             if (hasData)
                             {
@@ -1127,9 +1197,9 @@ namespace PersonalAutomationTool.Modules.Excel
                                 for (int ahead = 1; ahead <= 20; ahead++)
                                 {
                                     int checkRow = r + ahead;
-                                    if ((!ws.Cell(checkRow, 2).IsEmpty() && !string.IsNullOrWhiteSpace(ws.Cell(checkRow, 2).GetString())) ||
-                                        (!ws.Cell(checkRow, 3).IsEmpty() && !string.IsNullOrWhiteSpace(ws.Cell(checkRow, 3).GetString())) ||
-                                        (!ws.Cell(checkRow, 4).IsEmpty() && !string.IsNullOrWhiteSpace(ws.Cell(checkRow, 4).GetString())))
+                                    if (checkRow > scanLimit) break;
+
+                                    if (HasValue(ws, checkRow, 2) || HasValue(ws, checkRow, 3) || HasValue(ws, checkRow, 4))
                                     {
                                         anyDataAhead = true;
                                         break;
@@ -1204,10 +1274,15 @@ namespace PersonalAutomationTool.Modules.Excel
                 }
                 finally
                 {
-                    ExecuteComWithRetry(() => excelApp.Quit());
-                    if (worksheetInterop != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(worksheetInterop);
-                    if (workbookInterop != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(workbookInterop);
-                    if (excelApp != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(excelApp);
+                    // Quit() e i tre rilasci vanno protetti singolarmente: nella versione precedente
+                    // erano istruzioni consecutive nel finally, quindi una qualunque eccezione su
+                    // Quit() (o su un rilascio) saltava i rilasci successivi e lasciava un processo
+                    // EXCEL.EXE orfano in memoria — su macchine datate bastavano pochi salvataggi
+                    // falliti per saturare la RAM.
+                    TryComCleanup(() => ExecuteComWithRetry(() => excelApp.Quit()));
+                    TryComCleanup(() => { if (worksheetInterop != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(worksheetInterop); });
+                    TryComCleanup(() => { if (workbookInterop != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(workbookInterop); });
+                    TryComCleanup(() => { if (excelApp != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(excelApp); });
                 }
                 }); // Fine Task.Run Interop
                     
@@ -1351,6 +1426,22 @@ namespace PersonalAutomationTool.Modules.Excel
             foreach (var field in FormFields)
             {
                 field.FieldValue = string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Esegue un passo di pulizia COM assorbendo eventuali eccezioni, così che i passi
+        /// successivi vengano comunque eseguiti.
+        /// </summary>
+        private static void TryComCleanup(Action action)
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Pulizia COM Excel fallita: {ex.Message}");
             }
         }
 

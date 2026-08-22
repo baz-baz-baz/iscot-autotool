@@ -9,6 +9,12 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
     {
         public static void OpenDraftEmail(RapportinoTurnoModel rapportino, string pdfPath)
         {
+            // Riferimenti COM dichiarati fuori dal try: il finally deve poterli rilasciare anche
+            // quando la generazione fallisce a metà, altrimenti OUTLOOK.EXE resta agganciato.
+            dynamic? outlookApp = null;
+            dynamic? mailItem = null;
+            dynamic? inspector = null;
+
             try
             {
                 Type? outlookType = Type.GetTypeFromProgID("Outlook.Application");
@@ -18,10 +24,10 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
                     return;
                 }
 
-                dynamic outlookApp = Activator.CreateInstance(outlookType)!;
-                dynamic mailItem = outlookApp.CreateItem(0); // 0 = olMailItem
+                outlookApp = Activator.CreateInstance(outlookType)!;
+                mailItem = outlookApp.CreateItem(0); // 0 = olMailItem
 
-                var inspector = mailItem.GetInspector;
+                inspector = mailItem.GetInspector;
                 string signatureHtml = mailItem.HTMLBody ?? string.Empty;
 
                 string subject = $"Passaggio di consegne - Rapportino Turno {rapportino.TipoTreno} - {rapportino.Data}";
@@ -60,14 +66,33 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
                 }
 
                 mailItem.Display(false);
-
-                System.Runtime.InteropServices.Marshal.ReleaseComObject(inspector);
-                System.Runtime.InteropServices.Marshal.ReleaseComObject(mailItem);
-                System.Runtime.InteropServices.Marshal.ReleaseComObject(outlookApp);
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Si è verificato un errore nell'apertura della bozza email:\n{ex.Message}", "Errore Email", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                ReleaseCom(inspector);
+                ReleaseCom(mailItem);
+                ReleaseCom(outlookApp);
+            }
+        }
+
+        /// <summary>
+        /// Rilascia un riferimento COM ignorando eventuali errori, così che il rilascio dei
+        /// riferimenti successivi non venga mai saltato.
+        /// </summary>
+        private static void ReleaseCom(object? comObject)
+        {
+            if (comObject == null) return;
+            try
+            {
+                System.Runtime.InteropServices.Marshal.ReleaseComObject(comObject);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ReleaseComObject fallita: {ex.Message}");
             }
         }
     }
