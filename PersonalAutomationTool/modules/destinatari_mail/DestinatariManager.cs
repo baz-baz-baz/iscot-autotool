@@ -52,21 +52,71 @@ namespace PersonalAutomationTool.Modules.DestinatariMail
     {
         private static readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = true };
 
+        // Cache del solo TESTO del file, validata su data di modifica + dimensione.
+        // Il JSON continua a essere deserializzato a ogni chiamata, quindi ogni chiamante
+        // riceve come prima un grafo di oggetti indipendente (le modifiche non salvate nella
+        // schermata "Destinatari Mail" restano invisibili alla generazione email, esattamente
+        // come nel comportamento originale). Ciò che si risparmia è la lettura da disco,
+        // che avveniva a ogni email generata e a ogni lettura di destinatari.
+        private static readonly object _cacheLock = new();
+        private static string? _cachedJson;
+        private static DateTime _cachedWriteTimeUtc;
+        private static long _cachedLength = -1;
+
         private static string GetConfigPath()
         {
             string folder = AppDomain.CurrentDomain.BaseDirectory;
             return Path.Combine(folder, "destinatari.json");
         }
 
+        private static string? ReadConfigJson(string path)
+        {
+            try
+            {
+                var info = new FileInfo(path);
+                if (!info.Exists) return null;
+
+                lock (_cacheLock)
+                {
+                    if (_cachedJson != null &&
+                        _cachedLength == info.Length &&
+                        _cachedWriteTimeUtc == info.LastWriteTimeUtc)
+                    {
+                        return _cachedJson;
+                    }
+
+                    string json = File.ReadAllText(path);
+                    _cachedJson = json;
+                    _cachedLength = info.Length;
+                    _cachedWriteTimeUtc = info.LastWriteTimeUtc;
+                    return json;
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static void InvalidateCache()
+        {
+            lock (_cacheLock)
+            {
+                _cachedJson = null;
+                _cachedLength = -1;
+                _cachedWriteTimeUtc = default;
+            }
+        }
+
         public static ObservableCollection<TrainConfig> LoadConfig()
         {
             ObservableCollection<TrainConfig>? data = null;
             string path = GetConfigPath();
-            if (File.Exists(path))
+            string? json = ReadConfigJson(path);
+            if (json != null)
             {
                 try
                 {
-                    string json = File.ReadAllText(path);
                     data = JsonSerializer.Deserialize<ObservableCollection<TrainConfig>>(json);
                 }
                 catch { }
@@ -88,6 +138,7 @@ namespace PersonalAutomationTool.Modules.DestinatariMail
             string path = GetConfigPath();
             string json = JsonSerializer.Serialize(config, _jsonOptions);
             File.WriteAllText(path, json);
+            InvalidateCache();
         }
 
         public static EmailActionConfig? GetRecipients(string trainType, string actionName)
@@ -119,12 +170,17 @@ namespace PersonalAutomationTool.Modules.DestinatariMail
 
         private static void EnsurePassaggioConsegneActions(ObservableCollection<TrainConfig> config)
         {
-            var defaultConfig = GenerateDefaultConfig();
+            // La configurazione di default (5 treni × fino a 8 azioni, con stringhe lunghe di
+            // destinatari) viene costruita solo se manca davvero un'azione da integrare.
+            // Prima veniva rigenerata a ogni LoadConfig, cioè a ogni email.
+            ObservableCollection<TrainConfig>? defaultConfig = null;
+
             foreach (var train in config)
             {
                 bool hasPassaggio = train.Actions.Any(a => a.ActionName.Equals("Passaggio di consegne", StringComparison.OrdinalIgnoreCase));
                 if (!hasPassaggio)
                 {
+                    defaultConfig ??= GenerateDefaultConfig();
                     var defaultTrain = defaultConfig.FirstOrDefault(t => t.TrainName.Equals(train.TrainName, StringComparison.OrdinalIgnoreCase));
                     var passaggioAction = defaultTrain?.Actions.FirstOrDefault(a => a.ActionName.Equals("Passaggio di consegne", StringComparison.OrdinalIgnoreCase));
                     if (passaggioAction != null)

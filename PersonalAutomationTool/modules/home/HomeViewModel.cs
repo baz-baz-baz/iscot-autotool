@@ -15,6 +15,15 @@ namespace PersonalAutomationTool.Modules.Home
 
         private readonly DispatcherTimer _timer;
 
+        /// <summary>
+        /// Cultura usata per la data estesa. Era ricostruita a ogni tick dell'orologio (una
+        /// nuova CultureInfo al secondo, per tutta la durata della sessione).
+        /// </summary>
+        private static readonly System.Globalization.CultureInfo ItalianCulture = new("it-IT");
+
+        /// <summary>Giorno per cui <see cref="CurrentDate"/> è già stato formattato.</summary>
+        private DateTime _lastRenderedDate = DateTime.MinValue;
+
         private string _currentTime = string.Empty;
         public string CurrentTime
         {
@@ -88,7 +97,15 @@ namespace PersonalAutomationTool.Modules.Home
         {
             var now = DateTime.Now;
             CurrentTime = now.ToString("HH:mm:ss");
-            CurrentDate = now.ToString("dddd d MMMM yyyy", new System.Globalization.CultureInfo("it-IT"));
+
+            // La data estesa cambia solo a mezzanotte: riformattarla a ogni secondo produceva
+            // una stringa e una CultureInfo usa-e-getta al secondo, senza alcun effetto visibile.
+            var today = now.Date;
+            if (today != _lastRenderedDate)
+            {
+                _lastRenderedDate = today;
+                CurrentDate = now.ToString("dddd d MMMM yyyy", ItalianCulture);
+            }
         }
 
         private async System.Threading.Tasks.Task LoadPendingItemsAsync()
@@ -106,6 +123,7 @@ namespace PersonalAutomationTool.Modules.Home
                 {
                     var resultList = new System.Collections.Generic.List<PendingMaintenanceModel>();
                     var mainDirs = Directory.GetDirectories(folder);
+                    var now = DateTime.Now; // letto una volta invece che a ogni cartella
                     foreach (var dir in mainDirs)
                     {
                         var dirInfo = new DirectoryInfo(dir);
@@ -113,7 +131,7 @@ namespace PersonalAutomationTool.Modules.Home
                         if (subDirs.Length == 0) continue;
 
                         var data = dirInfo.LastWriteTime;
-                        int giorni = (DateTime.Now - data).Days;
+                        int giorni = (now - data).Days;
 
                         var model = new PendingMaintenanceModel
                         {
@@ -126,10 +144,13 @@ namespace PersonalAutomationTool.Modules.Home
 
                         foreach (var subDir in subDirs)
                         {
-                            string name = subDir.Name.ToUpper();
-                            if (name.Contains("LOG") || name.Contains("DUMP"))
+                            // Confronto case-insensitive diretto: evita la stringa temporanea
+                            // prodotta da ToUpper() per ogni sottocartella.
+                            string name = subDir.Name;
+                            if (name.Contains("LOG", StringComparison.OrdinalIgnoreCase) ||
+                                name.Contains("DUMP", StringComparison.OrdinalIgnoreCase))
                             {
-                                model.SubFolders.Add($"- {subDir.Name}");
+                                model.SubFolders.Add($"- {name}");
                             }
                         }
 
@@ -650,15 +671,22 @@ namespace PersonalAutomationTool.Modules.Home
             {
                 try
                 {
-                    if (Directory.Exists(path))
+                    // L'intera eliminazione (scansione ricorsiva degli attributi + Directory.Delete)
+                    // girava sul thread UI: su una cartella LOG/DUMP con migliaia di file la
+                    // finestra restava congelata e Windows la marcava "Non risponde".
+                    // Spostata sul thread pool; le eccezioni risalgono comunque all'await e
+                    // finiscono nello stesso catch di prima.
+                    await System.Threading.Tasks.Task.Run(() =>
                     {
+                        if (!Directory.Exists(path)) return;
+
                         // Rimuovi l'attributo di sola lettura dai file e dalle cartelle (spesso impostato da OneDrive o da file scaricati)
                         var dirInfo = new DirectoryInfo(path);
-                        foreach (var file in dirInfo.GetFiles("*", SearchOption.AllDirectories))
+                        foreach (var file in dirInfo.EnumerateFiles("*", SearchOption.AllDirectories))
                         {
                             file.Attributes &= ~FileAttributes.ReadOnly;
                         }
-                        foreach (var dir in dirInfo.GetDirectories("*", SearchOption.AllDirectories))
+                        foreach (var dir in dirInfo.EnumerateDirectories("*", SearchOption.AllDirectories))
                         {
                             dir.Attributes &= ~FileAttributes.ReadOnly;
                         }
@@ -666,8 +694,8 @@ namespace PersonalAutomationTool.Modules.Home
 
                         // Il 'true' serve per eliminare la cartella e tutto il suo contenuto (file zip, sottocartelle, ecc.)
                         Directory.Delete(path, true);
-                    }
-                    
+                    });
+
                     // Ricarichiamo la lista per far sparire la cartella eliminata dalla UI
                     await LoadPendingItemsAsync();
                 }

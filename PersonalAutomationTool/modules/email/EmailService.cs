@@ -27,6 +27,14 @@ namespace PersonalAutomationTool.Modules.Email
         /// </summary>
         public static void GenerateChiusuraTicketEmail(string cartella, string trainType, ObservableCollection<LocoGroupModel> locoGroups, bool isNdPrefix = false, string actionType = "Chiusura Ticket")
         {
+            // I riferimenti COM sono tenuti fuori dal try in modo che il finally possa rilasciarli
+            // SEMPRE. Nella versione precedente le ReleaseComObject stavano in fondo al blocco try:
+            // qualunque eccezione (allegati mancanti, Display fallito, ...) le saltava, lasciando
+            // riferimenti pendenti su OUTLOOK.EXE che ne impedivano la chiusura.
+            dynamic? outlookApp = null;
+            dynamic? mailItem = null;
+            dynamic? inspector = null;
+
             try
             {
                 Type? outlookType = Type.GetTypeFromProgID("Outlook.Application");
@@ -36,19 +44,19 @@ namespace PersonalAutomationTool.Modules.Email
                     return;
                 }
 
-                dynamic outlookApp = Activator.CreateInstance(outlookType)!;
-                dynamic mailItem = outlookApp.CreateItem(0); // 0 = olMailItem
+                outlookApp = Activator.CreateInstance(outlookType)!;
+                mailItem = outlookApp.CreateItem(0); // 0 = olMailItem
 
                 // Inizializza l'Inspector per forzare Outlook a generare la firma predefinita in HTMLBody
-                var inspector = mailItem.GetInspector;
+                inspector = mailItem.GetInspector;
                 string signatureHtml = mailItem.HTMLBody ?? string.Empty;
 
                 string baseLogDump = PersonalAutomationTool.Core.AppConfig.LogAndDumpFolder;
                 string folderPath = Path.Combine(baseLogDump, cartella);
-                
+
                 // Salva il file json anche quando si usa la generazione veloce senza dialog (es. scadenze)
                 SaveCacheJson(folderPath, locoGroups);
-                
+
                 // Leggi sottocartelle LOG e DUMP
                 var (logFolders, dumpFolders) = GetLogAndDumpFolders(folderPath);
 
@@ -73,14 +81,33 @@ namespace PersonalAutomationTool.Modules.Email
 
                 // Mostra l'email a schermo
                 mailItem.Display(false);
-
-                System.Runtime.InteropServices.Marshal.ReleaseComObject(inspector);
-                System.Runtime.InteropServices.Marshal.ReleaseComObject(mailItem);
-                System.Runtime.InteropServices.Marshal.ReleaseComObject(outlookApp);
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Si è verificato un errore durante la generazione dell'email:\n{ex.Message}", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                ReleaseCom(inspector);
+                ReleaseCom(mailItem);
+                ReleaseCom(outlookApp);
+            }
+        }
+
+        /// <summary>
+        /// Rilascia un riferimento COM ignorando eventuali errori, così che il rilascio dei
+        /// riferimenti successivi non venga mai saltato.
+        /// </summary>
+        private static void ReleaseCom(object? comObject)
+        {
+            if (comObject == null) return;
+            try
+            {
+                System.Runtime.InteropServices.Marshal.ReleaseComObject(comObject);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ReleaseComObject fallita: {ex.Message}");
             }
         }
 
@@ -110,7 +137,10 @@ namespace PersonalAutomationTool.Modules.Email
                     var dirs = Directory.GetDirectories(folderPath);
                     foreach (var dir in dirs)
                     {
-                        string dirName = new DirectoryInfo(dir).Name;
+                        // Path.GetFileName al posto di new DirectoryInfo(dir).Name: stesso risultato
+                        // per i percorsi restituiti da GetDirectories, senza allocare un oggetto
+                        // DirectoryInfo (che porta con sé lo stato dei metadati del file system).
+                        string dirName = Path.GetFileName(dir);
                         if (dirName.Contains(" LOG ")) logFolders.Add(dirName);
                         if (dirName.Contains(" DUMP ")) dumpFolders.Add(dirName);
                     }
@@ -230,7 +260,7 @@ namespace PersonalAutomationTool.Modules.Email
                 var dirs = Directory.GetDirectories(folderPath);
                 foreach (var dir in dirs)
                 {
-                    string dirName = new DirectoryInfo(dir).Name;
+                    string dirName = Path.GetFileName(dir);
                     var parts = dirName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                     if (parts.Length >= 4 && parts[0].StartsWith("SR", StringComparison.OrdinalIgnoreCase))
                     {
@@ -419,6 +449,10 @@ namespace PersonalAutomationTool.Modules.Email
                 htmlBuilder.Append("<p style='font-size: 14pt;'>Di seguito la descrizione delle avarie segnalate dal PdC e dell'intervento effettuato:</p>");
             }
 
+            // Una sola connessione SQLite per tutta l'email invece di una per riga di tabella:
+            // ResolveTrainAndSoftware apriva e chiudeva il database a ogni locomotiva.
+            using var trainDb = OpenTrainSoftwareDatabase();
+
             foreach (var group in locoGroups)
             {
                 foreach (var input in group.Inputs)
@@ -454,7 +488,7 @@ namespace PersonalAutomationTool.Modules.Email
                     string versioneSW = string.Empty;
 
                     // Risolvi info treno e software
-                    ResolveTrainAndSoftware(trainType, ref loco, out treno, out versioneSW);
+                    ResolveTrainAndSoftware(trainDb, trainType, ref loco, out treno, out versioneSW);
 
                     htmlBuilder.Append("<table style='width: 100%; border-collapse: collapse; border: 1px solid #ddd; margin-top: 20px; margin-bottom: 20px;'>");
                     htmlBuilder.Append("<thead>");
@@ -494,54 +528,71 @@ namespace PersonalAutomationTool.Modules.Email
             return htmlBuilder.ToString();
         }
 
-        private static void ResolveTrainAndSoftware(string trainType, ref string loco, out string treno, out string versioneSW)
+        /// <summary>
+        /// Apre il database delle flotte, oppure restituisce null se il file non è presente.
+        /// </summary>
+        private static PersonalAutomationTool.Modules.Database.DatabaseManager? OpenTrainSoftwareDatabase()
         {
-            treno = string.Empty;
-            versioneSW = string.Empty;
-
             try
             {
                 string baseDir = AppDomain.CurrentDomain.BaseDirectory;
                 string dbPath = Path.Combine(baseDir, "modules", "database", "train_software.db");
                 if (File.Exists(dbPath))
                 {
-                    using var dbManager = new PersonalAutomationTool.Modules.Database.DatabaseManager(dbPath);
-                    string dbTrainType = trainType;
-                    if (dbTrainType.Equals("ETR1000IF", StringComparison.OrdinalIgnoreCase))
-                    {
-                        dbTrainType = "ETR1000 I-F";
-                    }
-                    else if (dbTrainType.Equals("ETR1000FH", StringComparison.OrdinalIgnoreCase))
-                    {
-                        dbTrainType = "ETR1001FH";
-                    }
-                    
-                    var queryParams = new Dictionary<string, object?> { { "@tipo", dbTrainType }, { "@loco", loco } };
-                    var dt = dbManager.ExecuteQuery("SELECT treno, software FROM flotte WHERE tipo = @tipo AND loco = @loco", queryParams);
-                    
-                    if (dt.Rows.Count == 0 && loco.Contains(' '))
-                    {
-                        var parts = loco.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                        string firstPart = parts[0];
-                        var fallbackParams = new Dictionary<string, object?> { { "@tipo", dbTrainType }, { "@loco", firstPart } };
-                        dt = dbManager.ExecuteQuery("SELECT treno, software FROM flotte WHERE tipo = @tipo AND loco = @loco", fallbackParams);
-                        if (dt.Rows.Count > 0)
-                        {
-                            loco = firstPart;
-                            if (parts.Length > 1)
-                            {
-                                versioneSW = parts[1];
-                            }
-                        }
-                    }
+                    return new PersonalAutomationTool.Modules.Database.DatabaseManager(dbPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Errore apertura db: {ex.Message}");
+            }
+            return null;
+        }
 
+        private static void ResolveTrainAndSoftware(PersonalAutomationTool.Modules.Database.DatabaseManager? dbManager, string trainType, ref string loco, out string treno, out string versioneSW)
+        {
+            treno = string.Empty;
+            versioneSW = string.Empty;
+
+            if (dbManager == null) return;
+
+            try
+            {
+                string dbTrainType = trainType;
+                if (dbTrainType.Equals("ETR1000IF", StringComparison.OrdinalIgnoreCase))
+                {
+                    dbTrainType = "ETR1000 I-F";
+                }
+                else if (dbTrainType.Equals("ETR1000FH", StringComparison.OrdinalIgnoreCase))
+                {
+                    dbTrainType = "ETR1001FH";
+                }
+
+                var queryParams = new Dictionary<string, object?> { { "@tipo", dbTrainType }, { "@loco", loco } };
+                var dt = dbManager.ExecuteQuery("SELECT treno, software FROM flotte WHERE tipo = @tipo AND loco = @loco", queryParams);
+
+                if (dt.Rows.Count == 0 && loco.Contains(' '))
+                {
+                    var parts = loco.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    string firstPart = parts[0];
+                    var fallbackParams = new Dictionary<string, object?> { { "@tipo", dbTrainType }, { "@loco", firstPart } };
+                    dt = dbManager.ExecuteQuery("SELECT treno, software FROM flotte WHERE tipo = @tipo AND loco = @loco", fallbackParams);
                     if (dt.Rows.Count > 0)
                     {
-                        treno = dt.Rows[0]["treno"]?.ToString() ?? string.Empty;
-                        if (string.IsNullOrEmpty(versioneSW))
+                        loco = firstPart;
+                        if (parts.Length > 1)
                         {
-                            versioneSW = dt.Rows[0]["software"]?.ToString() ?? string.Empty;
+                            versioneSW = parts[1];
                         }
+                    }
+                }
+
+                if (dt.Rows.Count > 0)
+                {
+                    treno = dt.Rows[0]["treno"]?.ToString() ?? string.Empty;
+                    if (string.IsNullOrEmpty(versioneSW))
+                    {
+                        versioneSW = dt.Rows[0]["software"]?.ToString() ?? string.Empty;
                     }
                 }
             }

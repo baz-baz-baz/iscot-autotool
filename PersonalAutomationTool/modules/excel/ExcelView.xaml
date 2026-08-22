@@ -232,7 +232,10 @@
                 </Style>
             </Grid.Style>
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}" Value="0" IsIndeterminate="True" Width="64" Height="64" Foreground="#1976D2" />
+                <!-- IsIndeterminate legato a IsLoading: l'overlay è comunque Collapsed quando non si
+                     sta caricando, ma così l'animazione continua (che gira sul render thread) viene
+                     fermata in modo esplicito invece di restare potenzialmente attiva a vuoto. -->
+                <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}" Value="0" IsIndeterminate="{Binding IsLoading}" Width="64" Height="64" Foreground="#1976D2" />
                 <TextBlock Text="{Binding LoadingMessage}" Margin="0,20,0,0" FontSize="18" FontWeight="SemiBold" Foreground="#1976D2" HorizontalAlignment="Center"/>
             </StackPanel>
         </Grid>

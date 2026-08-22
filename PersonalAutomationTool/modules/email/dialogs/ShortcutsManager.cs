@@ -14,11 +14,44 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
 
     public static class ShortcutsManager
     {
+        private static readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = true };
+
+        // Cache del testo del file validata su data di modifica + dimensione: come per
+        // destinatari.json si evita la lettura da disco ripetuta, ma la deserializzazione
+        // resta per chiamata, così ogni chiamante continua a ricevere liste indipendenti.
+        private static readonly object _cacheLock = new();
+        private static string? _cachedJson;
+        private static DateTime _cachedWriteTimeUtc;
+        private static long _cachedLength = -1;
+
         private static string ConfigFilePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "shortcuts.json");
+
+        private static string? ReadConfigJson(string path)
+        {
+            var info = new FileInfo(path);
+            if (!info.Exists) return null;
+
+            lock (_cacheLock)
+            {
+                if (_cachedJson != null &&
+                    _cachedLength == info.Length &&
+                    _cachedWriteTimeUtc == info.LastWriteTimeUtc)
+                {
+                    return _cachedJson;
+                }
+
+                string json = File.ReadAllText(path);
+                _cachedJson = json;
+                _cachedLength = info.Length;
+                _cachedWriteTimeUtc = info.LastWriteTimeUtc;
+                return json;
+            }
+        }
 
         public static List<TrainShortcutsModel> LoadConfig()
         {
-            if (!File.Exists(ConfigFilePath))
+            string path = ConfigFilePath;
+            if (!File.Exists(path))
             {
                 var defaultConfig = CreateDefaultConfig();
                 SaveConfig(defaultConfig);
@@ -27,7 +60,9 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
 
             try
             {
-                string json = File.ReadAllText(ConfigFilePath);
+                string? json = ReadConfigJson(path);
+                if (json == null) return new List<TrainShortcutsModel>();
+
                 var config = JsonSerializer.Deserialize<List<TrainShortcutsModel>>(json);
                 return config ?? new List<TrainShortcutsModel>();
             }
@@ -42,13 +77,21 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
         {
             try
             {
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                string json = JsonSerializer.Serialize(config, options);
+                string json = JsonSerializer.Serialize(config, _jsonOptions);
                 File.WriteAllText(ConfigFilePath, json);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Errore salvataggio shortcuts.json: {ex.Message}");
+            }
+            finally
+            {
+                lock (_cacheLock)
+                {
+                    _cachedJson = null;
+                    _cachedLength = -1;
+                    _cachedWriteTimeUtc = default;
+                }
             }
         }
 

@@ -1,0 +1,93 @@
+# ---------------------------------------------------------------------------
+# .NET / WPF — output di build e artefatti generati
+# ---------------------------------------------------------------------------
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Output di pubblicazione
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+[Pp]ublish/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Oo]ut/
+artifacts/
+*.publishsettings
+
+# ---------------------------------------------------------------------------
+# Visual Studio / Rider / VS Code
+# ---------------------------------------------------------------------------
+.vs/
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.svclog
+*.VC.db
+*.VC.VC.opendb
+
+# ---------------------------------------------------------------------------
+# NuGet
+# ---------------------------------------------------------------------------
+*.nupkg
+*.snupkg
+packages/*
+!packages/build/
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.fragment.lock.json
+
+# ---------------------------------------------------------------------------
+# Risultati di test e profilazione
+# ---------------------------------------------------------------------------
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.trx
+*.coverage
+*.coveragexml
+*.psess
+*.vsp
+*.vspx
+
+# ---------------------------------------------------------------------------
+# Specifico di questo progetto
+# ---------------------------------------------------------------------------
+# Log di build committati per errore in passato
+PersonalAutomationTool/build_last.txt
+PersonalAutomationTool/build_out.txt
+
+# Configurazioni generate a runtime nella cartella di output.
+# NOTA: i .db sotto modules/database/ sono dati sorgente e vanno tenuti sotto
+# controllo di versione — non aggiungere una regola *.db globale.
+**/[Bb]in/**/destinatari.json
+**/[Bb]in/**/shortcuts.json
+**/[Bb]in/**/data/
+
+# Cartelle di sperimentazione
+scratch/
+
+# ---------------------------------------------------------------------------
+# Sistema operativo
+# ---------------------------------------------------------------------------
+.DS_Store
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/

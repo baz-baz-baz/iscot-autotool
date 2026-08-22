@@ -19,6 +19,23 @@ namespace PersonalAutomationTool.Modules.Verifiche
         private static readonly object _timerLock = new();
         private System.Threading.Timer? _debounceTimer;
 
+        /// <summary>0 = nessuna scansione in corso, 1 = scansione in corso (guardia anti-rientranza).</summary>
+        private int _isScanningFiles;
+
+        private static readonly string[] PollingRelativePaths = [
+            @"Hitachi Group\SSB_SST - Interventi ETR500",
+            @"Hitachi Group\SSB_SST - INTERVENTI ETR700 ELO BL3",
+            @"Hitachi Group\SSB_SST - Interventi ETR700",
+            @"Hitachi Group\SSB_SST - Interventi ETR1000",
+            @"Hitachi Group\SSB_SST - Interventi ETR1000FH"
+        ];
+
+        private static readonly string[] WatcherRelativePaths = [
+            @"Hitachi Group\SSB_SST - Interventi ETR500",
+            @"Hitachi Group\SSB_SST - INTERVENTI ETR700 ELO BL3",
+            @"Hitachi Group\SSB_SST - Interventi ETR1000"
+        ];
+
         public static VerificheViewModel? Instance { get; private set; }
         public static event Action? OnVerificheDataUpdated;
 
@@ -95,13 +112,8 @@ namespace PersonalAutomationTool.Modules.Verifiche
         private void SetupWatchers()
         {
             string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            string[] relativePaths = [
-                @"Hitachi Group\SSB_SST - Interventi ETR500",
-                @"Hitachi Group\SSB_SST - INTERVENTI ETR700 ELO BL3",
-                @"Hitachi Group\SSB_SST - Interventi ETR1000"
-            ];
 
-            foreach (var rel in relativePaths)
+            foreach (var rel in WatcherRelativePaths)
             {
                 string path = Path.Combine(userProfile, rel);
                 if (Directory.Exists(path))
@@ -145,33 +157,65 @@ namespace PersonalAutomationTool.Modules.Verifiche
             }
         }
 
+        /// <summary>
+        /// Tick del timer di refresh. La scansione tocca alberi di cartelle OneDrive/di rete in modo
+        /// ricorsivo: eseguirla in linea sul thread UI (come avveniva prima) bloccava l'interfaccia
+        /// a ogni tick. Viene quindi delegata al thread pool, con guardia anti-rientranza per evitare
+        /// che scansioni lente si accavallino quando il disco è occupato.
+        /// </summary>
         private void CheckForFileUpdates()
         {
+            if (System.Threading.Interlocked.Exchange(ref _isScanningFiles, 1) == 1)
+                return;
+
+            _ = Task.Run(() =>
+            {
+                bool hasChanges;
+                try
+                {
+                    hasChanges = ScanForFileUpdates();
+                }
+                finally
+                {
+                    System.Threading.Interlocked.Exchange(ref _isScanningFiles, 0);
+                }
+
+                if (hasChanges)
+                {
+                    _ = ReloadAllDataAsync();
+                }
+            });
+        }
+
+        /// <summary>
+        /// Confronta le date di ultima modifica dei file "Verifiche" con quelle memorizzate.
+        /// Eseguita solo dal thread pool e serializzata da <see cref="_isScanningFiles"/>,
+        /// quindi l'accesso a <see cref="_lastFileWriteTimes"/> resta a thread singolo.
+        /// </summary>
+        private bool ScanForFileUpdates()
+        {
             string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            string[] relativePaths = [
-                @"Hitachi Group\SSB_SST - Interventi ETR500",
-                @"Hitachi Group\SSB_SST - INTERVENTI ETR700 ELO BL3",
-                @"Hitachi Group\SSB_SST - Interventi ETR700",
-                @"Hitachi Group\SSB_SST - Interventi ETR1000",
-                @"Hitachi Group\SSB_SST - Interventi ETR1000FH"
-            ];
 
             bool hasChanges = false;
-            foreach (var rel in relativePaths)
+            foreach (var rel in PollingRelativePaths)
             {
                 string folderPath = Path.Combine(userProfile, rel);
                 if (Directory.Exists(folderPath))
                 {
                     try
                     {
-                        var files = Directory.GetFiles(folderPath, "*Verifiche*.xlsx", SearchOption.AllDirectories)
-                                             .Where(f => !Path.GetFileName(f).StartsWith("~$") &&
-                                                         !f.Contains("OLD", StringComparison.OrdinalIgnoreCase) &&
-                                                         !f.Contains("VECCH", StringComparison.OrdinalIgnoreCase) &&
-                                                         !f.Contains("ARCHIV", StringComparison.OrdinalIgnoreCase));
-
-                        foreach (var file in files)
+                        // EnumerateFiles evita di materializzare l'intero array di percorsi
+                        // prima di iniziare a filtrare (rilevante su alberi OneDrive profondi).
+                        foreach (var file in Directory.EnumerateFiles(folderPath, "*Verifiche*.xlsx", SearchOption.AllDirectories))
                         {
+                            if (Path.GetFileName(file).StartsWith("~$") ||
+                                file.Contains("OLD", StringComparison.OrdinalIgnoreCase) ||
+                                file.Contains("VECCH", StringComparison.OrdinalIgnoreCase) ||
+                                file.Contains("ARCHIV", StringComparison.OrdinalIgnoreCase))
+                            {
+                                continue;
+                            }
+
                             var lastWrite = File.GetLastWriteTime(file);
                             if (_lastFileWriteTimes.TryGetValue(file, out var prevWrite))
                             {
@@ -191,10 +235,7 @@ namespace PersonalAutomationTool.Modules.Verifiche
                 }
             }
 
-            if (hasChanges)
-            {
-                _ = ReloadAllDataAsync();
-            }
+            return hasChanges;
         }
 
         private static void LoadDataForFleet(string relativePath, string fleetIdentifier, List<VerificheModel> collection)
@@ -227,30 +268,51 @@ namespace PersonalAutomationTool.Modules.Verifiche
                     var validSubFolders = new List<string> { folder };
                     try
                     {
-                        var subDirs = Directory.GetDirectories(folder, "*", SearchOption.AllDirectories)
-                                               .Where(d => !d.Contains("OLD", StringComparison.OrdinalIgnoreCase) &&
-                                                           !d.Contains("VECCH", StringComparison.OrdinalIgnoreCase) &&
-                                                           !d.Contains("ARCHIV", StringComparison.OrdinalIgnoreCase));
-                        validSubFolders.AddRange(subDirs);
+                        foreach (var d in Directory.EnumerateDirectories(folder, "*", SearchOption.AllDirectories))
+                        {
+                            if (!d.Contains("OLD", StringComparison.OrdinalIgnoreCase) &&
+                                !d.Contains("VECCH", StringComparison.OrdinalIgnoreCase) &&
+                                !d.Contains("ARCHIV", StringComparison.OrdinalIgnoreCase))
+                            {
+                                validSubFolders.Add(d);
+                            }
+                        }
                     }
                     catch { }
 
-                    var candidateFiles = new List<string>();
+                    // Selezione del file più recente in un'unica passata: la versione precedente
+                    // ordinava l'intera lista chiamando File.GetLastWriteTime O(n log n) volte
+                    // (una syscall per confronto, molto costosa su cartelle sincronizzate).
+                    string? mostRecentFile = null;
+                    DateTime mostRecentWrite = DateTime.MinValue;
+
                     foreach (var dir in validSubFolders)
                     {
                         try
                         {
-                            var files = Directory.GetFiles(dir, "*Verifiche*.xlsx")
-                                                 .Where(f => !Path.GetFileName(f).StartsWith("~$") &&
-                                                             !f.Contains("OLD", StringComparison.OrdinalIgnoreCase) &&
-                                                             !f.Contains("VECCH", StringComparison.OrdinalIgnoreCase) &&
-                                                             !f.Contains("ARCHIV", StringComparison.OrdinalIgnoreCase));
-                            candidateFiles.AddRange(files);
+                            foreach (var f in Directory.EnumerateFiles(dir, "*Verifiche*.xlsx"))
+                            {
+                                if (Path.GetFileName(f).StartsWith("~$") ||
+                                    f.Contains("OLD", StringComparison.OrdinalIgnoreCase) ||
+                                    f.Contains("VECCH", StringComparison.OrdinalIgnoreCase) ||
+                                    f.Contains("ARCHIV", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    continue;
+                                }
+
+                                var write = File.GetLastWriteTime(f);
+                                // ">" (non ">=") preserva l'ordinamento stabile dell'implementazione
+                                // originale: a parità di data vince il primo file incontrato.
+                                if (mostRecentFile == null || write > mostRecentWrite)
+                                {
+                                    mostRecentFile = f;
+                                    mostRecentWrite = write;
+                                }
+                            }
                         }
                         catch { }
                     }
 
-                    var mostRecentFile = candidateFiles.OrderByDescending(f => File.GetLastWriteTime(f)).FirstOrDefault();
                     if (mostRecentFile != null)
                     {
                         ParseExcelFile(mostRecentFile, fleetIdentifier, collection);
@@ -318,31 +380,50 @@ namespace PersonalAutomationTool.Modules.Verifiche
                 if (locoIdx == -1) locoIdx = 2;
                 if (avariaIdx == -1) avariaIdx = 3;
 
-                foreach (var row in dataRows)
+                // La connessione SQLite viene aperta al massimo UNA volta per file (in modo pigro,
+                // solo se serve davvero) invece di una volta per riga: su un foglio da qualche
+                // centinaio di righe si passa da centinaia di open/close a uno solo.
+                PersonalAutomationTool.Modules.Database.DatabaseManager? db = null;
+                var locoTrenoCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+                try
                 {
-                    var model = new VerificheModel
+                    foreach (var row in dataRows)
                     {
-                        Treno = row.Cell(trenoIdx).GetString()?.Trim() ?? string.Empty,
-                        Loco = row.Cell(locoIdx).GetString()?.Trim() ?? string.Empty,
-                        Avaria = row.Cell(avariaIdx).GetString()?.Trim() ?? string.Empty
-                    };
-                    
-                    if (fleetIdentifier == "1000" && !string.IsNullOrWhiteSpace(model.Loco))
-                    {
-                        if (model.Treno != null && model.Treno.StartsWith("ETR100"))
+                        var model = new VerificheModel
                         {
-                            string trenoFromDb = GetTrenoFromDatabase(model.Loco);
-                            if (!string.IsNullOrEmpty(trenoFromDb))
+                            Treno = row.Cell(trenoIdx).GetString()?.Trim() ?? string.Empty,
+                            Loco = row.Cell(locoIdx).GetString()?.Trim() ?? string.Empty,
+                            Avaria = row.Cell(avariaIdx).GetString()?.Trim() ?? string.Empty
+                        };
+
+                        if (fleetIdentifier == "1000" && !string.IsNullOrWhiteSpace(model.Loco))
+                        {
+                            if (model.Treno != null && model.Treno.StartsWith("ETR100"))
                             {
-                                model.Treno = trenoFromDb;
+                                if (!locoTrenoCache.TryGetValue(model.Loco, out var trenoFromDb))
+                                {
+                                    db ??= OpenTrainSoftwareDatabase();
+                                    trenoFromDb = GetTrenoFromDatabase(db, model.Loco);
+                                    locoTrenoCache[model.Loco] = trenoFromDb;
+                                }
+
+                                if (!string.IsNullOrEmpty(trenoFromDb))
+                                {
+                                    model.Treno = trenoFromDb;
+                                }
                             }
                         }
-                    }
 
-                    if (!string.IsNullOrWhiteSpace(model.Treno) || !string.IsNullOrWhiteSpace(model.Loco) || !string.IsNullOrWhiteSpace(model.Avaria))
-                    {
-                        collection.Add(model);
+                        if (!string.IsNullOrWhiteSpace(model.Treno) || !string.IsNullOrWhiteSpace(model.Loco) || !string.IsNullOrWhiteSpace(model.Avaria))
+                        {
+                            collection.Add(model);
+                        }
                     }
+                }
+                finally
+                {
+                    db?.Dispose();
                 }
             }
             catch (Exception ex)
@@ -351,30 +432,41 @@ namespace PersonalAutomationTool.Modules.Verifiche
             }
         }
 
-        private static string GetTrenoFromDatabase(string loco)
+        private static PersonalAutomationTool.Modules.Database.DatabaseManager? OpenTrainSoftwareDatabase()
         {
             try
             {
                 string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "modules", "database", "train_software.db");
                 if (File.Exists(dbPath))
                 {
-                    using var db = new PersonalAutomationTool.Modules.Database.DatabaseManager(dbPath);
-                    string query = "SELECT treno FROM flotte WHERE loco = @loco";
-                    var parameters = new System.Collections.Generic.Dictionary<string, object?> { { "@loco", loco } };
-                    if (int.TryParse(loco, out int locoInt))
-                    {
-                        query += " OR loco = @locoInt";
-                        parameters["@locoInt"] = locoInt;
-                    }
+                    return new PersonalAutomationTool.Modules.Database.DatabaseManager(dbPath);
+                }
+            }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Db open error: {ex.Message}"); }
+            return null;
+        }
 
-                    var data = db.ExecuteQuery(query, parameters);
-                    if (data.Rows.Count > 0 && !data.Columns.Contains("Errore"))
+        private static string GetTrenoFromDatabase(PersonalAutomationTool.Modules.Database.DatabaseManager? db, string loco)
+        {
+            if (db == null) return "";
+
+            try
+            {
+                string query = "SELECT treno FROM flotte WHERE loco = @loco";
+                var parameters = new Dictionary<string, object?> { { "@loco", loco } };
+                if (int.TryParse(loco, out int locoInt))
+                {
+                    query += " OR loco = @locoInt";
+                    parameters["@locoInt"] = locoInt;
+                }
+
+                var data = db.ExecuteQuery(query, parameters);
+                if (data.Rows.Count > 0 && !data.Columns.Contains("Errore"))
+                {
+                    string trenoDb = data.Rows[0]["treno"]?.ToString() ?? "";
+                    if (!string.IsNullOrEmpty(trenoDb))
                     {
-                        string trenoDb = data.Rows[0]["treno"]?.ToString() ?? "";
-                        if (!string.IsNullOrEmpty(trenoDb))
-                        {
-                            return trenoDb;
-                        }
+                        return trenoDb;
                     }
                 }
             }
