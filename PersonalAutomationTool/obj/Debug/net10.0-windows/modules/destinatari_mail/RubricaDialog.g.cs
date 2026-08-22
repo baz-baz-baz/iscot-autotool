@@ -67,8 +67,7 @@ namespace PersonalAutomationTool.Modules.DestinatariMail {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri(("/PersonalAutomationTool;V1.0.0.0;component/modules/destinatari_mail/rubricadialog" +
-                    ".xaml"), System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/PersonalAutomationTool;component/modules/destinatari_mail/rubricadialog.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\..\modules\destinatari_mail\RubricaDialog.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);
