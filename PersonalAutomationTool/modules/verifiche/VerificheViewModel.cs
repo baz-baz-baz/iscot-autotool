@@ -52,7 +52,12 @@ namespace PersonalAutomationTool.Modules.Verifiche
 
             _refreshTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromSeconds(5)
+                // Rete di sicurezza per gli eventi persi dai FileSystemWatcher già attivi
+                // (SetupWatchers), non il canale primario di aggiornamento: a 5s la scansione
+                // ricorsiva di 3 alberi OneDrive (ScanForFileUpdates) girava dodici volte al
+                // minuto anche a app inattiva. 60s mantiene la stessa funzione di backstop con
+                // un dodicesimo dell'I/O su disco.
+                Interval = TimeSpan.FromSeconds(60)
             };
             _refreshTimer.Tick += (s, e) => CheckForFileUpdates();
             _refreshTimer.Start();

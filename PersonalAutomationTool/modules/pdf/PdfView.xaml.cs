@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using PersonalAutomationTool.Core.Naming;
 using PersonalAutomationTool.Modules.Pdf.Models;
 
 namespace PersonalAutomationTool.Modules.Pdf
@@ -123,11 +124,17 @@ namespace PersonalAutomationTool.Modules.Pdf
                 }
 
                 var tipi = await GetTipiFromDbAsync();
-                var parsedInfos = new System.Collections.Generic.List<ParsedFolderInfo>();
+                var parsedInfos = new System.Collections.Generic.List<LogDumpFolderName>();
                 foreach (var logDir in logFolders)
                 {
-                    var info = ParseLogFolderName(logDir.Name, tipi);
-                    if (info != null) parsedInfos.Add(info);
+                    // Migrato al parser condiviso LogDumpFolderName (PersonalAutomationTool.Core.Naming):
+                    // prima di questa migrazione, questa stessa grammatica di nomi veniva
+                    // ridecodificata in modo indipendente in almeno altri sette punti del codice.
+                    // Vedi PROJECT_MEMORY.md §6 per la lista dei chiamanti ancora da migrare.
+                    if (LogDumpFolderName.TryParse(logDir.Name, tipi, out var info))
+                    {
+                        parsedInfos.Add(info!);
+                    }
                 }
 
                 if (parsedInfos.Count == 0)
@@ -297,67 +304,8 @@ namespace PersonalAutomationTool.Modules.Pdf
             });
         }
 
-        private class ParsedFolderInfo
-        {
-            public string Ticket { get; set; } = string.Empty;
-            public string Tipo { get; set; } = string.Empty;
-            public string Loco { get; set; } = string.Empty;
-            public string Data { get; set; } = string.Empty;
-            public string Utente { get; set; } = string.Empty;
-        }
-
-        [System.Text.RegularExpressions.GeneratedRegex(@"^SR(?<ticket>\S+)\sLOG\s(?<rest>.*)$")]
-        private static partial System.Text.RegularExpressions.Regex LogFolderRegex();
-
-        [System.Text.RegularExpressions.GeneratedRegex(@"\s(?<data>\d{6})\s(?<utente>.*)$")]
-        private static partial System.Text.RegularExpressions.Regex LogDateRegex();
-
         [System.Text.RegularExpressions.GeneratedRegex(@"SR(\d+)")]
         private static partial System.Text.RegularExpressions.Regex SrTicketRegex();
-
-        private static ParsedFolderInfo? ParseLogFolderName(string folderName, System.Collections.Generic.List<string> tipi)
-        {
-            var match = LogFolderRegex().Match(folderName);
-            if (!match.Success) return null;
-
-            string ticket = match.Groups["ticket"].Value;
-            string rest = match.Groups["rest"].Value;
-
-            var dateMatch = LogDateRegex().Match(rest);
-            if (!dateMatch.Success) return null;
-
-            string data = dateMatch.Groups["data"].Value;
-            string utente = dateMatch.Groups["utente"].Value;
-            string tipoLocoSoft = rest[..dateMatch.Index];
-
-            string tipo = "";
-            foreach (var t in tipi)
-            {
-                if (tipoLocoSoft.StartsWith(t + " "))
-                {
-                    tipo = t;
-                    break;
-                }
-            }
-
-            if (string.IsNullOrEmpty(tipo))
-            {
-                var parts = tipoLocoSoft.Split(' ');
-                tipo = parts[0];
-            }
-
-            string remaining = tipoLocoSoft[tipo.Length..].Trim();
-            string loco = remaining.Split(' ').FirstOrDefault() ?? "";
-
-            return new ParsedFolderInfo
-            {
-                Ticket = ticket,
-                Tipo = tipo,
-                Loco = loco,
-                Data = data,
-                Utente = utente
-            };
-        }
 
         private void BtnApri_Click(object sender, RoutedEventArgs e)
         {

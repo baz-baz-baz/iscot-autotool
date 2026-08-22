@@ -9,7 +9,6 @@
       "PersonalAutomationTool/1.0.0": {
         "dependencies": {
           "ClosedXML": "0.105.0",
-          "EPPlus": "4.5.3.3",
           "MaterialDesignThemes": "4.9.0",
           "Microsoft.Data.Sqlite": "10.0.3",
           "PDFsharp": "6.2.4",
@@ -61,18 +60,6 @@
           }
         }
       },
-      "EPPlus/4.5.3.3": {
-        "dependencies": {
-          "Microsoft.Extensions.Configuration.Json": "3.1.0",
-          "System.Xml.XPath.XmlDocument": "4.3.0"
-        },
-        "runtime": {
-          "lib/netstandard2.1/EPPlus.dll": {
-            "assemblyVersion": "4.5.3.3",
-            "fileVersion": "4.5.3.3"
-          }
-        }
-      },
       "ExcelNumberFormat/1.1.0": {
         "runtime": {
           "lib/netstandard2.0/ExcelNumberFormat.dll": {
@@ -119,88 +106,11 @@
           }
         }
       },
-      "Microsoft.Extensions.Configuration/3.1.0": {
-        "dependencies": {
-          "Microsoft.Extensions.Configuration.Abstractions": "3.1.0"
-        },
-        "runtime": {
-          "lib/netcoreapp3.1/Microsoft.Extensions.Configuration.dll": {
-            "assemblyVersion": "3.1.0.0",
-            "fileVersion": "3.100.19.56504"
-          }
-        }
-      },
-      "Microsoft.Extensions.Configuration.Abstractions/3.1.0": {
-        "dependencies": {
-          "Microsoft.Extensions.Primitives": "3.1.0"
-        },
-        "runtime": {
-          "lib/netcoreapp3.1/Microsoft.Extensions.Configuration.Abstractions.dll": {
-            "assemblyVersion": "3.1.0.0",
-            "fileVersion": "3.100.19.56504"
-          }
-        }
-      },
-      "Microsoft.Extensions.Configuration.FileExtensions/3.1.0": {
-        "dependencies": {
-          "Microsoft.Extensions.Configuration": "3.1.0",
-          "Microsoft.Extensions.FileProviders.Physical": "3.1.0"
-        },
-        "runtime": {
-          "lib/netcoreapp3.1/Microsoft.Extensions.Configuration.FileExtensions.dll": {
-            "assemblyVersion": "3.1.0.0",
-            "fileVersion": "3.100.19.56504"
-          }
-        }
-      },
-      "Microsoft.Extensions.Configuration.Json/3.1.0": {
-        "dependencies": {
-          "Microsoft.Extensions.Configuration": "3.1.0",
-          "Microsoft.Extensions.Configuration.FileExtensions": "3.1.0"
-        },
-        "runtime": {
-          "lib/netcoreapp3.1/Microsoft.Extensions.Configuration.Json.dll": {
-            "assemblyVersion": "3.1.0.0",
-            "fileVersion": "3.100.19.56504"
-          }
-        }
-      },
       "Microsoft.Extensions.DependencyInjection.Abstractions/8.0.2": {
         "runtime": {
           "lib/net8.0/Microsoft.Extensions.DependencyInjection.Abstractions.dll": {
             "assemblyVersion": "8.0.0.0",
             "fileVersion": "8.0.1024.46610"
-          }
-        }
-      },
-      "Microsoft.Extensions.FileProviders.Abstractions/3.1.0": {
-        "dependencies": {
-          "Microsoft.Extensions.Primitives": "3.1.0"
-        },
-        "runtime": {
-          "lib/netcoreapp3.1/Microsoft.Extensions.FileProviders.Abstractions.dll": {
-            "assemblyVersion": "3.1.0.0",
-            "fileVersion": "3.100.19.56504"
-          }
-        }
-      },
-      "Microsoft.Extensions.FileProviders.Physical/3.1.0": {
-        "dependencies": {
-          "Microsoft.Extensions.FileProviders.Abstractions": "3.1.0",
-          "Microsoft.Extensions.FileSystemGlobbing": "3.1.0"
-        },
-        "runtime": {
-          "lib/netcoreapp3.1/Microsoft.Extensions.FileProviders.Physical.dll": {
-            "assemblyVersion": "3.1.0.0",
-            "fileVersion": "3.100.19.56504"
-          }
-        }
-      },
-      "Microsoft.Extensions.FileSystemGlobbing/3.1.0": {
-        "runtime": {
-          "lib/netstandard2.0/Microsoft.Extensions.FileSystemGlobbing.dll": {
-            "assemblyVersion": "3.1.0.0",
-            "fileVersion": "3.100.19.56504"
           }
         }
       },
@@ -212,14 +122,6 @@
           "lib/net8.0/Microsoft.Extensions.Logging.Abstractions.dll": {
             "assemblyVersion": "8.0.0.0",
             "fileVersion": "8.0.1325.6609"
-          }
-        }
-      },
-      "Microsoft.Extensions.Primitives/3.1.0": {
-        "runtime": {
-          "lib/netcoreapp3.1/Microsoft.Extensions.Primitives.dll": {
-            "assemblyVersion": "3.1.0.0",
-            "fileVersion": "3.100.19.56504"
           }
         }
       },
@@ -484,14 +386,6 @@
             "fileVersion": "3.0.3.3048"
           }
         }
-      },
-      "System.Xml.XPath.XmlDocument/4.3.0": {
-        "runtime": {
-          "lib/netstandard1.3/System.Xml.XPath.XmlDocument.dll": {
-            "assemblyVersion": "4.0.2.0",
-            "fileVersion": "4.6.24705.1"
-          }
-        }
       }
     }
   },
@@ -529,13 +423,6 @@
       "path": "documentformat.openxml.framework/3.1.1",
       "hashPath": "documentformat.openxml.framework.3.1.1.nupkg.sha512"
     },
-    "EPPlus/4.5.3.3": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-aZnWmrQNRQuV/2Kwu+pTv1HVX1ZBvoGKw2GuzUOmBRpOD09sYJFGHww8NVQd3IIeb1vqosPDFZgND/1nxTzFKQ==",
-      "path": "epplus/4.5.3.3",
-      "hashPath": "epplus.4.5.3.3.nupkg.sha512"
-    },
     "ExcelNumberFormat/1.1.0": {
       "type": "package",
       "serviceable": true,
@@ -571,34 +458,6 @@
       "path": "microsoft.data.sqlite.core/10.0.3",
       "hashPath": "microsoft.data.sqlite.core.10.0.3.nupkg.sha512"
     },
-    "Microsoft.Extensions.Configuration/3.1.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-Lu41BWNmwhKr6LgyQvcYBOge0pPvmiaK8R5UHXX4//wBhonJyWcT2OK1mqYfEM5G7pTf31fPrpIHOT6sN7EGOA==",
-      "path": "microsoft.extensions.configuration/3.1.0",
-      "hashPath": "microsoft.extensions.configuration.3.1.0.nupkg.sha512"
-    },
-    "Microsoft.Extensions.Configuration.Abstractions/3.1.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-ESz6bVoDQX7sgWdKHF6G9Pq672T8k+19AFb/txDXwdz7MoqaNQj2/in3agm/3qae9V+WvQZH86LLTNVo0it8vQ==",
-      "path": "microsoft.extensions.configuration.abstractions/3.1.0",
-      "hashPath": "microsoft.extensions.configuration.abstractions.3.1.0.nupkg.sha512"
-    },
-    "Microsoft.Extensions.Configuration.FileExtensions/3.1.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-OjRJIkVxUFiVkr9a39AqVThft9QHoef4But5pDCydJOXJ4D/SkmzuW1tm6J2IXynxj6qfeAz9QTnzQAvOcGvzg==",
-      "path": "microsoft.extensions.configuration.fileextensions/3.1.0",
-      "hashPath": "microsoft.extensions.configuration.fileextensions.3.1.0.nupkg.sha512"
-    },
-    "Microsoft.Extensions.Configuration.Json/3.1.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-gBpBE1GoaCf1PKYC7u0Bd4mVZ/eR2bnOvn7u8GBXEy3JGar6sC3UVpVfTB9w+biLPtzcukZynBG9uchSBbLTNQ==",
-      "path": "microsoft.extensions.configuration.json/3.1.0",
-      "hashPath": "microsoft.extensions.configuration.json.3.1.0.nupkg.sha512"
-    },
     "Microsoft.Extensions.DependencyInjection.Abstractions/8.0.2": {
       "type": "package",
       "serviceable": true,
@@ -606,40 +465,12 @@
       "path": "microsoft.extensions.dependencyinjection.abstractions/8.0.2",
       "hashPath": "microsoft.extensions.dependencyinjection.abstractions.8.0.2.nupkg.sha512"
     },
-    "Microsoft.Extensions.FileProviders.Abstractions/3.1.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-G3iBMOnn3tETEUvkE9J3a23wQpRkiXZp73zR0XNlicjLFhkeWW1FCaC2bTjrgHhPi2KO6x0BXnHvVuJPIlygBQ==",
-      "path": "microsoft.extensions.fileproviders.abstractions/3.1.0",
-      "hashPath": "microsoft.extensions.fileproviders.abstractions.3.1.0.nupkg.sha512"
-    },
-    "Microsoft.Extensions.FileProviders.Physical/3.1.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-KsvgrYp2fhNXoD9gqSu8jPK9Sbvaa7SqNtsLqHugJkCwFmgRvdz76z6Jz2tlFlC7wyMTZxwwtRF8WAorRQWTEA==",
-      "path": "microsoft.extensions.fileproviders.physical/3.1.0",
-      "hashPath": "microsoft.extensions.fileproviders.physical.3.1.0.nupkg.sha512"
-    },
-    "Microsoft.Extensions.FileSystemGlobbing/3.1.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-tK5HZOmVv0kUYkonMjuSsxR0CBk+Rd/69QU3eOMv9FvODGZ2d0SR+7R+n8XIgBcCCoCHJBSsI4GPRaoN3Le4rA==",
-      "path": "microsoft.extensions.filesystemglobbing/3.1.0",
-      "hashPath": "microsoft.extensions.filesystemglobbing.3.1.0.nupkg.sha512"
-    },
     "Microsoft.Extensions.Logging.Abstractions/8.0.3": {
       "type": "package",
       "serviceable": true,
       "sha512": "sha512-dL0QGToTxggRLMYY4ZYX5AMwBb+byQBd/5dMiZE07Nv73o6I5Are3C7eQTh7K2+A4ct0PVISSr7TZANbiNb2yQ==",
       "path": "microsoft.extensions.logging.abstractions/8.0.3",
       "hashPath": "microsoft.extensions.logging.abstractions.8.0.3.nupkg.sha512"
-    },
-    "Microsoft.Extensions.Primitives/3.1.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-LEKAnX7lhUhSoIc2XraCTK3M4IU/LdVUzCe464Sa4+7F4ZJuXHHRzZli2mDbiT4xzAZhgqXbvfnb5+CNDcQFfg==",
-      "path": "microsoft.extensions.primitives/3.1.0",
-      "hashPath": "microsoft.extensions.primitives.3.1.0.nupkg.sha512"
     },
     "Microsoft.Xaml.Behaviors.Wpf/1.1.39": {
       "type": "package",
@@ -703,13 +534,6 @@
       "sha512": "sha512-wd+fGvZTrr3BJNe48opSczmC176Okd61ZgoZNQcdvZwkek6to978ccdpcFmNo5GHxCnk29KwT+f+lAZYgfLVZg==",
       "path": "sqlitepclraw.provider.e_sqlite3/3.0.3",
       "hashPath": "sqlitepclraw.provider.e_sqlite3.3.0.3.nupkg.sha512"
-    },
-    "System.Xml.XPath.XmlDocument/4.3.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-A/uxsWi/Ifzkmd4ArTLISMbfFs6XpRPsXZonrIqyTY70xi8t+mDtvSM5Os0RqyRDobjMBwIDHDL4NOIbkDwf7A==",
-      "path": "system.xml.xpath.xmldocument/4.3.0",
-      "hashPath": "system.xml.xpath.xmldocument.4.3.0.nupkg.sha512"
     }
   }
 }

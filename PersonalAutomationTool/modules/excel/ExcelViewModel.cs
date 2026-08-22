@@ -115,36 +115,42 @@ namespace PersonalAutomationTool.Modules.Excel
             try
             {
                 string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                string hitachiDir = "";
-                string targetFolder = "";
                 string currentYear = DateTime.Now.Year.ToString();
 
+                // Cartella base letta da hitachi_paths.json invece che duplicata qui e in
+                // ExecuteRiportaReport: se SharePoint rinomina una cartella, basta modificare il
+                // JSON, non ricompilare l'app. La struttura di targetFolder (con/senza anno,
+                // profondità diversa da treno a treno) resta qui: non è uniforme abbastanza da
+                // meritare la stessa estrazione senza rischiare di introdurre differenze.
+                string? hitachiDir = Core.HitachiPathsManager.GetHitachiDir(userProfile, SelectedTrain);
+                if (hitachiDir == null)
+                {
+                    return;
+                }
+
+                string targetFolder;
                 if (SelectedTrain == "ETR700")
                 {
-                    hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - INTERVENTI ETR700 ELO BL3");
                     string reportOldBaseDir = Path.Combine(hitachiDir, "REPORT INTERVENTI ETR700 OLD");
                     targetFolder = Path.Combine(reportOldBaseDir, $"REPORT OLD ETR700 ANNO {currentYear}");
                 }
                 else if (SelectedTrain == "E404P")
                 {
-                    hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - Interventi ETR500", "REPORT INTERVENTI NAPOLI - MILANO");
                     targetFolder = Path.Combine(hitachiDir, $"REPORT INTERVENTI OLD_ModifyYear{currentYear}");
                 }
                 else if (SelectedTrain == "ETR1000 / 1000FH")
                 {
-                    hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - Interventi ETR1000");
                     targetFolder = Path.Combine(hitachiDir, "OLD REPORT");
                 }
                 else if (SelectedTrain == "ETR1000 I-F")
                 {
-                    hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - Interventi ETR1000", "ETR1000 ITA-FRA");
                     targetFolder = Path.Combine(hitachiDir, "OLD Report");
                 }
                 else
                 {
                     return;
                 }
-                
+
                 if (!Directory.Exists(hitachiDir))
                 {
                     IsLoading = false;
@@ -1357,27 +1363,28 @@ namespace PersonalAutomationTool.Modules.Excel
                 string currentDateTime = DateTime.Now.ToString("ddMMyy HH_mm");
                 
                 string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                string hitachiDir = "";
-                string trainPrefix = "";
 
+                string? hitachiDir = Core.HitachiPathsManager.GetHitachiDir(userProfile, SelectedTrain);
+                if (hitachiDir == null)
+                {
+                    return;
+                }
+
+                string trainPrefix;
                 if (SelectedTrain == "ETR700")
                 {
-                    hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - INTERVENTI ETR700 ELO BL3");
                     trainPrefix = "ETR700";
                 }
                 else if (SelectedTrain == "E404P")
                 {
-                    hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - Interventi ETR500", "REPORT INTERVENTI NAPOLI - MILANO");
                     trainPrefix = "E404P";
                 }
                 else if (SelectedTrain == "ETR1000 / 1000FH")
                 {
-                    hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - Interventi ETR1000");
                     trainPrefix = "ETR1000";
                 }
                 else if (SelectedTrain == "ETR1000 I-F")
                 {
-                    hitachiDir = Path.Combine(userProfile, "Hitachi Group", "SSB_SST - Interventi ETR1000", "ETR1000 ITA-FRA");
                     trainPrefix = "ETR1000 Italia_Francia";
                 }
                 else

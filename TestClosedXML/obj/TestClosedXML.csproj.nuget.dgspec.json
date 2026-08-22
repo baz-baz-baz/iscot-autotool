@@ -50,10 +50,6 @@
               "target": "Package",
               "version": "[0.105.0, )"
             },
-            "EPPlus": {
-              "target": "Package",
-              "version": "[4.5.3.3, )"
-            },
             "MaterialDesignThemes": {
               "target": "Package",
               "version": "[4.9.0, )"

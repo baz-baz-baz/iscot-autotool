@@ -5,8 +5,12 @@
 > vincoli, invarianti da non rompere e stato del lavoro svolto.
 >
 > **Ultimo aggiornamento:** 22 agosto 2026 — sessione di audit e ottimizzazione per hardware Windows datato,
-> più secondo giro con le modifiche a comportamento visibile approvate dal committente (§4-bis).
-> **Stato build alla chiusura sessione:** `dotnet build` → 0 errori, 0 warning.
+> secondo giro con le modifiche a comportamento visibile approvate dal committente (§4-bis), e terzo giro
+> con l'avvio dello Sprint 1 della roadmap strategica: primo tipo condiviso testato (`LogDumpFolderName`),
+> primo progetto di test automatico della soluzione, prima estrazione di percorsi hardcoded in config (§6.1).
+> **Stato build alla chiusura sessione:** `dotnet build` sull'intera `.sln` → 0 errori, 0 warning su
+> `PersonalAutomationTool` e `PersonalAutomationTool.Tests` (i 2 warning residui sono preesistenti nello
+> scratch `TestClosedXML`, fuori scope — vedi §6.5). `dotnet test` → 19/19 superati.
 
 ---
 
@@ -50,13 +54,18 @@ generazione di email Outlook precompilate e produzione del rapportino di turno.
 iscot-autotool.sln
 ├── PersonalAutomationTool/          ← APPLICAZIONE (l'unica che conta)
 │   ├── main/                        App.xaml(.cs), MainWindow.xaml(.cs)
-│   ├── core/                        AppConfig, AppWatcher, RelayCommand,
+│   ├── core/                        AppConfig, AppWatcher, RelayCommand, HitachiPathsManager,
 │   │                                ViewModelBase, MouseWheelScrollBehavior, Converters/
+│   │   └── core/Naming/             LogDumpFolderName — parser condiviso e testato dei nomi
+│   │                                di sottocartella LOG/DUMP (vedi §6.1, §6.2 intervento 1.1)
 │   ├── modules/                     un sottoalbero per modulo funzionale
 │   │   ├── home/  cartelle/  pdf/  excel/  verifiche/  database/
 │   │   ├── destinatari_mail/  passaggio_consegne/
 │   │   └── email/               EmailService, EmailView, dialogs/, trains/
 │   └── modules/database/*.db        train_software.db, emails.db (copiati in output)
+├── PersonalAutomationTool.Tests/    ← xUnit, ProjectReference verso PersonalAutomationTool.
+│                                       Zero dipendenza da WPF: solo classi pure sotto core/.
+│                                       Vedi §6.1 per cosa copre oggi e §6.2 per il piano a 3 livelli.
 ├── TestClosedXML/                   ← scratch, NON parte dell'app
 └── scratch/                         ← scratch, NON parte dell'app
 ```
@@ -120,7 +129,9 @@ Sottoscrittori: `HomeViewModel`, `ExcelViewModel`, `CartelleView` (Loaded/Unload
 
 **`VerificheViewModel`** — canale separato e indipendente:
 - 3 `FileSystemWatcher` sulle cartelle Hitachi (`%USERPROFILE%\Hitachi Group\…`), debounce 500 ms;
-- **più** un `DispatcherTimer` da 5 s che riscandaglia 5 alberi di cartelle confrontando le date di modifica;
+- **più** un `DispatcherTimer` di backstop (60 s dal §6.1 di questa sessione, prima 5 s — vedi §4.1
+  per il motivo per cui questa scansione è comunque su thread pool) che riscandaglia 5 alberi di
+  cartelle confrontando le date di modifica, come rete di sicurezza per eventi persi dai watcher;
 - espone `static VerificheViewModel? Instance` e l'evento statico `OnVerificheDataUpdated`,
   a cui si aggancia `PassaggioConsegneViewModel` per auto-compilare la tabella movimenti.
 
@@ -134,6 +145,7 @@ Sottoscrittori: `HomeViewModel`, `ExcelViewModel`, `CartelleView` (Loaded/Unload
 | `shortcuts.json` | `{BaseDirectory}\` | macro-testi "Nulla Riscontrato", "SIM-GIT", … per treno |
 | `data\passaggio_consegne.json` | `{BaseDirectory}\data\` | i 3 rapportini di turno (ETR700/1000/500) |
 | `info_ticket.json` | dentro ogni cartella madre di `LOG & DUMP` | avvisi/avarie/interventi per locomotore |
+| `hitachi_paths.json` | `{BaseDirectory}\` | cartella Hitachi base per treno, usata da `ExcelViewModel` (Sposta/Riporta Report); auto-generato al primo avvio — vedi §6.1 |
 
 `DatabaseManager` incapsula SQLite (`Microsoft.Data.Sqlite`), restituisce `DataTable`, e serializza
 **tutti** gli accessi con un `lock` **statico** condiviso fra tutte le istanze.
@@ -277,7 +289,8 @@ quella che verrebbe riapplicata, il ciclo Clear/riempi/riseleziona viene saltato
 della route** (class handler su `UIElement` con `handledEventsToo: true`).
 **Ora:** stack esplicito con **identico ordine di visita pre-order** (figli inseriti in ordine inverso),
 quindi risultato garantito identico, senza catena di stack frame. Aggiunta uscita immediata su
-`e.Delta == 0`. *(Vedi §6.1: resta un problema strutturale non risolto in questo punto.)*
+`e.Delta == 0`. *(Il problema strutturale di scorrimento moltiplicato non era ancora risolto a
+questo punto della sessione: risolto poi in §4.16.)*
 
 ### 4.13 `PassaggioConsegnePdfExporter` — MemoryStream mai chiuso
 Il `MemoryStream` contiene il PNG dell'intero rapportino (facilmente vari MB → Large Object Heap) e
@@ -441,7 +454,191 @@ calcolate non contengano duplicati. **Non semplificare in una passata sola.**
 
 ## 6. Roadmap per le Prossime Sessioni
 
-### 6.1 Criticità note **non** risolte (richiedono una scelta esplicita, perché cambierebbero il comportamento visibile)
+> **Premessa che guida le priorità (invariata dalla sessione precedente):** il rischio principale di
+> questa applicazione non è il crash, è l'**output silenziosamente sbagliato**. Se un parser
+> posizionale sbaglia a estrarre il locomotore da un nome di cartella, non esplode niente: parte
+> un'email a Hitachi con la loco sbagliata, o si scrive una riga errata nel Report Interventi
+> aziendale. I numerosi `catch { }` best-effort rendono questo scenario invisibile. È un rischio di
+> processo, non di software, e detta l'ordine di tutto quello che segue.
+
+### 6.1 Sprint 1 — Core Parsing & Test Suite — **avviato in questa sessione**
+
+Primo sprint della roadmap in §6.2 (interventi 1.1 + 2.2, più due quick win a rischio pressoché
+nullo). Obiettivo: creare l'infrastruttura di test che oggi manca del tutto, e cominciare a
+sostituire — un chiamante alla volta, verificando ogni volta prima di procedere — gli otto punti
+indipendenti che ridecodificano la stessa grammatica di nomi cartella.
+
+- [x] **Progetto `PersonalAutomationTool.Tests`** aggiunto alla soluzione (xUnit,
+      `Microsoft.NET.Test.Sdk`, `TargetFramework=net10.0-windows` senza `UseWPF`: zero dipendenza
+      da WPF, per costruzione — dimostra che la logica estratta è davvero indipendente dalla UI).
+      `ProjectReference` verso `PersonalAutomationTool.csproj`.
+- [x] **`LogDumpFolderName`** (`core/Naming/LogDumpFolderName.cs`) — record immutabile con
+      `TryParse(folderName, knownTypes, out result)` e `Format()`, per il formato di sottocartella
+      `SR{ticket} {LOG|DUMP} {tipo} {loco} {software} {ddMMyy} {utente}`. Copre **solo** questo
+      formato (non la "cartella madre" `{tipo} {treno}`, non il nome dei file ZIP spostati in
+      rete: sono grammatiche diverse, vedi il commento XML del tipo). La gestione dello scostamento
+      `I-F`/`FH` non richiede più codice ad hoc con indici posizionali: basta passare l'elenco dei
+      `tipo` noti (da `flotte`) **ordinato per lunghezza decrescente**, e il confronto
+      `StartsWith(tipo + " ")` distingue correttamente `"ETR1000 I-F"` da `"ETR1000"` — verificato
+      nella DB reale (`SELECT DISTINCT tipo FROM flotte` → `E404P`, `ETR700`, `ETR1000`,
+      `ETR1000 I-F`, `ETR1001FH`: quest'ultimo, si noti, **non** è `"ETR1000FH"`).
+- [x] **19 test Tier 1** in `LogDumpFolderNameTests.cs`, tutti su funzioni pure (nessun file
+      system): casi standard per ognuna delle 5 flotte reali, il caso critico che distingue
+      `"ETR1000"` da `"ETR1000 I-F"` quando la loco è puramente numerica, software multi-parola
+      (`"04.01 HR"`, valore reale delle opzioni combo in `ExcelViewModel`), software vuoto che
+      produce uno spazio doppio nel nome (artefatto reale, non di laboratorio — vedi sotto), tipo
+      sconosciuto (fallback identico all'originale), elenco `knownTypes` vuoto o **in ordine
+      sbagliato** (test che documenta la landmine invece di nasconderla), prefisso mancante, kind
+      mancante o minuscolo, data non a 6 cifre, round-trip `Format()` → `TryParse()`.
+      **Risultato:** 19/19 superati al primo colpo dopo la scrittura.
+      **Scoperta della sessione, non ovvia prima di scrivere i test:** se il campo "Utente" viene
+      lasciato vuoto in CARTELLE, `.Trim()` sull'intera stringa interpolata rimuove lo spazio
+      separatore che la grammatica richiede dopo la data, e la cartella risultante **non è più
+      analizzabile da nessun parser**, né quello originale né questo — non un bug introdotto qui, un
+      limite preesistente del formato su disco, ora candidato esplicito per l'intervento 1.2.
+- [x] **Migrazione pilota:** `PdfView.ParseLogFolderName` (con la sua classe di supporto
+      `ParsedFolderInfo` e i due `[GeneratedRegex]` `LogFolderRegex`/`LogDateRegex`, usati solo lì)
+      **rimossi**, sostituiti dalla chiamata a `LogDumpFolderName.TryParse`. Verificato con build
+      pulita (0 warning) che il resto del file (`SrTicketRegex`, usata per l'incremento dei ticket
+      sui file NC, non toccata) resta identico.
+      **Gli altri 7 chiamanti restano invariati**: `HomeViewModel` (nome cartella madre — formato
+      diverso, fuori scope), `EmailService.BuildSubject`/`GetLogAndDumpFolders`,
+      `TrainViewHelper.ExtractLocosFromFolder` (3 varianti interne), `ChiusuraTicketDialog.PopulateLocos`,
+      `ExcelViewModel` (diversi punti di `AutoFillReportFieldsAsync`). Vanno migrati **uno alla
+      volta**, verificando sul campo prima di procedere col successivo — non in blocco.
+- [x] **Quick win 2.3 (percorsi Hitachi in config), applicato in forma ridotta e mirata:**
+      `core/HitachiPathsManager.cs` (stesso pattern di cache "testo validato su mtime+dimensione"
+      già usato da `DestinatariManager`/`ShortcutsManager`) legge `hitachi_paths.json` e sostituisce
+      la cartella Hitachi base per treno, prima **duplicata identica** in
+      `ExcelViewModel.ExecuteSpostaReport` **ed** `ExecuteRiportaReport`. Verificato manualmente,
+      riga per riga, che i valori di `hitachiDir` prodotti per le 4 flotte (ETR700, E404P,
+      ETR1000/1000FH, ETR1000 I-F) siano testualmente identici a quelli hardcoded prima.
+      **Deliberatamente NON estratta** la costruzione di `targetFolder`/`trainPrefix`: ha forme non
+      uniformi da treno a treno (con/senza anno nel percorso, profondità diversa, maiuscole diverse
+      — "OLD REPORT" vs "OLD Report"), e forzarla in un unico schema JSON avrebbe rischiato di
+      introdurre una differenza sottile senza un beneficio proporzionato. Resta inline in C#, ora
+      però a partire da un `hitachiDir` centralizzato.
+      **Non toccati** (fuori scope di questo intervento): i percorsi di `VerificheViewModel`
+      (`PollingRelativePaths`/`WatcherRelativePaths`) e la risoluzione della cartella di rete in
+      `HomeViewModel.GetLogDumpReteBasePath`.
+- [x] **Quick win 3.1 (polling Verifiche):** `VerificheViewModel._refreshTimer.Interval` da 5 s a
+      60 s. I `FileSystemWatcher` (§2.5) restano il canale primario; il timer è solo un backstop
+      per eventi persi — a 60 s svolge la stessa funzione con un dodicesimo dell'I/O su disco.
+
+**Build/test alla chiusura dello sprint:** `dotnet build` sull'intera `.sln` → 0 errori; 0 warning
+su `PersonalAutomationTool` e `PersonalAutomationTool.Tests` (i 2 warning NU1510 residui sono
+preesistenti in `TestClosedXML`, scratch fuori scope). `dotnet test` → **19/19 superati**.
+
+### 6.2 Le 4 macro-aree della roadmap strategica
+
+Elaborata come risposta alla domanda "se fossi il Lead Architect, cosa faresti dopo l'audit
+prestazionale". Ogni intervento è marcato **Impatto** (Alto/Medio/Basso) · **Sforzo**
+(Rapido/Medio/Ristrutturazione) · **Rischio di regressione** (Basso/Medio/Alto). Le voci con ✅
+sono quelle avviate nello Sprint 1 (§6.1); tutte le altre sono **non applicate**, invariate.
+
+#### 2.1-A Stabilità & Resilienza Operativa
+
+| # | Intervento | Impatto | Sforzo | Rischio |
+|---|---|---|---|---|
+| 1.1 | ✅ **Parser/formatter unico** per i nomi `LOG & DUMP` (Sprint 1, 1/8 chiamanti migrato) | **Alto** | Medio | Basso |
+| 1.2 | **Validazione preventiva alla creazione** (in CARTELLE) | **Alto** | Rapido | Basso |
+| 1.3 | **Confidenza di parsing + avviso visibile** invece di `catch {}` | **Alto** | Medio | Basso |
+| 1.4 | **Isolamento dell'interop Excel in processo figlio** | **Alto** | Medio | Medio |
+| 1.5 | Sostituzione interop Excel con OpenXML diretto | Alto | Ristrutturazione | **Alto** |
+| 1.6 | **Health-check dei percorsi** all'avvio | Medio | Rapido | Basso |
+| 1.7 | Wrapper tipizzato sopra Outlook (`dynamic` → interfaccia) | Basso | Medio | Basso |
+
+Il **keystone è 1.1**: oggi l'app scrive quei nomi in un punto (`CartelleView.BtnCrea_Click`) e li
+rilegge in almeno otto altri, con logiche indipendenti; scrittura e lettura possono divergere senza
+che nessuno se ne accorga. Un tipo unico con `TryParse`/`Format` rende la divergenza
+strutturalmente impossibile. **1.2 vale più di 1.1**: validare al momento della creazione costa una
+frazione del tollerare in lettura — CARTELLE ha già il pattern giusto (anteprima live del nome),
+basta estenderlo con controlli su formato ticket, cartella già esistente, loco presente in `flotte`.
+**1.4 prima di 1.5**: eseguire l'interop Excel in un processo figlio a vita breve è molto più
+economico di una riscrittura OpenXML diretta (che richiederebbe estendere a mano i range di
+convalida dati e formattazione condizionale, oggi limitati, es. `B2:B500`) — un blocco o un leak
+muoiono col processo figlio, il padre resta pulito.
+
+#### 2.1-B Architettura & Debito Tecnico
+
+| # | Intervento | Impatto | Sforzo | Rischio |
+|---|---|---|---|---|
+| 2.1 | **Separare "decidere" da "eseguire"** (estrazione logica pura) | **Alto** | Medio | Basso |
+| 2.2 | ✅ **Progetto di test + Tier 1** (Sprint 1, avviato) | **Alto** | Rapido | **Nullo** |
+| 2.3 | ✅ **Percorsi Hitachi hardcoded → config** (Sprint 1, `hitachiDir` di `ExcelViewModel`) | **Alto** | Rapido | Basso |
+| 2.4 | Test Tier 2 su workspace temporaneo reale | Alto | Medio | Nullo |
+| 2.5 | Golden-file test sul corpo HTML delle email | **Alto** | Rapido | Nullo |
+| 2.6 | Completamento MVVM sui moduli code-behind | Basso | Ristrutturazione | **Alto** |
+| 2.7 | `DatabaseManager`: `DataTable` → record tipizzati, lock per istanza | Medio | Medio | Medio |
+
+**2.6 è deliberatamente scartato come obiettivo in sé:** convertire Cartelle, PDF, Database e i
+dialog a MVVM è un big-bang senza beneficio visibile all'utente, su codice che oggi funziona. Al suo
+posto, **2.1**: estrarre la *logica* lasciando il code-behind come guscio sottile (esempio concreto,
+non ancora fatto: `PdfView.BtnRinomina_Click` contiene un algoritmo non banale — due fasi con nomi
+temporanei GUID, rilevamento collisioni, incremento ticket per gli NC — annegato in un event
+handler; estratto in un `PdfRenamePlanner` che restituisce un *piano* di operazioni, diventerebbe
+testabile senza WPF). **2.5 ha il miglior rapporto valore/sforzo dei test non ancora scritti**:
+`EmailService.BuildHtmlBody` produce ciò che arriva al cliente; congelare l'output per una decina di
+input rappresentativi intercetta esattamente le regressioni che fanno più danno.
+
+**Strategia di test a 3 livelli** (di cui Tier 1 è l'unico avviato finora):
+- **Tier 1 — funzioni pure su stringhe** (`BuildSubject`, `ParseLogFolderName`/`LogDumpFolderName`,
+  `MatchesTrain`, `AreTrainTypesCompatible`, `ExtractLocosFromFolder`): nessuna astrazione, basta
+  spostarle fuori dalle classi WPF. È dove vivono i bug ed è dove i test costano meno.
+- **Tier 2 — file system**: per questa app una directory temporanea reale è meglio di un mock,
+  perché la logica riguarda semantica di percorsi veri; serve una fixture che costruisca un finto
+  albero `LOG & DUMP`.
+- **Tier 3 — COM**: non si testa, si isola dietro `IReportWriter`/`IMailComposer` e si verifica
+  tutto fino al confine.
+
+#### 2.1-C Performance & Efficienza Legacy
+
+| # | Intervento | Impatto | Sforzo | Rischio |
+|---|---|---|---|---|
+| 3.1 | ✅ **Polling Verifiche: 5s → 60s** (Sprint 1) | **Alto** | Rapido | Basso |
+| 3.2 | **`flotte` in dizionario in memoria** all'avvio | Medio | Rapido | Basso |
+| 3.3 | Indici SQLite su `(tipo, loco)` e `loco` | Medio | Rapido | Basso |
+| 3.4 | **Lettura Verifiche con `OpenXmlReader`** (SAX) invece di ClosedXML | **Alto** | Medio | Medio |
+| 3.5 | Pubblicazione **ReadyToRun** | Medio | Rapido | Basso |
+| 3.6 | Virtualizzazione griglie residue (Home, PassaggioConsegne) | Basso | Rapido | Basso |
+| 3.7 | `DropShadowEffect` e `BitmapScalingMode` | Basso | Rapido | Basso |
+
+**3.4** resta il residuo più grosso non affrontato sul percorso Verifiche: ClosedXML carica l'intero
+workbook in un object model per estrarre tre colonne da un foglio; una lettura SAX con
+`OpenXmlReader` taglierebbe la memoria di un ordine di grandezza. **3.5**: valutare anche il
+deployment self-contained (elimina la dipendenza dal runtime installato su macchine d'ufficio con
+permessi ristretti); **non** aggiungere il trimming — XAML e `dynamic` usano riflessione, il
+trimmer romperebbe cose in modo difficile da diagnosticare.
+
+#### 2.1-D UX & Nuove Feature
+
+| # | Intervento | Impatto | Sforzo | Rischio |
+|---|---|---|---|---|
+| 4.1 | **Anteprima "cosa cambierà"** prima delle rinomine massive | **Alto** | Medio | Basso |
+| 4.2 | **Feedback di avanzamento** su zip / sposta in rete / elimina | **Alto** | Rapido | Basso |
+| 4.3 | **Annulla rinomina** (riusando la tabella `renamer_log`, già presente e inutilizzata — vedi §6.6) | Medio | Medio | Basso |
+| 4.4 | Pannello health-check percorsi (vedi 1.6) | Medio | Rapido | Basso |
+| 4.5 | Flusso da tastiera: acceleratori, tab order, Invio per confermare | Medio | Rapido | Basso |
+| 4.6 | Ricerca globale su `LOG & DUMP` | Medio | Medio | Basso |
+
+**4.1** è la difesa più efficace contro il rischio descritto nella premessa di §6, e non richiede di
+rendere i parser perfetti: oggi "Rinomina" in PDF e "Aggiorna ticket" in HOME rinominano in blocco
+senza mostrare nulla prima; un dialog "vecchio → nuovo" intercetta un parsing sbagliato prima che
+diventi un'email o un file mal nominato. **4.2**: ExcelView ha già l'overlay giusto (`IsLoading` +
+`ProgressBar`, quest'ultima ora legata correttamente in §4.15), va solo generalizzato con un
+conteggio ("3 di 12").
+
+### 6.3 Da dove ripartire nel prossimo sprint
+
+Il prossimo passo naturale dello Sprint 1 (non fatto in questa sessione: lo scope era "un solo
+chiamante pilota") è migrare **un altro** degli 7 chiamanti rimasti a `LogDumpFolderName`, verificare,
+poi passare al successivo. Ordine suggerito (dal più isolato al più intrecciato):
+`TrainViewHelper.ExtractLocosFromFolder` → `ChiusuraTicketDialog.PopulateLocos` →
+`EmailService.GetLogAndDumpFolders`/`BuildSubject` → `ExcelViewModel.AutoFillReportFieldsAsync`.
+In parallelo, **2.5** (golden-file test su `BuildHtmlBody`) è pronto per essere iniziato in
+qualunque momento: non dipende da nessuna migrazione ulteriore.
+
+### 6.4 Criticità note **non** risolte (richiedono una scelta esplicita, perché cambierebbero il comportamento visibile)
 
 > Le ex-voci **A** (scorrimento moltiplicato) e **B** (virtualizzazione `VerificheView`) sono state
 > approvate e applicate: vedi §4.16 e §4.17. Restano aperte le 7 seguenti.
@@ -485,7 +682,7 @@ aggiungere `CacheMode="BitmapCache"`. Entrambe toccano la resa visiva → serve 
 **I. `RenderOptions.BitmapScalingMode="HighQuality"`** su `MainWindow` è ereditato da tutto l'albero.
 `LowQuality`/`NearestNeighbor` sarebbe più adatto a hardware datato, ma cambierebbe la resa.
 
-### 6.2 Debito tecnico / igiene del repository
+### 6.5 Debito tecnico / igiene del repository
 
 - [x] **`.gitignore` creato** (regole .NET/WPF + VS/Rider/VS Code + NuGet + OS). Attenzione: **non**
       aggiungere una regola `*.db` globale — i database sotto `modules/database/` sono dati sorgente
@@ -510,12 +707,13 @@ aggiungere `CacheMode="BitmapCache"`. Entrambe toccano la resa visiva → serve 
       `MainWindow`: la cache resta popolata con un'istanza ormai orfana.
 - [ ] **`AppWatcher`** non espone alcun modo per fermarsi o rilasciare il `FileSystemWatcher`.
       Valutare anche `InternalBufferSize` (il default di 8 KB può perdere eventi in caso di raffiche).
-- [ ] **Nessun test automatico.** I parser dei nomi di cartella (§5.1, §5.2) sono la parte più fragile
-      e più facilmente testabile del sistema: sono funzioni pure su stringhe. Un progetto di unit test
-      su `ExtractLocosFromFolder`, `BuildSubject`, `ParseLogFolderName`, `AreTrainTypesCompatible` e
-      `MatchesTrain` darebbe la rete di sicurezza che oggi manca del tutto.
+- [~] **Test automatici — avviati, non completi.** `PersonalAutomationTool.Tests` esiste ora
+      (§6.1) con 19 test Tier 1 su `LogDumpFolderName`. Restano da coprire allo stesso modo:
+      `ExtractLocosFromFolder`, `BuildSubject`, `AreTrainTypesCompatible`, `MatchesTrain` — nessuno
+      di questi dipende da `LogDumpFolderName`, possono procedere in parallelo alla migrazione dei
+      chiamanti (§6.3).
 
-### 6.3 Idee funzionali emerse dal codice (non richieste, solo annotate)
+### 6.6 Idee funzionali emerse dal codice (non richieste, solo annotate)
 - Le tabelle `renamer_config` / `renamer_queue` / `renamer_log` esistono in `train_software.db` e sono
   gestite da `DatabaseView`, ma **nessun modulo dell'app le usa**: residuo di una funzione di rinomina
   automatica mai completata (o rimossa).
@@ -526,14 +724,21 @@ aggiungere `CacheMode="BitmapCache"`. Entrambe toccano la resa visiva → serve 
 
 ## 7. Come riprendere il lavoro
 
-### 7.1 Build ed esecuzione
+### 7.1 Build, test ed esecuzione
 
 ```bash
 dotnet build PersonalAutomationTool/PersonalAutomationTool.csproj
 ```
 ```bash
+dotnet test PersonalAutomationTool.Tests/PersonalAutomationTool.Tests.csproj
+```
+```bash
 dotnet run --project PersonalAutomationTool/PersonalAutomationTool.csproj
 ```
+
+Il progetto di test (§6.1) non richiede Windows in senso stretto per compilare, ma
+`TargetFramework=net10.0-windows` (per la `ProjectReference` verso l'app WPF) sì: va eseguito nello
+stesso ambiente della build principale.
 
 ### 7.2 Pulizia del tracking Git (da eseguire una volta sola)
 
@@ -581,3 +786,10 @@ non può proteggerle. Ogni modifica al parsing va verificata su casi reali presi
 8. **VERIFICHE** (regressione §4.17) → verificare che le tre griglie mostrino tutti i dati, che
    ognuna scorra per conto proprio e che il riquadro di riepilogo in alto resti leggibile
    (compare una barra di scorrimento solo se le liste superano i 260 px).
+9. **PDF** (migrazione pilota §6.1) → rinominare una cartella con tipo a due parole reale
+   (`ETR1000 I-F`) e verificare che il nome generato sia identico a quello che produceva la
+   versione precedente (tipo, loco, data, utente nella posizione corretta).
+10. **EXCEL** (quick win §6.1) → "Sposta Report" su ognuna delle 4 flotte con pulsante attivo
+    (ETR700, E404P, ETR1000/1000FH, ETR1000 I-F): verificare che la cartella Hitachi individuata
+    sia quella corretta per ciascuna, e che al primo avvio compaia `hitachi_paths.json` accanto
+    all'eseguibile con i 4 percorsi attesi.
