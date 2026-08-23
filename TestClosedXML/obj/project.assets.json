@@ -646,6 +646,7 @@
         "framework": ".NETCoreApp,Version=v10.0",
         "dependencies": {
           "ClosedXML": "0.105.0",
+          "DocumentFormat.OpenXml": "3.1.1",
           "MaterialDesignThemes": "4.9.0",
           "Microsoft.Data.Sqlite": "10.0.3",
           "PDFsharp": "6.2.4",

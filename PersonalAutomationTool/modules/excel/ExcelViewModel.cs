@@ -1255,13 +1255,24 @@ namespace PersonalAutomationTool.Modules.Excel
                 }); // Fine Task.Run ClosedXML - file completamente rilasciato
 
                 // 2. Usa Excel Interop per scrivere i valori in modo nativo, per NON alterare in alcun modo la formattazione e la struttura del file
+                //
+                // L'INTERA interazione COM — individuazione del ProgID, avvio del processo Excel,
+                // scrittura e pulizia — gira dentro un unico Task.Run. Prima, ricerca del ProgID e
+                // Activator.CreateInstance stavano sul thread UI: quest'ultima **avvia il processo
+                // EXCEL.EXE**, operazione che su una macchina d'officina lenta costa secondi, e per
+                // tutto quel tempo la finestra restava bloccata prima ancora che comparisse
+                // l'overlay di avanzamento. Tenere creazione e uso nello stesso apartment COM è
+                // anche più coerente di prima, quando l'oggetto veniva creato sul thread STA della
+                // UI e poi usato da un thread del pool.
+                //
+                // L'esito viene restituito come messaggio d'errore (null = successo) perché i
+                // MessageBox devono restare sul thread UI, fuori dal Task.Run.
+                string? comErrorMessage = await Task.Run(() =>
+                {
                 Type? excelType = Type.GetTypeFromProgID("Excel.Application");
                 if (excelType == null)
                 {
-                    IsLoading = false;
-                    await Task.Delay(100);
-                    MessageBox.Show("Excel non risulta installato. Impossibile salvare senza alterare il file.", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
+                    return "Excel non risulta installato. Impossibile salvare senza alterare il file.";
                 }
 
                 // Snapshot dei processi EXCEL.EXE già in esecuzione PRIMA di crearne uno nuovo: Excel
@@ -1277,18 +1288,13 @@ namespace PersonalAutomationTool.Modules.Excel
                 dynamic? excelApp = Activator.CreateInstance(excelType);
                 if (excelApp == null)
                 {
-                    IsLoading = false;
-                    await Task.Delay(100);
-                    MessageBox.Show("Impossibile avviare Excel.", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
+                    return "Impossibile avviare Excel.";
                 }
 
                 int? excelProcessId = System.Diagnostics.Process.GetProcessesByName("EXCEL")
                     .Select(p => (int?)p.Id)
                     .FirstOrDefault(id => !excelPidsBefore.Contains(id!.Value));
 
-                await Task.Run(() =>
-                {
                 dynamic? workbookInterop = null;
                 dynamic? worksheetInterop = null;
 
@@ -1357,8 +1363,18 @@ namespace PersonalAutomationTool.Modules.Excel
                         }
                     });
                 }
+
+                return null;
                 }); // Fine Task.Run Interop
-                    
+
+                if (comErrorMessage != null)
+                {
+                    IsLoading = false;
+                    await Task.Delay(100);
+                    MessageBox.Show(comErrorMessage, "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
                 IsLoading = false;
                 await Task.Delay(100);
                 MessageBox.Show($"Report salvato con successo alla riga {targetRow}.", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);

@@ -124,15 +124,58 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
             });
 
             CaricaDati();
-            AutoCompilaTreniDaVerifiche();
+
+            // Fire-and-forget: il costruttore non attende il caricamento delle verifiche, che al
+            // primo avvio (VerificheViewModel.Instance ancora null) comporta la scansione di tre
+            // alberi OneDrive. La vista si apre subito e la tabella movimenti si popola appena i
+            // dati sono pronti. Prima questa chiamata era sincrona e bloccava l'apertura del modulo.
+            _ = AutoCompilaTreniDaVerificheAsync();
 
             VerificheViewModel.OnVerificheDataUpdated += () =>
             {
                 Application.Current?.Dispatcher.InvokeAsync(() =>
                 {
+                    // Qui Instance è per definizione valorizzata (l'evento arriva da lei) e i dati
+                    // sono già in memoria: la versione sincrona non tocca il disco.
                     AutoCompilaTreniDaVerifiche();
                 });
             };
+        }
+
+        /// <summary>
+        /// Aggiorna la tabella movimenti dei tre rapportini dai dati di VERIFICHE.
+        ///
+        /// <para>
+        /// <b>L'I/O non tocca più il thread UI.</b> <c>GetVerificheForFleetStatic</c> è economica
+        /// quando <c>VerificheViewModel.Instance</c> esiste (legge da collezioni già in memoria), ma
+        /// quando è <c>null</c> — cioè quando si apre "Passaggio di Consegne" <b>prima</b> di
+        /// "Verifiche", che è lo scenario normale al primo utilizzo — esegue il caricamento completo
+        /// di tre flotte: enumerazione ricorsiva di alberi OneDrive più il parsing dei file Excel.
+        /// Chiamata dal costruttore, come avveniva prima, quel lavoro girava per intero sul
+        /// dispatcher e la finestra restava bloccata per secondi all'apertura del modulo (criticità
+        /// F di PROJECT_MEMORY.md §6.4).
+        /// </para>
+        ///
+        /// <para>
+        /// La lettura è quindi spostata sul thread pool e solo l'applicazione dei risultati — che
+        /// muta <see cref="RapportinoTurnoModel.Movimenti"/>, una <c>ObservableCollection</c> legata
+        /// alla UI — resta sul dispatcher. Il metodo sincrono è mantenuto come sottile involucro per
+        /// i chiamanti già sul thread UI che hanno i dati in memoria.
+        /// </para>
+        /// </summary>
+        public async System.Threading.Tasks.Task AutoCompilaTreniDaVerificheAsync()
+        {
+            var dati = await System.Threading.Tasks.Task.Run(() => new[]
+            {
+                (Rapportino: RapportinoEtr700, Righe: VerificheViewModel.GetVerificheForFleetStatic("700")),
+                (Rapportino: RapportinoEtr1000, Righe: VerificheViewModel.GetVerificheForFleetStatic("1000")),
+                (Rapportino: RapportinoEtr500, Righe: VerificheViewModel.GetVerificheForFleetStatic("500"))
+            }).ConfigureAwait(true); // prosegue sul dispatcher: sotto si mutano collezioni osservabili
+
+            foreach (var (rapportino, righe) in dati)
+            {
+                ApplicaVerificheAlRapportino(rapportino, righe);
+            }
         }
 
         public void AutoCompilaTreniDaVerifiche()
@@ -142,9 +185,16 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
             AutoCompilaRapportino(RapportinoEtr500, "500");
         }
 
-        private static void AutoCompilaRapportino(RapportinoTurnoModel rapportino, string fleetIdentifier)
+        private static void AutoCompilaRapportino(RapportinoTurnoModel rapportino, string fleetIdentifier) =>
+            ApplicaVerificheAlRapportino(rapportino, VerificheViewModel.GetVerificheForFleetStatic(fleetIdentifier));
+
+        /// <summary>
+        /// Parte che muta i modelli osservabili, separata dalla lettura dei dati perché possa essere
+        /// eseguita sul dispatcher anche quando la lettura è avvenuta sul thread pool. Logica
+        /// identica all'originale.
+        /// </summary>
+        private static void ApplicaVerificheAlRapportino(RapportinoTurnoModel rapportino, List<Modules.Verifiche.VerificheModel>? rawList)
         {
-            var rawList = VerificheViewModel.GetVerificheForFleetStatic(fleetIdentifier);
             if (rawList == null || rawList.Count == 0) return;
 
             var grouped = rawList

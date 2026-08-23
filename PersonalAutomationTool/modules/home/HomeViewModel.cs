@@ -459,31 +459,48 @@ namespace PersonalAutomationTool.Modules.Home
 
             try
             {
-                // Identifica in modo dinamico la cartella base di rete
-                string basePath = GetLogDumpReteBasePath();
-
-                if (!Directory.Exists(basePath))
-                {
-                    System.Windows.MessageBox.Show($"La cartella di rete di base non esiste:\n{basePath}", "Attenzione", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
-                    return;
-                }
-
                 // Estrai il Tipo Treno dal nome della riga selezionata (es: "E404P 30" -> "E404P", "ETR700 12" -> "ETR700")
                 string rawTrainType = SelectedItem.TipoTreno.Split(' ').FirstOrDefault()?.ToUpper() ?? string.Empty;
                 if (string.IsNullOrEmpty(rawTrainType))
                     return;
 
-                // Risolvi la cartella del tipo treno ESISTENTE in rete (senza mai crearne di nuove)
-                string? trainTypePath = ResolveTrainTypePath(basePath, rawTrainType);
-                if (string.IsNullOrEmpty(trainTypePath) || !Directory.Exists(trainTypePath))
+                // Risoluzione dei percorsi di rete spostata sul thread pool (criticità G di
+                // PROJECT_MEMORY.md §6.4). GetLogDumpReteBasePath e ResolveTrainTypePath fanno
+                // Directory.Exists/GetDirectories su percorsi OneDrive o di rete: su una connessione
+                // lenta o disconnessa ognuna può bloccare per secondi, e prima giravano tutte sul
+                // dispatcher prima ancora di entrare nel Task.Run sottostante — la finestra restava
+                // congelata già al clic del pulsante.
+                IsLoading = true;
+                LoadingMessage = "Ricerca cartelle di rete...";
+
+                var (basePath, trainTypePath, zipFiles) = await System.Threading.Tasks.Task.Run<(string BasePath, string? TrainTypePath, string[]? ZipFiles)>(() =>
                 {
+                    string baseP = GetLogDumpReteBasePath();
+                    if (!Directory.Exists(baseP)) return (baseP, null, null);
+
+                    string? trainP = ResolveTrainTypePath(baseP, rawTrainType);
+                    if (string.IsNullOrEmpty(trainP) || !Directory.Exists(trainP)) return (baseP, null, null);
+
+                    return (baseP, trainP, Directory.GetFiles(path, "*.zip"));
+                });
+
+                if (!Directory.Exists(basePath))
+                {
+                    IsLoading = false;
+                    System.Windows.MessageBox.Show($"La cartella di rete di base non esiste:\n{basePath}", "Attenzione", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (string.IsNullOrEmpty(trainTypePath))
+                {
+                    IsLoading = false;
                     System.Windows.MessageBox.Show($"La cartella del tipo treno ({rawTrainType}) non è stata trovata nei percorsi di rete esistenti.", "Attenzione", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
                     return;
                 }
 
-                var zipFiles = Directory.GetFiles(path, "*.zip");
-                if (zipFiles.Length == 0)
+                if (zipFiles == null || zipFiles.Length == 0)
                 {
+                    IsLoading = false;
                     System.Windows.MessageBox.Show("Nessun file ZIP trovato. Esegui prima l'operazione di ZIP.", "Informazione", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
                     return;
                 }

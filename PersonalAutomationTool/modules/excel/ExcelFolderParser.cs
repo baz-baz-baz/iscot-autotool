@@ -113,9 +113,19 @@ namespace PersonalAutomationTool.Modules.Excel
             var tokens = GetDiskTokens(uiLabel);
             if (tokens.Count == 0) return null;
 
-            string alternation = string.Join("|", tokens.Select(Regex.Escape));
-            return new Regex($@"(?:{alternation})\s*[-_]?\s*(\d{{{minDigits},4}})", RegexOptions.IgnoreCase);
+            // I pattern possibili sono pochissimi (4 etichette × 2 soglie di cifre) e non cambiano
+            // durante la sessione: costruirli e compilarli a ogni autocompilazione del report era
+            // lavoro ripetuto inutilmente. La cache è thread-safe perché AutoFillReportFieldsAsync
+            // gira sul thread pool.
+            string cacheKey = $"{uiLabel}|{minDigits}";
+            return _locoRegexCache.GetOrAdd(cacheKey, _ =>
+            {
+                string alternation = string.Join("|", tokens.Select(Regex.Escape));
+                return new Regex($@"(?:{alternation})\s*[-_]?\s*(\d{{{minDigits},4}})", RegexOptions.IgnoreCase);
+            });
         }
+
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Regex> _locoRegexCache = new();
 
         /// <summary>
         /// Estrae ticket e locomotore da un nome di sottocartella tramite

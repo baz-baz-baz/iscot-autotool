@@ -31,13 +31,13 @@
         </Style>
 
         <!-- Stile condiviso delle tre griglie di flotta.
-             CanContentScroll="True" è la chiave: con "False" (impostazione precedente) il
-             DataGrid passa allo scorrimento a pixel e materializza OGNI riga come DataGridRow
-             completa di celle e TextBlock. Con "True" si attiva la virtualizzazione nativa e
-             restano vive solo le righe effettivamente visibili.
-             ScrollUnit resta il default "Item": con la colonna "Avaria" a testo mandato a capo
-             le righe hanno altezza variabile, e lo scorrimento per riga mantiene stabile la
-             maniglia della barra di scorrimento. -->
+             Nessuna viewport vincolata (vedi il commento sul layout più sotto): la griglia si
+             dimensiona sul proprio contenuto e non scorre mai al proprio interno. Su richiesta
+             esplicita del committente questa sessione ha ripristinato il comportamento precedente
+             alla virtualizzazione introdotta nello Sprint 2 (§4.17 di PROJECT_MEMORY.md): con i
+             volumi reali di Verifiche (decine di righe, non migliaia) la pagina intera che scorre
+             è più leggibile delle tre viewport separate, e il costo di non virtualizzare più è
+             trascurabile a quei volumi. Vedi §6.1-quinquies. -->
         <Style x:Key="VerificheGridStyle" TargetType="DataGrid">
             <Setter Property="AutoGenerateColumns" Value="False"/>
             <Setter Property="CanUserAddRows" Value="False"/>
@@ -53,43 +53,6 @@
             <Setter Property="AlternatingRowBackground" Value="#F9F9F9"/>
             <Setter Property="ColumnHeaderStyle" Value="{StaticResource VerificheHeaderStyle}"/>
             <Setter Property="Margin" Value="0,0,0,20"/>
-            <Setter Property="EnableRowVirtualization" Value="True"/>
-            <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
-            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
-            <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True"/>
-            <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling"/>
-        </Style>
-
-        <!-- Colonne del riepilogo: elenco virtualizzato con viewport propria.
-             Un ItemsControl non ha di suo un ScrollViewer, quindi non ha una viewport e non può
-             virtualizzare: il template qui sotto gliene fornisce una. -->
-        <Style x:Key="RiassuntoListStyle" TargetType="ItemsControl">
-            <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True"/>
-            <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling"/>
-            <Setter Property="ItemsPanel">
-                <Setter.Value>
-                    <ItemsPanelTemplate>
-                        <VirtualizingStackPanel />
-                    </ItemsPanelTemplate>
-                </Setter.Value>
-            </Setter>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ItemsControl">
-                        <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}">
-                            <ScrollViewer CanContentScroll="True"
-                                          VerticalScrollBarVisibility="Auto"
-                                          HorizontalScrollBarVisibility="Disabled"
-                                          Focusable="False"
-                                          Padding="{TemplateBinding Padding}">
-                                <ItemsPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
-                            </ScrollViewer>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
         </Style>
 
         <DataTemplate x:Key="RiassuntoTrenoTemplate">
@@ -99,80 +62,57 @@
         </DataTemplate>
     </UserControl.Resources>
 
-    <!-- Il precedente ScrollViewer > StackPanel è stato sostituito da una Grid a righe
-         proporzionali. Motivo: uno StackPanel concede ai figli altezza infinita, quindi nessuna
-         griglia al suo interno riceve una viewport vincolata e la virtualizzazione WPF non si
-         attiva mai, a prescindere dalle proprietà impostate. Con righe "*" ogni sezione ha
-         un'altezza definita e scorre per conto proprio. -->
-    <Grid Margin="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+    <!-- Torna a ScrollViewer > StackPanel su richiesta esplicita del committente (§6.1-quinquies):
+         uno StackPanel concede ai figli altezza infinita, quindi nessuna sezione riceve una
+         viewport vincolata — ogni tabella si dimensiona sul proprio contenuto per intero, senza
+         una barra di scorrimento propria, e a scorrere è la pagina nel suo complesso. -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="20">
 
-        <!-- Tabella Riassuntiva (Solo Treni) -->
-        <TextBlock Grid.Row="0" Text="RIASSUNTO TRENI CON VERIFICHE" FontWeight="Bold" FontSize="16" Foreground="#333333" Margin="0,0,0,5" HorizontalAlignment="Center"/>
+            <!-- Tabella Riassuntiva (Solo Treni) -->
+            <TextBlock Text="RIASSUNTO TRENI CON VERIFICHE" FontWeight="Bold" FontSize="16" Foreground="#333333" Margin="0,0,0,5" HorizontalAlignment="Center"/>
 
-        <!-- MaxHeight: sotto questa soglia il riquadro si dimensiona sul contenuto esattamente
-             come prima; oltre, fornisce la viewport vincolata che permette la virtualizzazione. -->
-        <Border Grid.Row="1" BorderBrush="#9ACD32" BorderThickness="2" Margin="0,0,0,30" Background="White" MaxHeight="260">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
+            <Border BorderBrush="#9ACD32" BorderThickness="2" Margin="0,0,0,30" Background="White">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
 
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
 
-                <!-- Intestazioni -->
-                <Border Grid.Row="0" Grid.Column="0" Background="#9ACD32" Padding="8" BorderBrush="LightGray" BorderThickness="0,0,1,1">
-                    <TextBlock Text="500" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center"/>
-                </Border>
-                <Border Grid.Row="0" Grid.Column="1" Background="#9ACD32" Padding="8" BorderBrush="LightGray" BorderThickness="0,0,1,1">
-                    <TextBlock Text="700" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center"/>
-                </Border>
-                <Border Grid.Row="0" Grid.Column="2" Background="#9ACD32" Padding="8" BorderBrush="LightGray" BorderThickness="0,0,0,1">
-                    <TextBlock Text="1000" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center"/>
-                </Border>
+                    <!-- Intestazioni -->
+                    <Border Grid.Row="0" Grid.Column="0" Background="#9ACD32" Padding="8" BorderBrush="LightGray" BorderThickness="0,0,1,1">
+                        <TextBlock Text="500" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center"/>
+                    </Border>
+                    <Border Grid.Row="0" Grid.Column="1" Background="#9ACD32" Padding="8" BorderBrush="LightGray" BorderThickness="0,0,1,1">
+                        <TextBlock Text="700" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center"/>
+                    </Border>
+                    <Border Grid.Row="0" Grid.Column="2" Background="#9ACD32" Padding="8" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                        <TextBlock Text="1000" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center"/>
+                    </Border>
 
-                <!-- Dati -->
-                <ItemsControl Grid.Row="1" Grid.Column="0" ItemsSource="{Binding VerificheList500}"
-                              Style="{StaticResource RiassuntoListStyle}"
-                              ItemTemplate="{StaticResource RiassuntoTrenoTemplate}"
-                              BorderBrush="LightGray" BorderThickness="0,0,1,0"/>
+                    <!-- Dati -->
+                    <ItemsControl Grid.Row="1" Grid.Column="0" ItemsSource="{Binding VerificheList500}"
+                                  ItemTemplate="{StaticResource RiassuntoTrenoTemplate}"/>
 
-                <ItemsControl Grid.Row="1" Grid.Column="1" ItemsSource="{Binding VerificheList700}"
-                              Style="{StaticResource RiassuntoListStyle}"
-                              ItemTemplate="{StaticResource RiassuntoTrenoTemplate}"
-                              BorderBrush="LightGray" BorderThickness="0,0,1,0"/>
+                    <ItemsControl Grid.Row="1" Grid.Column="1" ItemsSource="{Binding VerificheList700}"
+                                  ItemTemplate="{StaticResource RiassuntoTrenoTemplate}"/>
 
-                <ItemsControl Grid.Row="1" Grid.Column="2" ItemsSource="{Binding VerificheList1000}"
-                              Style="{StaticResource RiassuntoListStyle}"
-                              ItemTemplate="{StaticResource RiassuntoTrenoTemplate}"/>
-            </Grid>
-        </Border>
-
-        <!-- Le tre tabelle di flotta: righe proporzionali, ognuna con la propria viewport. -->
-        <Grid Grid.Row="2">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" MinHeight="120" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" MinHeight="120" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" MinHeight="120" />
-            </Grid.RowDefinitions>
+                    <ItemsControl Grid.Row="1" Grid.Column="2" ItemsSource="{Binding VerificheList1000}"
+                                  ItemTemplate="{StaticResource RiassuntoTrenoTemplate}"/>
+                </Grid>
+            </Border>
 
             <!-- Tabella ETR 500 -->
-            <Border Grid.Row="0" Background="#9ACD32" Padding="10" CornerRadius="0">
+            <Border Background="#9ACD32" Padding="10" CornerRadius="0">
                 <TextBlock Text="VERIFICHE ETR500" FontWeight="Bold" FontSize="16" Foreground="Black" HorizontalAlignment="Center"/>
             </Border>
-            <DataGrid Grid.Row="1" ItemsSource="{Binding VerificheList500}" Style="{StaticResource VerificheGridStyle}">
+            <DataGrid ItemsSource="{Binding VerificheList500}" Style="{StaticResource VerificheGridStyle}">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="TRENO" Binding="{Binding Treno}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
                     <DataGridTextColumn Header="LOCO" Binding="{Binding Loco}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
@@ -181,10 +121,10 @@
             </DataGrid>
 
             <!-- Tabella ETR 700 -->
-            <Border Grid.Row="2" Background="#9ACD32" Padding="10" CornerRadius="0">
+            <Border Background="#9ACD32" Padding="10" CornerRadius="0">
                 <TextBlock Text="VERIFICHE ETR700" FontWeight="Bold" FontSize="16" Foreground="Black" HorizontalAlignment="Center"/>
             </Border>
-            <DataGrid Grid.Row="3" ItemsSource="{Binding VerificheList700}" Style="{StaticResource VerificheGridStyle}">
+            <DataGrid ItemsSource="{Binding VerificheList700}" Style="{StaticResource VerificheGridStyle}">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="TRENO" Binding="{Binding Treno}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
                     <DataGridTextColumn Header="LOCO" Binding="{Binding Loco}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
@@ -193,16 +133,16 @@
             </DataGrid>
 
             <!-- Tabella ETR 1000 -->
-            <Border Grid.Row="4" Background="#9ACD32" Padding="10" CornerRadius="0">
+            <Border Background="#9ACD32" Padding="10" CornerRadius="0">
                 <TextBlock Text="VERIFICHE ETR1000" FontWeight="Bold" FontSize="16" Foreground="Black" HorizontalAlignment="Center"/>
             </Border>
-            <DataGrid Grid.Row="5" ItemsSource="{Binding VerificheList1000}" Style="{StaticResource VerificheGridStyle}">
+            <DataGrid ItemsSource="{Binding VerificheList1000}" Style="{StaticResource VerificheGridStyle}">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="TRENO" Binding="{Binding Treno}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
                     <DataGridTextColumn Header="LOCO" Binding="{Binding Loco}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
                     <DataGridTextColumn Header="Avaria segnalata da ING/SVI" Binding="{Binding Avaria}" Width="*" ElementStyle="{StaticResource CenteredBoldTextWrapStyle}"/>
                 </DataGrid.Columns>
             </DataGrid>
-        </Grid>
-    </Grid>
+        </StackPanel>
+    </ScrollViewer>
 </UserControl>

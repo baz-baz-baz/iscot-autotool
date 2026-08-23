@@ -12,12 +12,21 @@
 > indici SQLite, virtualizzazione HomeView, pulizia navbar, lock `DatabaseManager` per istanza), quinto
 > giro con lo **Sprint 3** (§6.1-ter: lettura tipizzata `DatabaseManager.Query<T>`, dialog di anteprima
 > rinomine in PDF e HOME, overlay di progresso riutilizzabile, storico/annulla rinomina su
-> `renamer_log`), e infine con il **fix del parsing EXCEL** (§6.1-quater: `ExcelFolderParser`), sbloccato
+> `renamer_log`), con il **fix del parsing EXCEL** (§6.1-quater: `ExcelFolderParser`), sbloccato
 > dai nomi di cartella reali finalmente forniti dal committente — la scoperta #1 dello Sprint 2, rimasta
-> aperta per due sprint, è **risolta**.
+> aperta per due sprint, è **risolta** — e infine con il **bug di duplicazione VERIFICHE ETR500 +
+> reversione del layout a viewport vincolate** (§6.1-quinquies: `RemoveNestedRoots`,
+> `VerificheView.xaml` tornata a `ScrollViewer > StackPanel` su richiesta esplicita).
+> Segue lo **Sprint 4** (§6.1-sexies), dedicato alle **prestazioni** su hardware datato: lettura SAX
+> dei file Excel (intervento 3.4, misurato 4,2× più veloce e 6,1× meno memoria), criticità **E, F e G**
+> di §6.4 finalmente risolte, avvio di EXCEL.EXE tolto dal thread UI, I/O OneDrive da 1+N enumerazioni
+> a 1. Chiude lo **Sprint 5** (§6.1-septies), audit di **integrità strutturale** del Report Interventi:
+> verificato che il percorso di scrittura attuale (Excel Interop) è già non distruttivo — in tutto il
+> codice non esiste un solo `SaveAs()` di ClosedXML — più `ReportInterventiWriter` (OpenXML chirurgico,
+> non sostituisce Interop) e 30 test che ispezionano il pacchetto OpenXML parte per parte.
 > **Stato build alla chiusura sessione:** `dotnet build` sull'intera `.sln` → 0 errori, 0 warning su
 > `PersonalAutomationTool` e `PersonalAutomationTool.Tests` (i 2 warning residui sono preesistenti nello
-> scratch `TestClosedXML`, fuori scope — vedi §6.5). `dotnet test` → **88/88 superati**. L'eseguibile è
+> scratch `TestClosedXML`, fuori scope — vedi §6.5). `dotnet test` → **149/149 superati**. L'eseguibile è
 > stato avviato manualmente per verificare l'assenza di eccezioni allo startup — vedi la nota su cosa
 > **non** è stato verificato in §6.1-ter. **Da leggere prima di toccare il modulo EXCEL: §5.3-bis**
 > (ETR1000 / ETR1000FH / ETR1000IF sono tre treni distinti; solo in EXCEL i primi due condividono il
@@ -374,7 +383,15 @@ necessariamente quello sotto il mouse.
 `FindVisualChild<T>` non è più sulla strada critica; è mantenuta come utility pubblica.
 
 ### 4.17 `VerificheView.xaml` — layout riorganizzato per abilitare la virtualizzazione ⭐
-**Problema.** I tre `DataGrid` stavano dentro `ScrollViewer > StackPanel`. Uno `StackPanel` concede ai
+
+> ⚠️ **Rovesciata nello Sprint 3, su richiesta esplicita del committente** (§6.1-quinquies):
+> `VerificheView` è tornata a `ScrollViewer > StackPanel`, senza viewport vincolate né
+> virtualizzazione. Il resoconto sotto descrive la scelta originale e resta valido per capire *perché*
+> esisteva — utile se in futuro i volumi di VERIFICHE dovessero crescere abbastanza da giustificarla
+> di nuovo. **`HomeView` non è stata toccata**: la sua virtualizzazione (§3.6 dello Sprint 2) resta
+> attiva.
+
+**Problema (a monte della scelta originale).** I tre `DataGrid` stavano dentro `ScrollViewer > StackPanel`. Uno `StackPanel` concede ai
 figli **altezza infinita**: nessuna griglia riceveva una viewport vincolata, quindi la virtualizzazione
 WPF **non poteva attivarsi a prescindere dalle proprietà impostate**. Ogni riga di ogni griglia veniva
 materializzata come `DataGridRow` completa di celle e `TextBlock`, e lo stesso valeva per i tre
@@ -480,6 +497,18 @@ sottocartella: localizza per posizione e non dipende da alias né etichette. Chi
 ### 5.4 Excel — mai riscrivere il file con ClosedXML
 Il "Report Interventi" aziendale contiene formattazione condizionale, convalide dati e named range.
 **La scrittura deve restare su Excel Interop.** ClosedXML è ammesso **solo in lettura**.
+
+> ✅ **Ora verificata da test, non solo dichiarata** (Sprint 5, §6.1-septies). Misurato: ClosedXML
+> **non** elimina il VBA (timore infondato), ma **riscrive l'intero pacchetto** aggiungendo parti che
+> il file non conteneva (`docProps/app.xml`, `xl/calcChain.xml`, `xl/theme/theme1.xml`, metadati di
+> pacchetto). Un salvataggio ClosedXML sul percorso del report farebbe fallire
+> `ReportInterventiWriterTests`. Per scrivere senza Excel esiste `ReportInterventiWriter` (OpenXML
+> chirurgico, tocca il solo `<sheetData>`), che **non** sostituisce Interop come percorso predefinito.
+>
+> ⚠️ **Rischio che Interop non elimina:** scrivendo *oltre* l'ultima riga coperta dagli intervalli,
+> convalide (`C2:C100`), formattazione condizionale, `autoFilter` e range di tabella **non si
+> estendono da soli** alla riga nuova. Non è corruzione del file, ma la riga resta priva di quelle
+> regole — da verificare sul report reale (punto 23 di §7.1).
 Le colonne del form partono da **B (indice 2)**; l'intestazione è sulla **riga 1**.
 `maxCol` = 24 per `ETR1000 I-F`, 27 per gli altri.
 
@@ -976,6 +1005,292 @@ valore della colonna `tipo` in `flotte`. I test coprono anche la forma alternati
 `LOG & DUMP` reali): punto 19 della checklist §7.1 — aprire EXCEL su una cartella reale delle due
 flotte ETR1000 e confrontare TICKET/LOCO/SN autocompilati con quelli attesi.
 
+### 6.1-quinquies Sprint 3, coda — bug VERIFICHE (duplicazione ETR500) + reversione layout
+
+Il committente ha segnalato uno screenshot del modulo VERIFICHE con due problemi: le verifiche ETR500
+comparivano duplicate, e ha chiesto che le tabelle tornino a espandersi per intero invece di scorrere
+al proprio interno.
+
+**1. Bug di duplicazione ETR500 — trovato e corretto, non un caso speciale.**
+`VerificheViewModel.LoadDataForFleet("500", ...)` cerca in due cartelle radice:
+```
+Interventi ETR500\Censimento ETR500\Verifiche ETR500      ← percorso base
+Interventi ETR500                                          ← aggiunta subito dopo, per fleetIdentifier == "500"
+```
+La seconda è la cartella **madre** della prima. Il codice scansiona ogni radice **per conto proprio**,
+ricorsivamente, cercando il file `.xlsx` più recente in ciascuna. Sulla radice "madre" la scansione
+ricorsiva attraversa comunque `Censimento ETR500\Verifiche ETR500` come una delle tante
+sottocartelle, trova lì lo stesso identico file già trovato scansionando la radice "figlia" per
+conto suo — e, essendo l'unico report della cartella, è anche il file più recente dell'intero
+sottoalbero della radice "madre". Risultato: lo stesso file viene passato a `ParseExcelFile` **due
+volte**, e ogni riga del foglio finisce due volte in `VerificheList500`.
+
+**Perché non è un problema di "700"/"1000".** Le radici aggiuntive di quelle due flotte
+(`ETR1000FH`/`ETR1000 FH`/`ETR1000IF` per "1000", `INTERVENTI ETR700 ELO BL3`/`Interventi ETR700` per
+"700") sono cartelle **sorelle**, non annidate l'una nell'altra — verificato con un test dedicato, non
+per ispezione visiva del percorso. Solo "500" ha questa relazione genitore/figlio fra le sue radici.
+
+**La correzione (`VerificheViewModel.RemoveNestedRoots`, `internal static`, testabile via
+`InternalsVisibleTo`).** Prima di scansionare, scarta dalla lista di radici quelle che sono già
+contenute (come sottocartella, a qualunque profondità) in un'altra radice della stessa lista: la
+scansione ricorsiva della radice più esterna copre già il contenuto di quella più interna, quindi
+tenerle entrambe significa solo trovare due volte lo stesso file. **Non è un fix specifico per "500"**:
+è una deduplicazione generale per annidamento, verificata anche contro le radici di "700" e "1000" —
+dove, per costruzione, non toglie nulla. Il confronto è per segmenti di percorso (via separatore di
+cartella), non per prefisso di stringa: `"...ETR1000"` non è trattata come antenata di
+`"...ETR1000FH"` solo perché ne è prefisso testuale.
+
+**9 test Tier 1** in `VerificheViewModelTests.cs`: il caso reale di "500" (la radice annidata viene
+scartata), i casi reali di "700" e "1000" (nessuna radice scartata), radici identiche non scartate a
+vicenda, annidamento a più livelli di profondità, catena di tre radici annidate (sopravvive solo la
+più esterna), nomi con prefisso testuale simile ma non realmente annidati, lista vuota, radice singola,
+separatori di percorso misti (`/` e `\`).
+
+**2. Layout: reversione esplicita della virtualizzazione di §4.17.** Il committente ha chiesto che le
+tabelle si espandano per intero, senza scorrimento interno — l'opposto della scelta fatta nello Sprint
+2 (§4.17), dove `ScrollViewer > StackPanel` era stato sostituito da una `Grid` a viewport vincolate
+apposta per abilitare la virtualizzazione, perché lo `StackPanel` originale concede ai figli altezza
+infinita e quindi nessuna viewport si stabilisce mai. **Qui è stato fatto l'esatto contrario, di
+proposito**: tornato a `ScrollViewer > StackPanel`, rimossi `MaxHeight="260"` dal riquadro di
+riepilogo e `MinHeight="120"`/`Height="*"` dalle tre righe delle griglie di flotta, rimossi gli
+attributi di virtualizzazione (`EnableRowVirtualization`, `VirtualizingPanel.*`,
+`ScrollViewer.CanContentScroll`) dallo stile condiviso e il `RiassuntoListStyle` con il suo
+`ScrollViewer` interno (ora un `ItemsControl` semplice, senza wrapper). **Perché è una scelta
+corretta e non solo un capriccio estetico:** §4.17 ottimizzava per "migliaia di righe" — il caso
+reale di VERIFICHE è invece decine di righe (vedi lo screenshot del committente: singole cifre per
+flotta). A quel volume il costo di non virtualizzare è nullo, e la leggibilità di vedere tutto senza
+tre riquadri di scorrimento separati vale più dell'ottimizzazione. **Non tocca `HomeView`**, che resta
+virtualizzata: quella gestisce le manutenzioni in sospeso, un elenco che può davvero crescere a
+centinaia di voci nel tempo, un caso diverso.
+
+**Build/test:** `dotnet build` → 0 errori, 0 warning (stessi 2 NU1510 preesistenti in
+`TestClosedXML`). `dotnet test` → **98/98 superati**. Eseguibile avviato manualmente, nessuna
+eccezione allo startup.
+
+**Cosa non è stato verificato a schermo** (limite dell'ambiente, non del codice — stesso limite già
+dichiarato in §6.1-ter): non è stato possibile confermare visivamente che la duplicazione sia
+davvero sparita né che il layout risulti come atteso, in assenza di un tool di automazione UI Windows
+e di accesso alle cartelle Hitachi reali. Vedi il punto 21 della checklist §7.1.
+
+### 6.1-sexies Sprint 4 — ottimizzazione prestazionale mirata (SAX Excel, I/O fuori dal dispatcher, LOH)
+
+Il committente ha segnalato **rallentamenti reali nell'uso quotidiano** su macchine datate, in
+particolare su operazioni Excel, scansioni di percorsi e caricamento dati. Interventi guidati dalla
+misura, non dall'intuizione: dove il guadagno non era dimostrabile, l'ottimizzazione **non** è stata
+applicata (vedi "Valutato e scartato").
+
+#### 3.4 — Lettura SAX dei file Excel ⭐ *l'intervento con il guadagno maggiore*
+
+Rimandato per **due sprint** perché mancava un file "Verifiche" reale su cui validare la riscrittura
+(§6.1-bis). Sbloccato cambiando la strategia di validazione: la garanzia che serviva non era «funziona
+su quel file» ma «**si comporta come l'implementazione precedente**», e quella è verificabile per
+**equivalenza differenziale** — si esegue anche il vecchio percorso, sullo stesso file, e si
+confrontano gli output riga per riga. Il file reale continua a non essere necessario.
+
+`modules/verifiche/VerificheExcelReader.cs`: lettura in streaming con `OpenXmlReader`
+(`DocumentFormat.OpenXml 3.1.1`, **già presente** come dipendenza transitiva di ClosedXML — reso
+esplicito nel `.csproj`, nessun pacchetto nuovo scaricato). Sostituisce il caricamento dell'intero DOM
+di `XLWorkbook`, che materializzava tutte le celle di tutti i fogli per estrarne **tre colonne**.
+
+**Guadagno misurato** (file di prova da 101 KB, 5.000 righe dati, build Release):
+
+| | Tempo | Memoria allocata |
+|---|---|---|
+| ClosedXML (prima) | 556 ms | **104 MB** |
+| SAX (ora) | 131 ms | 17 MB |
+| **Rapporto** | **4,2× più veloce** | **6,1× meno memoria** |
+
+Il dato che spiega i rallentamenti percepiti: **104 MB allocati per un file da 101 KB**, gran parte in
+Large Object Heap, e non una volta sola — a ogni ricarica, che è scatenata sia dai `FileSystemWatcher`
+sia dal timer di backstop (§2.5). Su una macchina con poca RAM libera questo significa pause del
+garbage collector percepibili come blocchi dell'interfaccia.
+
+**Rete di sicurezza:** se la lettura SAX fallisce per qualunque motivo (pacchetto OpenXML malformato,
+`.xls` legacy, formato inatteso) si ricade automaticamente sul percorso ClosedXML, rimasto invariato.
+Prestazioni peggiori, **nessuna verifica persa**. La normalizzazione dei valori (incluso il lookup del
+treno in `flotte` per la sola flotta "1000") è stata estratta in `BuildModel`, condivisa dai due
+percorsi, così non possono divergere.
+
+**21 test** in `VerificheExcelReaderTests.cs`, su file `.xlsx` reali generati al volo: ognuno esegue
+**entrambe** le implementazioni e ne confronta l'output. Scenari costruiti sulle caratteristiche note
+del formato reale: intestazione non sulla prima riga, righe vuote intercalate (che `RowsUsed()` salta
+e che quindi **non** devono spostare l'indice dell'intestazione), colonne in posizione arbitraria
+(individuate per numero di colonna assoluto), celle vuote dentro le righe, testo multi-riga, più fogli
+(va letto il primo), stringhe ripetute (`SharedStringTable`, dove un errore di indice si manifesta con
+valori scambiati fra righe), foglio senza intestazione riconoscibile, foglio da 500 righe, e la
+conversione dei riferimenti di cella (`A1`→1, `AA1`→27, `BC12`→55).
+
+#### Criticità F — freeze all'apertura di "Passaggio di Consegne"
+
+`PassaggioConsegneViewModel` chiamava `AutoCompilaTreniDaVerifiche()` **sincronamente dal costruttore**.
+Quando `VerificheViewModel.Instance` è ancora `null` — cioè aprendo "Passaggio di Consegne" **prima**
+di "Verifiche", lo scenario normale al primo utilizzo — quel metodo esegue il caricamento completo di
+tre flotte: enumerazione ricorsiva di alberi OneDrive più parsing Excel. Tutto sul dispatcher, con la
+finestra bloccata per secondi. Ora la lettura è su `Task.Run` e **solo** l'applicazione dei risultati
+(che muta `ObservableCollection` legate alla UI) resta sul dispatcher, via `ConfigureAwait(true)`
+esplicito e commentato. Il costruttore non attende più: la vista si apre subito.
+
+#### Criticità G — risoluzione percorsi di rete sul thread UI
+
+`HomeViewModel.OnLogDumpRete` eseguiva `GetLogDumpReteBasePath()` e `ResolveTrainTypePath()` — che
+fanno `Directory.Exists`/`GetDirectories` su percorsi OneDrive e di rete — **prima** di entrare nel
+`Task.Run`: su rete lenta o disconnessa la finestra si bloccava già al clic del pulsante. Spostate sul
+thread pool insieme all'enumerazione degli ZIP, con overlay "Ricerca cartelle di rete..." durante
+l'attesa. I tre `MessageBox` di esito restano sul thread UI, con gli stessi testi di prima.
+
+#### Criticità E — `RenderTargetBitmap` non vincolata (Large Object Heap)
+
+`PassaggioConsegnePdfExporter` allocava una bitmap Pbgra32 della dimensione piena del rapportino: 4
+byte per pixel in **un unico blocco contiguo**, quindi sempre in LOH — un rapportino 3000×4000 sono
+~48 MB in un colpo solo, che su una macchina con poca RAM libera può fallire del tutto. Introdotto un
+tetto di 8 milioni di pixel (~32 MB): oltre quella soglia il render avviene a DPI ridotti in modo
+proporzionale. **Sotto la soglia — cioè per i rapportini di dimensione ordinaria — nulla cambia:** DPI
+resta 96 e l'immagine è identica a prima. La riduzione agisce sui DPI e non sulle dimensioni in pixel,
+così l'elemento non viene rimisurato e il layout catturato resta lo stesso; è inoltre esattamente ciò
+che `gfx.DrawImage` faceva comunque subito dopo per adattare l'immagine alla pagina PDF.
+
+#### Bonifica COM — avvio di Excel fuori dal thread UI
+
+L'interop di scrittura era **già** dentro `Task.Run`, con rilascio COM protetto singolarmente (§4.6) e
+PID-tracking con terminazione forzata (§6.1-bis). Restava però un residuo reale:
+`Type.GetTypeFromProgID` e soprattutto **`Activator.CreateInstance`** — che *avvia il processo
+EXCEL.EXE*, operazione da secondi su macchina lenta — giravano sul thread UI, prima del `Task.Run`:
+la finestra si bloccava prima ancora che comparisse l'overlay. L'intera interazione COM (ProgID,
+avvio, scrittura, pulizia) è ora dentro un unico `Task.Run`, che restituisce un messaggio d'errore
+(`null` = successo) perché i `MessageBox` restino sul thread UI. È anche più corretto di prima dal
+punto di vista COM: creazione e uso avvengono ora nello stesso apartment, mentre prima l'oggetto
+veniva creato sul thread STA della UI e usato da un thread del pool.
+
+#### I/O su OneDrive — da 1+N enumerazioni a 1
+
+`VerificheViewModel.LoadDataForFleet` enumerava ricorsivamente **tutte** le sottocartelle dell'albero e
+poi apriva una enumerazione di file per **ciascuna** (1 + N chiamate al file system, con N = numero di
+sottocartelle). Sostituito da **una sola** `EnumerateFiles(..., SearchOption.AllDirectories)`.
+L'esito è identico e non per approssimazione: il filtro che la versione precedente applicava alle
+*cartelle* (escludendo quelle con `OLD`/`VECCH`/`ARCHIV` nel percorso) era **ridondante**, perché il
+percorso completo di un file include quello della sua cartella, e il filtro sul percorso del file —
+rimasto invariato — scarta già quei casi.
+
+#### Allocazioni ripetute
+
+`ExcelFolderParser.BuildLocoRegex` costruiva e compilava un `Regex` a ogni autocompilazione del report.
+I pattern possibili sono 8 in tutto (4 etichette × 2 soglie di cifre) e non cambiano durante la
+sessione: ora sono in una `ConcurrentDictionary` (thread-safe perché `AutoFillReportFieldsAsync` gira
+sul thread pool).
+
+#### Valutato e scartato — con motivo, non per dimenticanza
+
+| Intervento richiesto | Perché non applicato |
+|---|---|
+| **Debounce/throttle sui watcher** (punto 2.2) | **Già presente**: `AppWatcher` 300 ms (§2.5), `VerificheViewModel.OnFileChanged` 500 ms, più la guardia anti-rientranza `Interlocked` su `CheckForFileUpdates` (§4.1). Nulla da aggiungere: rifarlo sarebbe stato lavoro fittizio. |
+| **Scrittura Excel in blocco** invece che cella per cella | Le ~26 celle di una riga costano ~26 round-trip COM (stimati pochi ms in totale), trascurabili rispetto ai **secondi** dell'avvio di EXCEL.EXE che è stato invece corretto. In cambio, scrivere l'intera riga con un solo `Range.Value` sovrascriverebbe anche le celle che oggi vengono **deliberatamente saltate** quando il valore è vuoto — rischio concreto di azzerare formule o formattazione su un file business-critical (§5.4), per un guadagno non misurabile. |
+| **`ArrayPool<byte>` su ZIP e PDF** | `ZipFile.CreateFromDirectory` e `PdfSharp` gestiscono i propri buffer internamente e non espongono un punto in cui iniettarne uno riusabile. L'unico buffer davvero grande e sotto il nostro controllo era la `RenderTargetBitmap`, affrontata sopra (criticità E) — che è il vero consumo LOH, non i buffer di streaming. |
+| **Allocazioni nel loop di ricerca del tecnico** (`AutoFillReportFieldsAsync`) | Il loop itera sulle opzioni di una combo (~50 voci) una volta per autocompilazione: poche centinaia di stringhe temporanee. Ottimizzarlo sarebbe stata "ottimizzazione cosmetica spacciata per miglioramento", lo stesso errore già evitato per `BitmapScalingMode` (§6.4, punto I). |
+
+**Build/test:** `dotnet build` → 0 errori, 0 warning (stessi 2 NU1510 preesistenti in `TestClosedXML`).
+`dotnet test` → **119/119 superati** (98 preesistenti + 21 nuovi di equivalenza SAX): nessuna
+regressione, l'output dei dati è identico al 100%. Eseguibile avviato manualmente, nessuna eccezione.
+
+**Non verificato in questo ambiente** (stesso limite dichiarato in §6.1-ter): il guadagno percepito
+sulle macchine reali, che dipende dai volumi effettivi dei file Verifiche e dalla latenza di OneDrive.
+Vedi il punto 22 della checklist §7.1.
+
+### 6.1-septies Sprint 5 — audit di integrità strutturale del Report Interventi
+
+Il committente ha chiesto di garantire che le scritture sul Report Interventi non alterino la
+struttura interna del workbook (macro VBA, convalide dati, formattazione condizionale, filtri,
+tabelle, stili, formule, protezioni).
+
+#### Esito dell'audit: **il percorso di scrittura attuale è già non distruttivo**
+
+Ispezionati tutti i punti che toccano un file Excel. Risultato, verificato con ricerca esaustiva su
+tutto il codice:
+
+| Punto | Tecnologia | Esito |
+|---|---|---|
+| `ExecuteScriviReport` — scrittura riga | **Excel Interop** (`workbookInterop.Save()`) | ✅ Sicuro: è Excel stesso a riscrivere il file |
+| `ExecuteScriviReport` — ultima riga compilata | ClosedXML, **sola lettura** | ✅ Nessun `Save`, `FileAccess.Read` |
+| `LoadExcelFieldsAsync` — intestazioni e convalide | ClosedXML, **sola lettura** | ✅ Nessun `Save`, `FileAccess.Read` |
+| `VerificheViewModel` — lettura verifiche | SAX / ClosedXML, **sola lettura** | ✅ `isEditable: false` |
+| `ExecuteSpostaReport` | `File.Copy` + `File.Move` | ✅ Copia byte-per-byte, nessuna riscrittura |
+| `ExecuteRiportaReport` | `File.Move` | ✅ Preserva anche l'estensione originale (`.xlsm` resta `.xlsm`) |
+
+**In tutto il codice non esiste un solo `SaveAs()` di ClosedXML.** L'unico salvataggio Excel è
+`workbookInterop.Save()`, cioè Interop. L'invariante §5.4 è quindi rispettata, e non è stato
+necessario alcun refactoring correttivo del percorso di produzione.
+
+#### Rischi residui che Interop **non** elimina — da conoscere
+
+Excel preserva la struttura del pacchetto, ma non estende automaticamente gli intervalli quando si
+scrive **oltre** l'ultima riga coperta:
+- una convalida dati su `C2:C100` **non** copre la riga 101;
+- lo stesso vale per la formattazione condizionale, per l'`autoFilter` e per il range di una tabella
+  (ListObject).
+
+Non è corruzione del file — è la nuova riga a restare priva di quelle regole. Verificabile solo sul
+report aziendale reale: **è il punto 23 della checklist §7.1**.
+
+#### `ReportInterventiWriter` — scrittura chirurgica OpenXML
+
+`modules/excel/ReportInterventiWriter.cs`, **aggiunto senza sostituire Interop**, che resta il
+percorso predefinito (§5.4 invariata). Esiste per due motivi concreti: rende la scrittura
+verificabile in modo automatico **senza Excel installato** (impossibile contro un processo COM in un
+test headless), e offre un percorso utilizzabile dove Excel manca, dove oggi "Scrivi report" mostra
+solo un errore. Modifica il solo `<sheetData>`; scelte prese per non alterare nulla di implicito:
+- stringhe come `InlineString`, così `sharedStrings.xml` — parte condivisa da tutti i fogli — non
+  viene toccata;
+- celle nuove che ereditano lo `StyleIndex` dalla riga precedente: la riga inserita ha l'aspetto
+  delle altre (bordi, formato data) **senza** aggiungere stili a `styles.xml`;
+- date come seriale OADate, la rappresentazione nativa di Excel;
+- colonne assenti dal dizionario **non toccate**, come fa Interop per non sovrascrivere formule.
+
+**Difetto trovato dai test, non dall'ispezione del codice.** La prima versione modificava anche
+`xl/workbook.xml`: il semplice accesso a `workbookPart.Workbook` carica il DOM e l'SDK **lo riscrive
+alla chiusura**, anche senza averlo modificato. Corretto leggendo `workbook.xml` come XML grezzo per
+individuare il primo foglio. È esattamente il tipo di effetto collaterale invisibile che questa suite
+esiste per intercettare.
+
+#### Suite di integrità strutturale — 30 test
+
+`ReportTemplateBuilder` costruisce un `.xlsm` che riproduce le caratteristiche del report reale:
+progetto VBA binario, convalide dati, formattazione condizionale (con i `<dxfs>` corrispondenti),
+`autoFilter`, tabella/ListObject, protezione foglio, formule, stili personalizzati, stringhe
+condivise e nomi definiti. Serve perché il file aziendale non è disponibile né versionabile: ciò che i
+test devono dimostrare non è «funziona su quel file» ma «**nessuna di queste parti viene toccata**».
+
+`ReportInterventiWriterTests` ispeziona il pacchetto come archivio ZIP, confrontando le parti prima e
+dopo — nessuna asserzione si fida di ciò che la libreria dichiara di fare:
+- `vbaProject.bin` **identico byte per byte**;
+- `styles.xml` e `sharedStrings.xml` identici;
+- tabelle, relazioni `.rels` e `[Content_Types].xml` identici;
+- nessuna parte aggiunta o rimossa dal pacchetto;
+- **l'unica parte modificata è `xl/worksheets/sheet1.xml`**;
+- `dataValidations`, `conditionalFormatting`, `autoFilter`, `tableParts`, `sheetProtection` presenti e
+  invariati;
+- dentro il foglio, le righe preesistenti sono invariate e **l'unica aggiunta è la riga nuova**;
+- formula preesistente non alterata, colonna non fornita non creata, stile ereditato, data come
+  seriale, testo inline, scritture ripetute che mantengono l'ordine, riscrittura di riga esistente
+  senza duplicare celle.
+
+> **Nota sul confronto XML.** `XNode.DeepEquals` tratta le dichiarazioni di namespace come attributi
+> posizionali: dopo un salvataggio l'SDK può emettere `xmlns:r` prima di `r:id` anziché dopo,
+> producendo XML byte-diverso ma identico per significato. I test usano quindi un confronto
+> **semantico** (nome, attributi per nome, figli in ordine) che esclude solo le dichiarazioni di
+> namespace: considerarle una modifica strutturale sarebbe un falso positivo.
+
+#### Cosa fa davvero ClosedXML in scrittura — misurato, non presunto
+
+Un test dedicato salva lo stesso file con ClosedXML e ne confronta l'esito con la scrittura
+chirurgica. **Il timore più comune si rivela infondato: ClosedXML non elimina il progetto VBA**, che
+resta byte-identico. Il rischio reale è un altro: **riscrive l'intero pacchetto**, aggiungendo parti
+che il file non conteneva — `docProps/app.xml`, `xl/calcChain.xml`, `xl/theme/theme1.xml` e i metadati
+di pacchetto — e ri-serializzando quelle esistenti. Il writer chirurgico ne modifica **una sola**.
+L'invariante §5.4 passa così da regola motivata a parole a **regola verificata da un test**, che
+fallirebbe se qualcuno introducesse un salvataggio ClosedXML sul percorso del report.
+
+**Build/test:** `dotnet build` → 0 errori, 0 warning (stessi 2 NU1510 preesistenti in
+`TestClosedXML`). `dotnet test` → **149/149 superati** (119 preesistenti + 30 di integrità).
+
 ### 6.2 Le 4 macro-aree della roadmap strategica
 
 Elaborata come risposta alla domanda "se fossi il Lead Architect, cosa faresti dopo l'audit
@@ -1045,7 +1360,7 @@ cliente, e il golden-file test ora congela quell'output.
 | 3.1 | ✅ **Polling Verifiche: 5s → 60s** (Sprint 1) | **Alto** | Rapido | Basso |
 | 3.2 | ✅ **`flotte` in dizionario in memoria** all'avvio (Sprint 2 — `FlotteCache`) | Medio | Rapido | Basso |
 | 3.3 | ✅ **Indici SQLite** su `(tipo, loco)` e `loco` (Sprint 2) | Medio | Rapido | Basso |
-| 3.4 | **Lettura Verifiche con `OpenXmlReader`** (SAX) invece di ClosedXML | **Alto** | Medio | Medio |
+| 3.4 | ✅ **Lettura Verifiche con `OpenXmlReader`** (SAX) invece di ClosedXML (Sprint 4 — 4,2× tempo, 6,1× memoria, misurati; §6.1-sexies) | **Alto** | Medio | Medio |
 | 3.5 | ✅🟡 **Configurazione ReadyToRun** (Sprint 2 — solo la config nel `.csproj`, nessuna pubblicazione reale ancora eseguita) | Medio | Rapido | Basso |
 | 3.6 | 🟡 Virtualizzazione griglie residue — **fatta solo HomeView**, PassaggioConsegneView esclusa con motivo tecnico (Sprint 2, vedi §6.1-bis) | Basso | Rapido | Basso |
 | 3.7 | 🟡 `DropShadowEffect` navbar rimosso (Sprint 2); `BitmapScalingMode` valutato e scartato (nessun `<Image>` nell'app) | Basso | Rapido | Basso |
@@ -1112,9 +1427,12 @@ Priorità aggiornata dopo lo Sprint 3 (vedi §6.1-ter per il perché di questo o
 ### 6.4 Criticità note **non** risolte (richiedono una scelta esplicita, perché cambierebbero il comportamento visibile)
 
 > Le ex-voci **A** (scorrimento moltiplicato) e **B** (virtualizzazione `VerificheView`) sono state
-> approvate e applicate: vedi §4.16 e §4.17. **C** e **H** sono state affrontate nello Sprint 2
-> (§6.1-bis); **I** è stata valutata e scartata (non applicabile, non "da fare"). Restano aperte le
-> 4 seguenti: **D, E, F, G**.
+> approvate e applicate: vedi §4.16 e §4.17 (quest'ultima poi **rovesciata** nello Sprint 3 su
+> richiesta esplicita, §6.1-quinquies). **C** e **H** sono state affrontate nello Sprint 2
+> (§6.1-bis); **I** è stata valutata e scartata (non applicabile, non "da fare").
+> **E, F e G sono state risolte nello Sprint 4** (§6.1-sexies): `RenderTargetBitmap` con tetto di
+> pixel, caricamento verifiche fuori dal costruttore di `PassaggioConsegneViewModel`, risoluzione
+> percorsi di rete su thread pool. **Resta aperta la sola D.**
 
 **C. `ScrollViewer.CanContentScroll="False"`** su HomeView e sui 3 DataGrid di PassaggioConsegne —
 **risolta per HomeView, esclusa per PassaggioConsegneView con motivo tecnico concreto (Sprint 2)**.
@@ -1133,21 +1451,21 @@ ricreata, ogni istanza resterebbe viva per sempre. Stesso schema in `HomeViewMod
 (`AppWatcher.OnLogDumpFolderChanged`, mai rimosso; `DispatcherTimer` mai fermato).
 `ExcelViewModel` implementa `IDisposable` ma **nessuno chiama `Dispose()`**: è codice morto.
 
-**E. `PassaggioConsegnePdfExporter` — `RenderTargetBitmap` non vincolata**
-`element.Measure(new Size(PositiveInfinity, PositiveInfinity))` seguito da un `RenderTargetBitmap`
-Pbgra32 della dimensione risultante: 4 byte per pixel in Large Object Heap. Con un rapportino
-3000×4000 sono ~48 MB in un colpo solo. Su una macchina con 4 GB può fallire.
-*Correzione proposta:* limitare la dimensione di render (o rendere a tile). Cambia la risoluzione del PDF.
+**E. `PassaggioConsegnePdfExporter` — `RenderTargetBitmap` non vincolata — risolta (Sprint 4).**
+Era: `RenderTargetBitmap` Pbgra32 della dimensione piena del rapportino, 4 byte per pixel in un blocco
+contiguo (quindi Large Object Heap) — ~48 MB per un rapportino 3000×4000, con rischio di fallimento su
+macchine a poca RAM. Ora un tetto di 8 milioni di pixel riduce i DPI di render in modo proporzionale
+**solo oltre la soglia**: per i rapportini ordinari l'immagine è identica a prima. Vedi §6.1-sexies.
 
-**F. `VerificheViewModel.GetVerificheForFleetStatic` — fallback sincrono**
-Se `Instance == null` (cioè si apre "Passaggio di Consegne" **prima** di "Verifiche"), il costruttore
-di `PassaggioConsegneViewModel` esegue sul thread UI il caricamento completo di 3 flotte: enumerazione
-ricorsiva OneDrive + parsing ClosedXML. Freeze di parecchi secondi all'apertura del modulo.
-Il costo per riga è già stato abbattuto (§4.2/4.3), ma la chiamata resta bloccante.
+**F. `VerificheViewModel.GetVerificheForFleetStatic` — fallback sincrono — risolta (Sprint 4).**
+Era: aprendo "Passaggio di Consegne" prima di "Verifiche", il costruttore di
+`PassaggioConsegneViewModel` eseguiva sul thread UI il caricamento completo di 3 flotte (enumerazione
+ricorsiva OneDrive + parsing Excel), con freeze di secondi. Ora la lettura è su `Task.Run` e solo
+l'applicazione dei risultati resta sul dispatcher (`AutoCompilaTreniDaVerificheAsync`). Vedi §6.1-sexies.
 
-**G. `HomeViewModel.OnLogDumpRete` — risoluzione percorsi di rete sul thread UI**
-`GetLogDumpReteBasePath()` e `ResolveTrainTypePath()` fanno `Directory.Exists` su percorsi OneDrive/rete
-prima di entrare nel `Task.Run`. Su rete lenta o disconnessa possono bloccare per secondi.
+**G. `HomeViewModel.OnLogDumpRete` — risoluzione percorsi di rete sul thread UI — risolta (Sprint 4).**
+`GetLogDumpReteBasePath()` e `ResolveTrainTypePath()` sono ora eseguite su thread pool insieme
+all'enumerazione degli ZIP, con overlay di attesa. Vedi §6.1-sexies.
 
 **H. `MainWindow.xaml` — `DropShadowEffect` sulla navbar — risolta (Sprint 2).**
 Era un effetto a pixel shader su un `Border` a tutta larghezza (`Opacity="0.05"`, appena percettibile).
@@ -1195,8 +1513,11 @@ all'interfaccia, rivalutare a quel punto.
       (§6.1/§6.1-bis/§6.1-ter/§6.1-quater): 19 test Tier 1 (`LogDumpFolderName`), 11 Tier 2
       (`PdfRenamePlanner`, alberi di cartelle reali), 2 golden-file (`EmailService.BuildHtmlBody`),
       5 Tier 2 (`DatabaseManagerTests`, SQLite temporaneo reale), 7 Tier 2 (`RenamerLogTests`, idem),
-      44 Tier 1 (`ExcelFolderParserTests`, sui **nomi di cartella e opzioni di report reali**) —
-      **88 in tutto**. Restano
+      44 Tier 1 (`ExcelFolderParserTests`, sui **nomi di cartella e opzioni di report reali**),
+      9 Tier 1 (`VerificheViewModelTests`, deduplicazione radici), 21 Tier 2
+      (`VerificheExcelReaderTests`, **equivalenza SAX ↔ ClosedXML** su file .xlsx reali), 30 Tier 2
+      (`ReportInterventiWriterTests`, **integrità strutturale** del pacchetto OpenXML su un .xlsm con
+      VBA, convalide, filtri e tabelle) — **149 in tutto**. Restano
       da coprire: `ExtractLocosFromFolder`, `BuildSubject`, `AreTrainTypesCompatible`, `MatchesTrain`
       (Tier 1, non dipendono da `LogDumpFolderName`, possono procedere in parallelo a §6.3); Tier 3
       (COM) non affrontato, dipende da 1.7 (wrapper Outlook), rimandato. **Non testata da xUnit** (per costruzione, sono WPF): `RenamePreviewDialog` e
@@ -1332,3 +1653,28 @@ non può proteggerle. Ogni modifica al parsing va verificata su casi reali presi
     prima proponeva sempre `ETR1000`, cioè il rotabile sbagliato scritto nel report ufficiale. Poi
     aprire una cartella **ETR1000 pura** sotto la stessa voce e verificare che proponga `ETR1000` e
     non la variante FH. È la verifica che dimostra il valore concreto dell'intero intervento.
+21. **VERIFICHE** (§6.1-quinquies) ⭐ *corregge un bug di dati segnalato dal committente* → aprire il
+    modulo e controllare che ogni riga di `VERIFICHE ETR500` compaia **una sola volta** (prima ogni
+    riga era duplicata: stesso ticket/loco/avaria ripetuti due volte in sequenza). Controllare che le
+    tre tabelle di flotta e il riepilogo in alto mostrino **tutte** le righe senza barra di
+    scorrimento interna — la pagina nel suo complesso scorre se il contenuto supera lo schermo, le
+    singole tabelle no. Ripetere il controllo "nessuna duplicazione" anche su ETR700 ed ETR1000 (il
+    fix è generale, non specifico a ETR500: se lì si presentasse la stessa duplicazione sarebbe un
+    caso nuovo, non coperto da questo intervento).
+22. **PRESTAZIONI** (§6.1-sexies) ⭐ *l'obiettivo dello Sprint 4* → sulla macchina d'officina reale,
+    verificare: (a) **VERIFICHE** si aggiorna sensibilmente più in fretta e senza pause del garbage
+    collector (la lettura Excel usa ora il percorso SAX: 4,2× più veloce e 6,1× meno memoria in
+    laboratorio); (b) **PASSAGGIO DI CONSEGNE** si apre **subito** anche quando è il primo modulo
+    aperto dopo l'avvio, senza il freeze di secondi di prima; (c) **HOME → "Log Dump in rete"** non
+    blocca più la finestra al clic, mostrando "Ricerca cartelle di rete..."; (d) **EXCEL → "Scrivi
+    report"** mostra l'overlay immediatamente, senza il blocco iniziale dovuto all'avvio di
+    EXCEL.EXE. Se una verifica dovesse ancora risultare lenta, annotare **quale** e con quali volumi
+    di dati: è l'informazione che serve per il prossimo giro di misure.
+23. **EXCEL / integrità del report** (§6.1-septies) ⭐ *l'unica verifica che richiede il file
+    aziendale reale* → dopo uno "Scrivi report" su una copia del Report Interventi vero, aprirlo in
+    Excel e controllare che **la riga appena inserita** abbia: il menu a tendina delle convalide
+    (es. Tipologia), la formattazione condizionale, e che risulti inclusa nel filtro automatico e
+    nell'eventuale tabella. Se una di queste manca **solo sulla riga nuova**, non è un file
+    corrotto: è un intervallo (`C2:C100`, il range della tabella, ecc.) che non arriva fino a quella
+    riga e va esteso una volta sola nel template aziendale. Verificare inoltre che le macro
+    funzionino ancora e che il file resti `.xlsm`.

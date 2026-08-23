@@ -34,6 +34,13 @@
 
   <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <!--
+      Reso esplicito (era già presente come dipendenza transitiva di ClosedXML, stessa versione:
+      nessun pacchetto aggiuntivo da scaricare). Serve per la lettura SAX in streaming di
+      VerificheExcelReader: usare direttamente i tipi di un pacchetto transitivo significherebbe
+      dipendere da una scelta interna di ClosedXML, che un suo aggiornamento potrebbe cambiare.
+    -->
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.1.1" />
     <PackageReference Include="MaterialDesignThemes" Version="4.9.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.3" />
     <PackageReference Include="PDFsharp" Version="6.2.4" />

@@ -266,57 +266,51 @@ namespace PersonalAutomationTool.Modules.Verifiche
                     folderPaths.Add(Path.Combine(userProfile, @"Hitachi Group\SSB_SST - Interventi ETR500"));
                 }
 
-                foreach (var folder in folderPaths.Distinct())
+                foreach (var folder in RemoveNestedRoots(folderPaths.Distinct()))
                 {
                     if (!Directory.Exists(folder)) continue;
 
-                    var validSubFolders = new List<string> { folder };
+                    // UNA sola enumerazione ricorsiva dei file, invece di una enumerazione ricorsiva
+                    // di tutte le sottocartelle seguita da una enumerazione di file per ciascuna.
+                    // Su OneDrive/SharePoint ogni enumerazione è una chiamata potenzialmente lenta:
+                    // la versione precedente ne faceva 1 + N (N = numero di sottocartelle dell'albero),
+                    // questa ne fa una sola.
+                    //
+                    // Il risultato è identico. Il filtro che la versione precedente applicava alle
+                    // *cartelle* (escludendo quelle con OLD/VECCH/ARCHIV nel percorso) era
+                    // ridondante: il percorso completo di un file include quello della sua cartella,
+                    // quindi un file dentro una cartella esclusa viene comunque scartato dal filtro
+                    // sul percorso del file, che è rimasto invariato qui sotto.
+                    //
+                    // Selezione del file più recente in un'unica passata: la versione ancora
+                    // precedente ordinava l'intera lista chiamando File.GetLastWriteTime O(n log n)
+                    // volte (una syscall per confronto, molto costosa su cartelle sincronizzate).
+                    string? mostRecentFile = null;
+                    DateTime mostRecentWrite = DateTime.MinValue;
+
                     try
                     {
-                        foreach (var d in Directory.EnumerateDirectories(folder, "*", SearchOption.AllDirectories))
+                        foreach (var f in Directory.EnumerateFiles(folder, "*Verifiche*.xlsx", SearchOption.AllDirectories))
                         {
-                            if (!d.Contains("OLD", StringComparison.OrdinalIgnoreCase) &&
-                                !d.Contains("VECCH", StringComparison.OrdinalIgnoreCase) &&
-                                !d.Contains("ARCHIV", StringComparison.OrdinalIgnoreCase))
+                            if (Path.GetFileName(f).StartsWith("~$") ||
+                                f.Contains("OLD", StringComparison.OrdinalIgnoreCase) ||
+                                f.Contains("VECCH", StringComparison.OrdinalIgnoreCase) ||
+                                f.Contains("ARCHIV", StringComparison.OrdinalIgnoreCase))
                             {
-                                validSubFolders.Add(d);
+                                continue;
+                            }
+
+                            var write = File.GetLastWriteTime(f);
+                            // ">" (non ">=") preserva l'ordinamento stabile dell'implementazione
+                            // originale: a parità di data vince il primo file incontrato.
+                            if (mostRecentFile == null || write > mostRecentWrite)
+                            {
+                                mostRecentFile = f;
+                                mostRecentWrite = write;
                             }
                         }
                     }
                     catch { }
-
-                    // Selezione del file più recente in un'unica passata: la versione precedente
-                    // ordinava l'intera lista chiamando File.GetLastWriteTime O(n log n) volte
-                    // (una syscall per confronto, molto costosa su cartelle sincronizzate).
-                    string? mostRecentFile = null;
-                    DateTime mostRecentWrite = DateTime.MinValue;
-
-                    foreach (var dir in validSubFolders)
-                    {
-                        try
-                        {
-                            foreach (var f in Directory.EnumerateFiles(dir, "*Verifiche*.xlsx"))
-                            {
-                                if (Path.GetFileName(f).StartsWith("~$") ||
-                                    f.Contains("OLD", StringComparison.OrdinalIgnoreCase) ||
-                                    f.Contains("VECCH", StringComparison.OrdinalIgnoreCase) ||
-                                    f.Contains("ARCHIV", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    continue;
-                                }
-
-                                var write = File.GetLastWriteTime(f);
-                                // ">" (non ">=") preserva l'ordinamento stabile dell'implementazione
-                                // originale: a parità di data vince il primo file incontrato.
-                                if (mostRecentFile == null || write > mostRecentWrite)
-                                {
-                                    mostRecentFile = f;
-                                    mostRecentWrite = write;
-                                }
-                            }
-                        }
-                        catch { }
-                    }
 
                     if (mostRecentFile != null)
                     {
@@ -330,7 +324,120 @@ namespace PersonalAutomationTool.Modules.Verifiche
             }
         }
 
+        /// <summary>
+        /// Scarta, fra le radici di ricerca di una flotta, quelle che sono già contenute (come
+        /// sottocartella, a qualunque profondità) in un'altra radice della stessa lista.
+        ///
+        /// <para>
+        /// <b>Il bug che questo corregge (segnalato dal committente: le verifiche ETR500 comparivano
+        /// duplicate).</b> Per la flotta "500", <c>LoadDataForFleet</c> cerca in due radici:
+        /// <c>Interventi ETR500\Censimento ETR500\Verifiche ETR500</c> (il percorso base) e
+        /// <c>Interventi ETR500</c> (aggiunta subito dopo) — ma la seconda è la cartella
+        /// <b>madre</b> della prima. La ricerca del file più recente scansiona ricorsivamente
+        /// ciascuna radice per conto proprio: sulla radice "madre" la scansione ricorsiva
+        /// attraversa comunque la sottocartella "Censimento", trova lì lo stesso identico file
+        /// <c>.xlsx</c> già trovato scansionando la radice "figlia", e — se è il file più recente
+        /// dell'intero sottoalbero, che è il caso normale, dato che è l'unico report della
+        /// cartella — lo seleziona di nuovo come "file più recente" anche per questa seconda radice.
+        /// Risultato: <see cref="ParseExcelFile"/> viene chiamato due volte sullo stesso file, e
+        /// ogni riga del foglio finisce due volte in <paramref name="collection"/> (dal chiamante).
+        /// </para>
+        ///
+        /// <para>
+        /// Le altre due flotte non hanno questo problema: le radici aggiuntive di "1000"
+        /// (<c>ETR1000FH</c>, <c>ETR1000 FH</c>, <c>ETR1000IF</c>) e di "700"
+        /// (<c>INTERVENTI ETR700 ELO BL3</c>, <c>Interventi ETR700</c>) sono cartelle sorelle, non
+        /// annidate l'una nell'altra — verificato qui con un test dedicato, non per ispezione visiva.
+        /// La correzione non è quindi un caso speciale per "500": è una deduplicazione generale,
+        /// che per costruzione non cambia nulla dove le radici non si annidano.
+        /// </para>
+        ///
+        /// <para>
+        /// Non richiede che le cartelle esistano sul disco (la lista può contenere percorsi non
+        /// presenti sulla macchina corrente: <c>LoadDataForFleet</c> li scarta comunque dopo, con
+        /// <c>Directory.Exists</c>): il confronto è puramente testuale sui percorsi normalizzati,
+        /// il che la rende testabile senza un vero albero di cartelle.
+        /// </para>
+        /// </summary>
+        internal static List<string> RemoveNestedRoots(IEnumerable<string> paths)
+        {
+            var list = paths.ToList();
+            return list.Where(candidate => !list.Any(other =>
+                    !string.Equals(other, candidate, StringComparison.OrdinalIgnoreCase) &&
+                    IsSubPathOf(candidate, other)))
+                .ToList();
+        }
+
+        /// <summary>Vero se <paramref name="path"/> è <paramref name="potentialAncestor"/> stesso oppure una sua sottocartella, a qualunque profondità.</summary>
+        private static bool IsSubPathOf(string path, string potentialAncestor)
+        {
+            string normalizedPath = NormalizePath(path);
+            string normalizedAncestor = NormalizePath(potentialAncestor);
+
+            return normalizedPath.Equals(normalizedAncestor, StringComparison.OrdinalIgnoreCase) ||
+                   normalizedPath.StartsWith(normalizedAncestor + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string NormalizePath(string path) =>
+            path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                .Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+
+        /// <summary>
+        /// Estrae le verifiche da un file Excel. Percorso primario: lettura SAX in streaming
+        /// (<see cref="VerificheExcelReader"/>, intervento 3.4), che non costruisce alcun DOM.
+        /// Se fallisce per un motivo qualsiasi — formato inatteso, pacchetto OpenXML malformato,
+        /// file <c>.xls</c> legacy — si ricade sul percorso ClosedXML originale, invariato: la
+        /// lettura è più lenta e più costosa in memoria, ma nessuna verifica viene persa.
+        /// </summary>
         private static void ParseExcelFile(string filePath, string fleetIdentifier, List<VerificheModel> collection)
+        {
+            try
+            {
+                var rows = VerificheExcelReader.Read(filePath);
+                foreach (var row in rows)
+                {
+                    collection.Add(BuildModel(row.Treno, row.Loco, row.Avaria, fleetIdentifier));
+                }
+                return;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Lettura SAX non riuscita su {filePath} ({ex.Message}); ripiego su ClosedXML.");
+            }
+
+            ParseExcelFileWithClosedXml(filePath, fleetIdentifier, collection);
+        }
+
+        /// <summary>
+        /// Applica al valore grezzo di una riga le stesse regole di normalizzazione del percorso
+        /// originale, comprese la risoluzione del treno da <c>flotte</c> per la sola flotta "1000".
+        /// Condivisa fra percorso SAX e percorso ClosedXML, così le due strade non possono divergere.
+        /// </summary>
+        private static VerificheModel BuildModel(string treno, string loco, string avaria, string fleetIdentifier)
+        {
+            var model = new VerificheModel
+            {
+                Treno = treno,
+                Loco = loco,
+                Avaria = avaria
+            };
+
+            if (fleetIdentifier == "1000" && !string.IsNullOrWhiteSpace(model.Loco))
+            {
+                if (model.Treno != null && model.Treno.StartsWith("ETR100"))
+                {
+                    string? trenoFromDb = Core.FlotteCache.FindTrenoByLoco(model.Loco);
+                    if (!string.IsNullOrEmpty(trenoFromDb))
+                    {
+                        model.Treno = trenoFromDb;
+                    }
+                }
+            }
+
+            return model;
+        }
+
+        private static void ParseExcelFileWithClosedXml(string filePath, string fleetIdentifier, List<VerificheModel> collection)
         {
             try
             {
@@ -390,28 +497,13 @@ namespace PersonalAutomationTool.Modules.Verifiche
                 // ricerche ripetute: ogni ricerca è già una scansione in memoria.
                 foreach (var row in dataRows)
                 {
-                    var model = new VerificheModel
-                    {
-                        Treno = row.Cell(trenoIdx).GetString()?.Trim() ?? string.Empty,
-                        Loco = row.Cell(locoIdx).GetString()?.Trim() ?? string.Empty,
-                        Avaria = row.Cell(avariaIdx).GetString()?.Trim() ?? string.Empty
-                    };
+                    string treno = row.Cell(trenoIdx).GetString()?.Trim() ?? string.Empty;
+                    string loco = row.Cell(locoIdx).GetString()?.Trim() ?? string.Empty;
+                    string avaria = row.Cell(avariaIdx).GetString()?.Trim() ?? string.Empty;
 
-                    if (fleetIdentifier == "1000" && !string.IsNullOrWhiteSpace(model.Loco))
+                    if (!string.IsNullOrWhiteSpace(treno) || !string.IsNullOrWhiteSpace(loco) || !string.IsNullOrWhiteSpace(avaria))
                     {
-                        if (model.Treno != null && model.Treno.StartsWith("ETR100"))
-                        {
-                            string? trenoFromDb = Core.FlotteCache.FindTrenoByLoco(model.Loco);
-                            if (!string.IsNullOrEmpty(trenoFromDb))
-                            {
-                                model.Treno = trenoFromDb;
-                            }
-                        }
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(model.Treno) || !string.IsNullOrWhiteSpace(model.Loco) || !string.IsNullOrWhiteSpace(model.Avaria))
-                    {
-                        collection.Add(model);
+                        collection.Add(BuildModel(treno, loco, avaria, fleetIdentifier));
                     }
                 }
             }

@@ -1057,6 +1057,7 @@
   "projectFileDependencyGroups": {
     "net10.0-windows": [
       "ClosedXML >= 0.105.0",
+      "DocumentFormat.OpenXml >= 3.1.1",
       "MaterialDesignThemes >= 4.9.0",
       "Microsoft.Data.Sqlite >= 10.0.3",
       "PDFsharp >= 6.2.4",
@@ -1111,6 +1112,10 @@
           "ClosedXML": {
             "target": "Package",
             "version": "[0.105.0, )"
+          },
+          "DocumentFormat.OpenXml": {
+            "target": "Package",
+            "version": "[3.1.1, )"
           },
           "MaterialDesignThemes": {
             "target": "Package",
