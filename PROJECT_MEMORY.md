@@ -52,12 +52,18 @@
 > §6.1-bis, §6.1-sexies, §6.1-nonies, §6.1-decies, §6.1-undecies) non sono state riscritte e restano
 > come registro di ciò che fu fatto finché il codice esisteva — vedi la nota introduttiva di
 > §6.1-duodecies prima di fare affidamento su un dettaglio implementativo lì descritto.
-> **Stato build alla chiusura sessione:** `dotnet build` sull'intera `.sln` → 0 errori, 0 warning su
-> `PersonalAutomationTool` e `PersonalAutomationTool.Tests` (i 2 warning residui sono preesistenti nello
-> scratch `TestClosedXML`, fuori scope — vedi §6.5). `dotnet test` → **181/181 superati** (erano 212;
-> i 31 test del modulo rimosso sono spariti insieme al codice che testavano — vedi §6.1-duodecies).
-> L'eseguibile non è stato riavviato manualmente in questa sessione: la modifica è solo rimozione di
-> codice morto, senza nuova superficie da verificare a schermo. **Da leggere prima di toccare il modulo EXCEL: §5.3-bis**
+> Chiude lo **Sprint 11** (§6.1-terdecies): **igiene del repository**, il debito accumulato in §6.5
+> finalmente saldato. Eliminati i progetti scratch `TestClosedXML/` e `scratch/`, i due file C# orfani
+> di root (`ep_test.cs`, `test.cs`), i log di build committati e i `.DS_Store`; **669 artefatti di build
+> tolti dal tracking Git** (restano su disco). Da 805 a 97 file tracciati. `MatchesTrain` — che
+> `TestClosedXML` era l'unico a verificare — è stata portata in xUnit **prima** della cancellazione.
+> **Stato build alla chiusura sessione:** `dotnet clean` + `dotnet build` sull'intera `.sln` → **0 errori
+> e 0 warning assoluti** (non più "0 salvo i 2 preesistenti in `TestClosedXML`": quel progetto non
+> esiste più, e con esso i 2 NU1510 — vedi §6.1-terdecies). `dotnet test` → **202/202 superati**
+> (181 dopo la rimozione del modulo, +21 per la nuova copertura di `MatchesTrain`).
+> L'eseguibile non è stato riavviato manualmente in questa sessione: le modifiche sono rimozione di
+> codice morto e di file non compilati, senza nuova superficie da verificare a schermo.
+> **Da leggere prima di toccare il modulo EXCEL: §5.3-bis**
 > (ETR1000 / ETR1000FH / ETR1000IF sono tre treni distinti; solo in EXCEL i primi due condividono il
 > report).
 
@@ -122,12 +128,16 @@ iscot-autotool.sln
 │                                       EmailService.BuildHtmlBody (golden-file test, §6.1-bis).
 │                                       Vedi §6.1/§6.1-bis per cosa copre oggi e §6.2 per il piano
 │                                       a 3 livelli.
-├── TestClosedXML/                   ← scratch, NON parte dell'app
-└── scratch/                         ← scratch, NON parte dell'app
+└── (nient'altro)                    ← §6.1-terdecies: TestClosedXML/ e scratch/ eliminati
 ```
 
-**Nota:** `TestClosedXML/`, `scratch/`, `ep_test.cs`, `test.cs` sono residui di sperimentazione.
-`TestClosedXML` è però referenziato nella `.sln` e i suoi `bin/obj` sono **committati nel repository**.
+**Nota (aggiornata nello Sprint 11, §6.1-terdecies).** La soluzione contiene ora **due soli progetti**,
+entrambi reali: l'applicazione e la sua suite di test. I residui di sperimentazione che stavano qui —
+`TestClosedXML/`, `scratch/`, `ep_test.cs`, `test.cs` — sono stati **eliminati**, e i `bin/obj` non sono
+più tracciati da Git (restano su disco, rigenerati dalla build). Il repository è passato da **805 a 97
+file tracciati**. Prima di aggiungere un nuovo progetto "usa e getta" alla `.sln`, si consideri che
+l'ultimo è sopravvissuto per mesi accumulando 104 MB e 2 warning di build: per una verifica rapida è
+quasi sempre preferibile un test in `PersonalAutomationTool.Tests`.
 
 ### 2.2 Pattern architetturale
 Ibrido, **non uniforme** — è importante saperlo prima di intervenire:
@@ -1894,6 +1904,87 @@ nuove specifiche, non da riapplicare automaticamente):
 **In attesa delle nuove specifiche del committente.** Nessuna decisione di design per la riscrittura è
 stata presa in questa sessione: questa voce si ferma alla rimozione pulita.
 
+### 6.1-terdecies Sprint 11 — igiene del repository: eliminazione dei residui scratch e untracking dei build artifact
+
+**Richiesta del committente (23/08/2026, subito dopo lo Sprint 10).** Ripulire la cartella di lavoro da
+file orfani, temporanei e residui di vecchie prove, mantenendo la soluzione funzionante al 100%, con un
+audit preventivo da approvare prima di ogni cancellazione.
+
+**Scoperta che ha guidato tutto lo sprint.** Il `.gitignore` era **già corretto e completo** (ignorava
+`bin/`, `obj/`, `scratch/`, `build_*.txt`, `.DS_Store` da §6.1-bis). Il problema non era una regola
+mancante: quei file erano stati committati **prima** che il `.gitignore` esistesse, e Git non applica le
+regole di ignore retroattivamente ai file già tracciati. La correzione non era quindi in `.gitignore` ma
+in `git rm --cached`. **Chi in futuro trovasse file ignorati ma ancora tracciati non cerchi il bug nel
+`.gitignore`.**
+
+**Audit preventivo (Fase 1).** 805 file tracciati, di cui **669 artefatti di build (83%)**. Verificati
+**17 tipi candidati a "classe orfana"** (`InverseBooleanToVisibilityConverter`, `RenamePreviewDialog`,
+`ProgressOverlay`, `TrainCardModel`, `FileOperationRetry`, `MouseWheelScrollBehavior`,
+`PendingMaintenanceModel`, `ExcelFieldViewModel`, `FlotteCache`, `RenamerLog`, `LogDumpFolderName`,
+`ExcelFolderParser`, `PdfRenamePlanner`, `VerificheExcelReader`, `ShortcutsManager`, `TrainViewHelper`,
+`ReportInterventiWriter`): **nessuna classe orfana**, ognuna ha un consumatore reale.
+`ReportInterventiWriter` è l'unica con 0 riferimenti nell'app, ma è **dead code deliberato** (§5.4,
+§6.1-septies) coperto da 30 test: **tenuto**.
+
+**Eliminati:**
+
+| Elemento | Peso | Perché |
+|---|---|---|
+| `TestClosedXML/` (152 file tracciati) | 104 MB | Harness console **manuale** (129 righe, 3 test): non gira con `dotnet test`, va lanciato a mano. Superato da `PersonalAutomationTool.Tests`. Rimosso prima dalla `.sln` con `dotnet sln remove`, poi da disco |
+| `scratch/` (92 file tracciati) | 64 MB | Già in `.gitignore` ma tracciata: `test.zip`, un pacchetto `.xlsx` estratto, `debug_ticket.txt`, un progetto `ExcelTest` mai nella `.sln` |
+| `ep_test.cs`, `test.cs` (root) | 2,4 KB | **Fuori da ogni `.csproj` → mai compilati.** UTF-16 su riga singola, path hardcoded a un profilo utente non più esistente. `test.cs` fa `XLWorkbook.Save()`, cioè **l'operazione vietata dall'invariante §5.4**: tenerlo era un rischio di copia-incolla |
+| `build_last.txt`, `build_out.txt` | 30 KB | Log di build committati per errore, già in `.gitignore` |
+| `.DS_Store` × 3 | 24 KB | Metadati macOS, inutili su Windows, già in `.gitignore` |
+
+**Untracked ma NON cancellati da disco:** i 669 file sotto `bin/` e `obj/`, con
+`git rm -r --cached`. Scelta esplicita del committente: l'eseguibile compilato resta utilizzabile e i
+file di configurazione già personalizzati nella cartella di output (`destinatari.json`,
+`shortcuts.json`) non vengono persi. Verificato dopo `dotnet clean` che `destinatari.json` sopravvive —
+`clean` rimuove solo gli output tracciati da MSBuild, non i file generati a runtime.
+
+**La copertura di test NON è stata sacrificata alla pulizia.** `TestClosedXML/Program.cs` conteneva 3
+verifiche, e il controllo ha rivelato che **nessuna delle tre aveva un equivalente in xUnit**:
+`ExcelViewModel.MatchesTrain`, il parsing di `ChiusuraTicketDialog` e il round-trip di
+`DestinatariManager`. Cancellare il progetto senza altro avrebbe quindi *ridotto* la copertura, non solo
+la dimensione del repository. Prima della cancellazione:
+- `ExcelViewModel.MatchesTrain` è passata da `private static` a **`internal static`** — stesso
+  trattamento già usato per `EmailService.BuildHtmlBody` e `HomeViewModel.NormalizeTicketPrefix`,
+  sfruttando l'`InternalsVisibleTo` già presente in `AssemblyInfo.cs`. **Nessuna riflessione**: il vecchio
+  harness la invocava via `BindingFlags.NonPublic`, il test nuovo la chiama direttamente.
+- Creato `ExcelViewModelMatchesTrainTests.cs` (**21 test Tier 1**): i 3 casi ereditati dall'harness più
+  l'estensione a tutte le grafie con cui la variante I-F compare sui nomi reali (`1000IF`, `Italia`,
+  `Francia`, `ITA-FRA`, `I-F`), verificata in **entrambe le direzioni** come richiede §5.3-bis, più
+  case-insensitivity e il caso in cui il *percorso* contiene un token di flotta diverso dal *nome file*.
+
+> ⚠️ **Restano scoperte** le altre 2 verifiche dell'harness: il parsing di `ChiusuraTicketDialog`
+> (istanzia un dialog WPF, richiede STA) e il round-trip di `DestinatariManager` (scrive
+> `destinatari.json` nella cartella di output). Non sono state portate perché richiedono WPF e I/O reale
+> sulla cartella di build, fuori dal perimetro **per costruzione** di `PersonalAutomationTool.Tests`
+> (§2.1: zero dipendenza da WPF). Sono ora **debito di test dichiarato**, non copertura persa in
+> silenzio: chi vorrà colmarlo dovrà prima decidere se ammettere test WPF nel progetto.
+
+> ⚠️ **Nota su `MatchesTrain`, da non confondere.** Opera sui **nomi dei file "Report Interventi"**, non
+> sui nomi di sottocartella LOG/DUMP: **non** delega a `ExcelFolderParser` e i 44 test di
+> `ExcelFolderParserTests` **non la coprivano**. Sono due percorsi indipendenti che implementano la
+> stessa distinzione di flotta: una modifica all'uno non è coperta dai test dell'altro. Se un giorno si
+> unificassero, questa duplicazione sparirebbe — ma sarebbe un intervento di §6.2, non di pulizia.
+
+**Verifica.** `dotnet clean` + `dotnet build` sull'intera `.sln` → **0 errori e 0 warning assoluti**.
+È un miglioramento reale rispetto a tutti gli sprint precedenti, che chiudevano con "0 warning *sui
+progetti principali*, più 2 preesistenti in `TestClosedXML`": quei 2 `NU1510` venivano da
+`System.Drawing.Common` in `TestClosedXML.csproj` — pacchetto che, verificato, **`Program.cs` non usava
+nemmeno**, così come non usava `ClosedXML` né `EPPlus` (i 3 `PackageReference` erano tutti orfani).
+Eliminato il progetto, il rumore di build è sparito con lui. `dotnet test` → **202/202 superati**.
+
+**Risultato: da 805 a 97 file tracciati** (-88%), ~168 MB liberati, due soli progetti nella `.sln`,
+entrambi reali.
+
+**Lezione per le prossime sessioni.** Un progetto "usa e getta" aggiunto alla `.sln` per una verifica
+rapida è sopravvissuto per mesi, accumulando 104 MB, 3 dipendenze mai usate e i 2 unici warning della
+build — e per giunta era diventato l'unico custode di una verifica che nessun altro test copriva, il che
+ha reso la sua rimozione più delicata di quanto sembrasse. Per una verifica rapida, un test in
+`PersonalAutomationTool.Tests` costa meno e non lascia sedimenti.
+
 ### 6.2 Le 4 macro-aree della roadmap strategica
 
 Elaborata come risposta alla domanda "se fossi il Lead Architect, cosa faresti dopo l'audit
@@ -2099,11 +2190,15 @@ all'interfaccia, rivalutare a quel punto.
       e devono restare versionati.
 - [x] **`EPPlus 4.5.3.3` rimosso** dal `.csproj`. Verificato: zero `using OfficeOpenXml` / `ExcelPackage`
       nel codice, zero occorrenze residue in `project.assets.json`, `EPPlus.dll` assente dall'output.
-- [ ] **`bin/` e `obj/` ancora tracciati** (~480 file su 800). Il `.gitignore` da solo non basta:
-      serve `git rm -r --cached` (comandi in §7.2).
-- [ ] **`TestClosedXML/`, `scratch/`, `ep_test.cs`, `test.cs`** sono scratch. `TestClosedXML` è però
-      referenziato nella `.sln`: rimuoverla dalla soluzione prima di cancellare.
-- [ ] **`build_last.txt` / `build_out.txt`** sono log di build committati: da rimuovere dal tracking.
+- [x] **`bin/` e `obj/` non più tracciati (Sprint 11, §6.1-terdecies).** Erano 669 file su 805 (83% del
+      repository). Tolti dall'indice con `git rm -r --cached`, **senza cancellarli da disco**: la build
+      compilata e i file di configurazione già personalizzati nella cartella di output
+      (`destinatari.json`, `shortcuts.json`) sono rimasti intatti.
+- [x] **`TestClosedXML/`, `scratch/`, `ep_test.cs`, `test.cs` eliminati (Sprint 11, §6.1-terdecies).**
+      `TestClosedXML` rimossa prima dalla `.sln` (`dotnet sln remove`), poi da disco. ~168 MB liberati.
+      La copertura di `MatchesTrain` che solo quel progetto forniva è stata **portata in xUnit prima**
+      della cancellazione — vedi §6.1-terdecies.
+- [x] **`build_last.txt` / `build_out.txt` rimossi (Sprint 11, §6.1-terdecies)**, insieme ai 3 `.DS_Store`.
 - [x] **`DatabaseManager._dbLock` da statico a per istanza (Sprint 2).** Prima serializzava ogni
       accesso al database dell'intero processo, anche fra file `.db` diversi, senza motivo.
 - [x] **`DatabaseManager.Query<T>` tipizzato, senza `DataTable` intermedio (Sprint 3).** Vedi §6.1-ter
@@ -2132,12 +2227,14 @@ all'interfaccia, rivalutare a quel punto.
       percorso ETR1000 I-F), 12 Tier 2 (`FileOperationRetryTests`, **lock reali del file system** e
       riprova su violazione di condivisione), 5 Tier 2 (`DatabaseManagerLockTests`, rilascio
       deterministico dell'handle SQLite), 11 Tier 1 (`HomeViewModelTests`, prefisso "SR" in Aggiorna
-      Ticket) — **181 in tutto** (erano 212: i 31 test del modulo PASSAGGIO DI CONSEGNE — 23 Tier 1 in
-      `PassaggioConsegneViewModelTests`/`PassaggioConsegneModelsTests`/`RowFilledEmptyToNoConverterTests`
-      + 8 Tier 1 in `BoolToSiNoConverterTests` — sono stati rimossi insieme al modulo nello Sprint 10,
-      §6.1-duodecies). Restano
-      da coprire: `ExtractLocosFromFolder`, `BuildSubject`, `AreTrainTypesCompatible`, `MatchesTrain`
-      (Tier 1, non dipendono da `LogDumpFolderName`, possono procedere in parallelo a §6.3); Tier 3
+      Ticket), 21 Tier 1 (`ExcelViewModelMatchesTrainTests`, §6.1-terdecies: match dei **nomi di file
+      report** per flotta, con la separazione ETR1000 ↔ ETR1000 I-F di §5.3-bis in entrambe le
+      direzioni) — **202 in tutto** (erano 212, poi 181 dopo la rimozione dei 31 test del modulo
+      PASSAGGIO DI CONSEGNE nello Sprint 10 §6.1-duodecies, poi 202 con i 21 nuovi dello Sprint 11).
+      Restano
+      da coprire: `ExtractLocosFromFolder`, `BuildSubject`, `AreTrainTypesCompatible` (Tier 1, non
+      dipendono da `LogDumpFolderName`, possono procedere in parallelo a §6.3) — **`MatchesTrain` è
+      stata coperta nello Sprint 11** (§6.1-terdecies); Tier 3
       (COM) non affrontato, dipende da 1.7 (wrapper Outlook), rimandato. **Non testata da xUnit** (per costruzione, sono WPF): `RenamePreviewDialog` e
       `ProgressOverlay` — gusci sottili senza logica di decisione, stessa categoria di `PdfView` prima
       dell'estrazione di `PdfRenamePlanner`; verificarli richiede la checklist manuale (§7.1, punti
@@ -2172,32 +2269,33 @@ Il progetto di test (§6.1) non richiede Windows in senso stretto per compilare,
 `TargetFramework=net10.0-windows` (per la `ProjectReference` verso l'app WPF) sì: va eseguito nello
 stesso ambiente della build principale.
 
-### 7.2 Pulizia del tracking Git (da eseguire una volta sola)
+### 7.2 Pulizia del tracking Git — ✅ **ESEGUITA nello Sprint 11 (§6.1-terdecies)**
 
-Il `.gitignore` è già presente, ma Git **continua a tracciare i file già indicizzati**: le regole di
-ignore valgono solo per i file non ancora tracciati. Serve quindi svuotare l'indice e ricostruirlo.
-`git rm --cached` rimuove **solo dall'indice**, i file restano sul disco.
+> Questa sezione descriveva un'operazione **da fare**. È stata eseguita il 23/08/2026: il repository è
+> passato da **805 a 97 file tracciati**. Resta qui per documentare *cosa* è stato fatto e perché, e
+> come riconoscere il problema se dovesse ripresentarsi.
+
+Il `.gitignore` era già presente e corretto, ma Git **continua a tracciare i file già indicizzati**: le
+regole di ignore valgono solo per i file non ancora tracciati. `git rm --cached` rimuove **solo
+dall'indice**, i file restano sul disco.
+
+Comandi effettivamente usati (mirati per percorso, invece dell'azzeramento totale dell'indice, così da
+non toccare per sbaglio i sorgenti):
 
 ```bash
-git rm -r --cached . --quiet && git add . && git status --short | head -40
+git rm -r --cached --quiet PersonalAutomationTool/bin PersonalAutomationTool/obj
 ```
 
-Il comando sopra è il modo più sicuro: azzera l'indice e lo ricostruisce applicando il `.gitignore`.
-Verificare in `git status` che compaiano **solo** righe `D` per `bin/`, `obj/` e `scratch/`, e che
-**nessun** file sorgente o `.db` risulti eliminato. Poi:
+Verificato dopo l'operazione che: **0** file restano tracciati sotto `bin/`/`obj/`; **0** file tracciati
+risultano assenti dal disco; i `modules/database/*.db` sono ancora tracciati (sono dati sorgente, copiati
+in output da `CopyToOutputDirectory` — se comparissero come eliminati, il `.gitignore` conterrebbe una
+regola `*.db` di troppo); l'eseguibile compilato e `destinatari.json`/`shortcuts.json` nella cartella di
+output sono rimasti intatti.
 
-```bash
-git commit -m "chore: smetti di tracciare gli artefatti di build e aggiungi .gitignore"
-```
-
-> ⚠️ **Da verificare prima del commit:** i file `PersonalAutomationTool/modules/database/*.db` devono
-> restare tracciati (sono dati sorgente, copiati in output da `CopyToOutputDirectory`). Se compaiono
-> come eliminati, il `.gitignore` contiene una regola `*.db` di troppo.
-
-I file resteranno comunque nella **storia** del repository (il clone non si alleggerisce
+I file restano comunque nella **storia** del repository (il clone non si alleggerisce
 retroattivamente). Per riscrivere anche la storia servirebbe `git filter-repo`, operazione distruttiva
-che invalida tutti i cloni esistenti: da valutare solo se la dimensione del repository diventa un
-problema concreto.
+che invalida tutti i cloni esistenti: **non eseguita**, da valutare solo se la dimensione del repository
+diventasse un problema concreto.
 
 **Prima di toccare qualsiasi cosa:** leggere §5 (Invarianti). La maggior parte della logica di questa
 applicazione non è nei tipi, ma nelle **convenzioni sui nomi di file e cartella** — e il compilatore
@@ -2210,7 +2308,8 @@ non può proteggerle. Ogni modifica al parsing va verificata su casi reali presi
 4. EMAIL → chiusura ticket su una flotta I-F: verificare oggetto, destinatari, firma **sotto** il corpo.
 5. EXCEL → Sposta Report, verifica autocompilazione, Scrivi report, e **controllare in Gestione
    attività che non resti un processo EXCEL.EXE** (regressione §4.6).
-6. PASSAGGIO CONSEGNE → esportare il PDF e verificare che la bozza Outlook si apra con l'allegato.
+6. ~~PASSAGGIO CONSEGNE → esportare il PDF e verificare che la bozza Outlook si apra con l'allegato.~~
+   **Non applicabile:** modulo rimosso nello Sprint 10 (§6.1-duodecies), in attesa di riscrittura.
 7. **Rotellina** (regressione §4.16) → verificare che: lo scorrimento abbia la stessa velocità in
    HOME, in EXCEL e dentro il dialog Chiusura Ticket (prima dipendeva dalla profondità della UI);
    arrivati a fondo di un elenco interno, il contenitore esterno riprenda a scorrere; nel dialog

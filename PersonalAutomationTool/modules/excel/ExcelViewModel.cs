@@ -1613,7 +1613,20 @@ namespace PersonalAutomationTool.Modules.Excel
             }
         }
 
-        private static bool MatchesTrain(string name, string? trainType)
+        /// <summary>
+        /// Decide se il <b>nome di un file "Report Interventi"</b> appartiene alla flotta selezionata
+        /// nella ComboBox del modulo EXCEL. Attenzione: opera sui nomi dei <i>report</i>, non sui nomi
+        /// di sottocartella LOG/DUMP — quelli passano da <see cref="ExcelFolderParser"/>, che ha una
+        /// grammatica diversa (§5.3 di PROJECT_MEMORY.md).
+        /// <para>
+        /// <c>internal</c> (era <c>private</c>) per consentire a <c>PersonalAutomationTool.Tests</c> di
+        /// chiamarla direttamente via <c>InternalsVisibleTo</c>, stesso trattamento di
+        /// <c>HomeViewModel.NormalizeTicketPrefix</c> ed <c>EmailService.BuildHtmlBody</c>. La
+        /// copertura arriva da <c>ExcelViewModelMatchesTrainTests</c>, che ha sostituito le asserzioni
+        /// dell'harness manuale <c>TestClosedXML</c> rimosso nello Sprint 11 (§6.1-terdecies).
+        /// </para>
+        /// </summary>
+        internal static bool MatchesTrain(string name, string? trainType)
         {
             if (string.IsNullOrEmpty(trainType)) return false;
 
