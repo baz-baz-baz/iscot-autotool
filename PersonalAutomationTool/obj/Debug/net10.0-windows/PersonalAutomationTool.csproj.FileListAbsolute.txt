@@ -653,3 +653,7 @@ C:\Users\peli\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\n
 C:\Users\peli\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\iossimulator-arm64\native\e_sqlite3.a
 C:\Users\peli\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\iossimulator-x64\native\e_sqlite3.a
 C:\Users\peli\Documents\GitHub\iscot-autotool\PersonalAutomationTool\bin\Debug\net10.0-windows\runtimes\iossimulator-x86\native\e_sqlite3.a
+C:\Users\peli\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\core\Controls\ProgressOverlay.baml
+C:\Users\peli\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\core\Dialogs\RenamePreviewDialog.baml
+C:\Users\peli\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\core\Controls\ProgressOverlay.g.cs
+C:\Users\peli\Documents\GitHub\iscot-autotool\PersonalAutomationTool\obj\Debug\net10.0-windows\core\Dialogs\RenamePreviewDialog.g.cs

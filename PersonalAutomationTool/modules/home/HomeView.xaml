@@ -4,7 +4,8 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:PersonalAutomationTool.Modules.Home"
-             mc:Ignorable="d" 
+             xmlns:controls="clr-namespace:PersonalAutomationTool.Core.Controls"
+             mc:Ignorable="d"
              d:DesignHeight="700" d:DesignWidth="1200"
              Background="White">
     <UserControl.Resources>
@@ -49,14 +50,24 @@
                     
                     <Button Content="Zip" Command="{Binding ZipCommand}" Padding="15,5" Margin="20,0,10,0" Background="#F0F0F0" BorderBrush="#CCCCCC" Foreground="#333333"/>
                     <Button Content="Log Dump in rete" Command="{Binding LogDumpReteCommand}" Padding="10,5" Margin="0,0,10,0" Background="#F0F0F0" BorderBrush="#CCCCCC" Foreground="#333333"/>
-                    <Button Content="Elimina" Command="{Binding EliminaCommand}" Padding="10,5" Background="#FFEBEE" Foreground="#D32F2F" BorderBrush="#FFCDD2" FontWeight="SemiBold"/>
+                    <Button Content="Elimina" Command="{Binding EliminaCommand}" Padding="10,5" Margin="0,0,10,0" Background="#FFEBEE" Foreground="#D32F2F" BorderBrush="#FFCDD2" FontWeight="SemiBold"/>
+                    <Button Content="Annulla ultima rinomina" Command="{Binding AnnullaRinominaCommand}" Padding="10,5" Background="#FFF7ED" Foreground="#C2410C" BorderBrush="#FED7AA"/>
                 </StackPanel>
 
                 <!-- DataGrid -->
-                <DataGrid Grid.Row="2" ItemsSource="{Binding PendingItems}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}" AutoGenerateColumns="False" CanUserAddRows="False" 
+                <!-- CanContentScroll="True" (era "False") abilita la virtualizzazione nativa delle
+                     righe: come in VerificheView, ScrollUnit resta il default "Item" (non "Pixel")
+                     perché il RowDetailsTemplate sottostante (sottocartelle espandibili) rende le
+                     righe ad altezza variabile, e lo scorrimento a pixel farebbe ballare la maniglia
+                     della scrollbar. A differenza di PassaggioConsegneView, questa griglia non viene
+                     mai catturata via RenderTargetBitmap: virtualizzarla è sicura. -->
+                <DataGrid Grid.Row="2" ItemsSource="{Binding PendingItems}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}" AutoGenerateColumns="False" CanUserAddRows="False"
                           HeadersVisibility="Column" Background="White" RowBackground="White" AlternatingRowBackground="#FAFAFA"
                           BorderBrush="#EEEEEE" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#EEEEEE"
-                          ScrollViewer.CanContentScroll="False">
+                          EnableRowVirtualization="True"
+                          VirtualizingPanel.IsVirtualizing="True"
+                          VirtualizingPanel.VirtualizationMode="Recycling"
+                          ScrollViewer.CanContentScroll="True">
                     <DataGrid.Resources>
                         <Style TargetType="DataGridColumnHeader">
                             <Setter Property="Background" Value="White"/>
@@ -133,5 +144,7 @@
                 </DataGrid>
             </Grid>
         </Border>
+
+        <controls:ProgressOverlay Grid.RowSpan="2" IsBusy="{Binding IsLoading}" Message="{Binding LoadingMessage}"/>
     </Grid>
 </UserControl>

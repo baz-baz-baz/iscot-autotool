@@ -4,7 +4,8 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:converters="clr-namespace:PersonalAutomationTool.Core.Converters"
-             mc:Ignorable="d" 
+             xmlns:controls="clr-namespace:PersonalAutomationTool.Core.Controls"
+             mc:Ignorable="d"
              d:DesignHeight="450" d:DesignWidth="800">
 
     <UserControl.Resources>
@@ -17,7 +18,15 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Text="Dashboard PDF" FontSize="24" FontWeight="Bold" Margin="0,0,0,20" Foreground="#2C3E50"/>
+        <Grid Grid.Row="0" Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="Dashboard PDF" FontSize="24" FontWeight="Bold" Foreground="#2C3E50" VerticalAlignment="Center"/>
+            <Button Grid.Column="1" x:Name="BtnAnnullaRinomina" Content="Annulla ultima rinomina" Click="BtnAnnullaRinomina_Click"
+                    Padding="12,6" Background="#FFF7ED" Foreground="#C2410C" BorderBrush="#FED7AA" BorderThickness="1"/>
+        </Grid>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <ItemsControl x:Name="ItemsControlCards" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True">
@@ -116,5 +125,7 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
+
+        <controls:ProgressOverlay x:Name="LoadingOverlay" Grid.Row="0" Grid.RowSpan="2"/>
     </Grid>
 </UserControl>

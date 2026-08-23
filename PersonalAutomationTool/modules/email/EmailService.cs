@@ -390,7 +390,10 @@ namespace PersonalAutomationTool.Modules.Email
             return bottomTickets;
         }
 
-        private static string BuildHtmlBody(string trainType, string actionType, List<string> logFolders, List<string> dumpFolders, ObservableCollection<LocoGroupModel> locoGroups, List<string> bottomTickets)
+        // internal (non più private) solo per essere testabile da PersonalAutomationTool.Tests
+        // (InternalsVisibleTo in AssemblyInfo.cs) senza passare per Outlook via COM: nessun altro
+        // cambiamento di comportamento o di superficie pubblica dell'assembly.
+        internal static string BuildHtmlBody(string trainType, string actionType, List<string> logFolders, List<string> dumpFolders, ObservableCollection<LocoGroupModel> locoGroups, List<string> bottomTickets)
         {
             StringBuilder htmlBuilder = new();
             htmlBuilder.Append("<div style='font-family: Calibri, sans-serif; font-size: 11pt; color: black;'>");
@@ -449,10 +452,6 @@ namespace PersonalAutomationTool.Modules.Email
                 htmlBuilder.Append("<p style='font-size: 14pt;'>Di seguito la descrizione delle avarie segnalate dal PdC e dell'intervento effettuato:</p>");
             }
 
-            // Una sola connessione SQLite per tutta l'email invece di una per riga di tabella:
-            // ResolveTrainAndSoftware apriva e chiudeva il database a ogni locomotiva.
-            using var trainDb = OpenTrainSoftwareDatabase();
-
             foreach (var group in locoGroups)
             {
                 foreach (var input in group.Inputs)
@@ -488,7 +487,7 @@ namespace PersonalAutomationTool.Modules.Email
                     string versioneSW = string.Empty;
 
                     // Risolvi info treno e software
-                    ResolveTrainAndSoftware(trainDb, trainType, ref loco, out treno, out versioneSW);
+                    ResolveTrainAndSoftware(trainType, ref loco, out treno, out versioneSW);
 
                     htmlBuilder.Append("<table style='width: 100%; border-collapse: collapse; border: 1px solid #ddd; margin-top: 20px; margin-bottom: 20px;'>");
                     htmlBuilder.Append("<thead>");
@@ -528,33 +527,10 @@ namespace PersonalAutomationTool.Modules.Email
             return htmlBuilder.ToString();
         }
 
-        /// <summary>
-        /// Apre il database delle flotte, oppure restituisce null se il file non è presente.
-        /// </summary>
-        private static PersonalAutomationTool.Modules.Database.DatabaseManager? OpenTrainSoftwareDatabase()
-        {
-            try
-            {
-                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                string dbPath = Path.Combine(baseDir, "modules", "database", "train_software.db");
-                if (File.Exists(dbPath))
-                {
-                    return new PersonalAutomationTool.Modules.Database.DatabaseManager(dbPath);
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Errore apertura db: {ex.Message}");
-            }
-            return null;
-        }
-
-        private static void ResolveTrainAndSoftware(PersonalAutomationTool.Modules.Database.DatabaseManager? dbManager, string trainType, ref string loco, out string treno, out string versioneSW)
+        private static void ResolveTrainAndSoftware(string trainType, ref string loco, out string treno, out string versioneSW)
         {
             treno = string.Empty;
             versioneSW = string.Empty;
-
-            if (dbManager == null) return;
 
             try
             {
@@ -568,16 +544,16 @@ namespace PersonalAutomationTool.Modules.Email
                     dbTrainType = "ETR1001FH";
                 }
 
-                var queryParams = new Dictionary<string, object?> { { "@tipo", dbTrainType }, { "@loco", loco } };
-                var dt = dbManager.ExecuteQuery("SELECT treno, software FROM flotte WHERE tipo = @tipo AND loco = @loco", queryParams);
+                // FlotteCache (core/FlotteCache.cs) tiene l'intera tabella in memoria: prima questa
+                // ricerca apriva una query SQLite per ogni locomotiva della tabella dell'email.
+                var record = PersonalAutomationTool.Core.FlotteCache.FindByTipoAndLoco(dbTrainType, loco);
 
-                if (dt.Rows.Count == 0 && loco.Contains(' '))
+                if (record == null && loco.Contains(' '))
                 {
                     var parts = loco.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                     string firstPart = parts[0];
-                    var fallbackParams = new Dictionary<string, object?> { { "@tipo", dbTrainType }, { "@loco", firstPart } };
-                    dt = dbManager.ExecuteQuery("SELECT treno, software FROM flotte WHERE tipo = @tipo AND loco = @loco", fallbackParams);
-                    if (dt.Rows.Count > 0)
+                    record = PersonalAutomationTool.Core.FlotteCache.FindByTipoAndLoco(dbTrainType, firstPart);
+                    if (record != null)
                     {
                         loco = firstPart;
                         if (parts.Length > 1)
@@ -587,12 +563,12 @@ namespace PersonalAutomationTool.Modules.Email
                     }
                 }
 
-                if (dt.Rows.Count > 0)
+                if (record != null)
                 {
-                    treno = dt.Rows[0]["treno"]?.ToString() ?? string.Empty;
+                    treno = record.Treno;
                     if (string.IsNullOrEmpty(versioneSW))
                     {
-                        versioneSW = dt.Rows[0]["software"]?.ToString() ?? string.Empty;
+                        versioneSW = record.Software;
                     }
                 }
             }

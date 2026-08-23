@@ -1,13 +1,18 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using Microsoft.Data.Sqlite;
 
 namespace PersonalAutomationTool.Modules.Database
 {
     public class DatabaseManager : IDisposable
     {
-        private static readonly object _dbLock = new();
+        // Era statico: serializzava gli accessi di TUTTE le istanze di DatabaseManager nel processo,
+        // anche verso file .db diversi (es. una query su emails.db aspettava una query su
+        // train_software.db in corso su un'altra istanza, senza motivo). Ogni istanza incapsula
+        // una propria SqliteConnection: il lock deve solo proteggere quella, non essere globale.
+        private readonly object _dbLock = new();
         private readonly string connectionString;
         private SqliteConnection? _connection;
 
@@ -89,19 +94,54 @@ namespace PersonalAutomationTool.Modules.Database
 
         public List<string> GetTableNames()
         {
-            var tables = new List<string>();
-            var query = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';";
+            const string query = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';";
+            return Query(query, static reader => reader.IsDBNull(0) ? "" : reader.GetValue(0)?.ToString() ?? "")
+                .Where(name => !string.IsNullOrEmpty(name))
+                .ToList();
+        }
 
-            var resultTable = ExecuteQuery(query);
-            foreach (DataRow row in resultTable.Rows)
+        /// <summary>
+        /// Lettura tipizzata: esegue <paramref name="query"/> e proietta ogni riga tramite
+        /// <paramref name="map"/>, senza mai materializzare un <see cref="DataTable"/> intermedio.
+        /// Stessa politica di errore di <see cref="ExecuteQuery"/> (nessuna eccezione verso il
+        /// chiamante: un errore SQL produce una lista vuota, loggata su <see cref="System.Diagnostics.Debug"/>)
+        /// — a differenza di quella però qui l'errore non può essere distinto da "nessuna riga",
+        /// perché non c'è più una colonna "Errore" su cui il chiamante possa controllare: usarla dove
+        /// quella distinzione non serve al chiamante (i punti migrati in questa sessione la
+        /// scartavano comunque subito dopo averla controllata).
+        /// </summary>
+        public List<T> Query<T>(string query, Func<SqliteDataReader, T> map, Dictionary<string, object?>? parameters = null)
+        {
+            var results = new List<T>();
+
+            lock (_dbLock)
             {
-                var tableName = row["name"]?.ToString();
-                if (!string.IsNullOrEmpty(tableName))
+                try
                 {
-                    tables.Add(tableName);
+                    OpenConnection();
+                    if (_connection == null) throw new InvalidOperationException("Connessione non inizializzata.");
+
+                    using var command = new SqliteCommand(query, _connection);
+                    if (parameters != null)
+                    {
+                        foreach (var param in parameters)
+                        {
+                            command.Parameters.AddWithValue(param.Key, param.Value ?? DBNull.Value);
+                        }
+                    }
+                    using var reader = command.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        results.Add(map(reader));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"DB Query Error: {ex.Message}");
                 }
             }
-            return tables;
+
+            return results;
         }
 
         public int ExecuteNonQuery(string query, Dictionary<string, object?>? parameters = null)

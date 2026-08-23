@@ -385,50 +385,34 @@ namespace PersonalAutomationTool.Modules.Verifiche
                 if (locoIdx == -1) locoIdx = 2;
                 if (avariaIdx == -1) avariaIdx = 3;
 
-                // La connessione SQLite viene aperta al massimo UNA volta per file (in modo pigro,
-                // solo se serve davvero) invece di una volta per riga: su un foglio da qualche
-                // centinaio di righe si passa da centinaia di open/close a uno solo.
-                PersonalAutomationTool.Modules.Database.DatabaseManager? db = null;
-                var locoTrenoCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-                try
+                // FlotteCache (core/FlotteCache.cs) tiene l'intera tabella flotte in memoria, quindi
+                // qui non serve più né aprire una connessione SQLite né una cache locale per evitare
+                // ricerche ripetute: ogni ricerca è già una scansione in memoria.
+                foreach (var row in dataRows)
                 {
-                    foreach (var row in dataRows)
+                    var model = new VerificheModel
                     {
-                        var model = new VerificheModel
-                        {
-                            Treno = row.Cell(trenoIdx).GetString()?.Trim() ?? string.Empty,
-                            Loco = row.Cell(locoIdx).GetString()?.Trim() ?? string.Empty,
-                            Avaria = row.Cell(avariaIdx).GetString()?.Trim() ?? string.Empty
-                        };
+                        Treno = row.Cell(trenoIdx).GetString()?.Trim() ?? string.Empty,
+                        Loco = row.Cell(locoIdx).GetString()?.Trim() ?? string.Empty,
+                        Avaria = row.Cell(avariaIdx).GetString()?.Trim() ?? string.Empty
+                    };
 
-                        if (fleetIdentifier == "1000" && !string.IsNullOrWhiteSpace(model.Loco))
+                    if (fleetIdentifier == "1000" && !string.IsNullOrWhiteSpace(model.Loco))
+                    {
+                        if (model.Treno != null && model.Treno.StartsWith("ETR100"))
                         {
-                            if (model.Treno != null && model.Treno.StartsWith("ETR100"))
+                            string? trenoFromDb = Core.FlotteCache.FindTrenoByLoco(model.Loco);
+                            if (!string.IsNullOrEmpty(trenoFromDb))
                             {
-                                if (!locoTrenoCache.TryGetValue(model.Loco, out var trenoFromDb))
-                                {
-                                    db ??= OpenTrainSoftwareDatabase();
-                                    trenoFromDb = GetTrenoFromDatabase(db, model.Loco);
-                                    locoTrenoCache[model.Loco] = trenoFromDb;
-                                }
-
-                                if (!string.IsNullOrEmpty(trenoFromDb))
-                                {
-                                    model.Treno = trenoFromDb;
-                                }
+                                model.Treno = trenoFromDb;
                             }
                         }
-
-                        if (!string.IsNullOrWhiteSpace(model.Treno) || !string.IsNullOrWhiteSpace(model.Loco) || !string.IsNullOrWhiteSpace(model.Avaria))
-                        {
-                            collection.Add(model);
-                        }
                     }
-                }
-                finally
-                {
-                    db?.Dispose();
+
+                    if (!string.IsNullOrWhiteSpace(model.Treno) || !string.IsNullOrWhiteSpace(model.Loco) || !string.IsNullOrWhiteSpace(model.Avaria))
+                    {
+                        collection.Add(model);
+                    }
                 }
             }
             catch (Exception ex)
@@ -437,46 +421,7 @@ namespace PersonalAutomationTool.Modules.Verifiche
             }
         }
 
-        private static PersonalAutomationTool.Modules.Database.DatabaseManager? OpenTrainSoftwareDatabase()
-        {
-            try
-            {
-                string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "modules", "database", "train_software.db");
-                if (File.Exists(dbPath))
-                {
-                    return new PersonalAutomationTool.Modules.Database.DatabaseManager(dbPath);
-                }
-            }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Db open error: {ex.Message}"); }
-            return null;
-        }
-
-        private static string GetTrenoFromDatabase(PersonalAutomationTool.Modules.Database.DatabaseManager? db, string loco)
-        {
-            if (db == null) return "";
-
-            try
-            {
-                string query = "SELECT treno FROM flotte WHERE loco = @loco";
-                var parameters = new Dictionary<string, object?> { { "@loco", loco } };
-                if (int.TryParse(loco, out int locoInt))
-                {
-                    query += " OR loco = @locoInt";
-                    parameters["@locoInt"] = locoInt;
-                }
-
-                var data = db.ExecuteQuery(query, parameters);
-                if (data.Rows.Count > 0 && !data.Columns.Contains("Errore"))
-                {
-                    string trenoDb = data.Rows[0]["treno"]?.ToString() ?? "";
-                    if (!string.IsNullOrEmpty(trenoDb))
-                    {
-                        return trenoDb;
-                    }
-                }
-            }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Db search error: {ex.Message}"); }
-            return "";
-        }
+        // OpenTrainSoftwareDatabase/GetTrenoFromDatabase rimossi: sostituiti da FlotteCache.FindTrenoByLoco
+        // (core/FlotteCache.cs), che replica esattamente la stessa query con fallback numerico su loco.
     }
 }

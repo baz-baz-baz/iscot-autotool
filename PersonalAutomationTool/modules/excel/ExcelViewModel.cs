@@ -591,10 +591,17 @@ namespace PersonalAutomationTool.Modules.Excel
             {
                 // Estrazione nomi sottocartelle
                 string allSubfolderNames = "";
+            // Il tipo di treno REALE scritto nei nomi delle sottocartelle. Non coincide con
+            // SelectedTrain: la voce "ETR1000 / 1000FH" copre due flotte distinte (ETR1000 ed
+            // ETR1001FH) che condividono lo stesso Report Interventi — ma non sono lo stesso
+            // rotabile, e il campo ROTABILE del report deve riportare quello vero.
+            string? actualTrainType = null;
             try
             {
                 var subDirs = Directory.GetDirectories(folderPath);
-                allSubfolderNames = string.Join(" ", subDirs.Select(Path.GetFileName));
+                var subNames = subDirs.Select(Path.GetFileName).Where(n => n != null).Select(n => n!).ToList();
+                allSubfolderNames = string.Join(" ", subNames);
+                actualTrainType = ExcelFolderParser.ResolveActualTrainType(subNames, Core.FlotteCache.GetDistinctTipiOrderByLengthDesc());
             }
             catch { }
 
@@ -664,25 +671,32 @@ namespace PersonalAutomationTool.Modules.Excel
             {
                 if (rotabileField.IsComboBox)
                 {
-                    string? matchingOption = null;
-                    if (SelectedTrain == "ETR1000 / 1000FH")
+                    // Prima scelta: l'opzione che corrisponde al treno REALE della cartella. Sotto la
+                    // voce "ETR1000 / 1000FH" una cartella ETR1001FH otteneva prima il rotabile
+                    // "ETR1000", perché la selezione partiva dall'etichetta. Restituisce null se il
+                    // foglio non distingue la variante: in quel caso valgono i criteri di prima.
+                    string? matchingOption = ExcelFolderParser.SelectRotabileOption(rotabileField.Options, actualTrainType);
+
+                    if (matchingOption == null && SelectedTrain == "ETR1000 / 1000FH")
                     {
                         matchingOption = rotabileField.Options.FirstOrDefault(o => o.Contains("ETR 1000", StringComparison.OrdinalIgnoreCase) || o.Contains("ETR1000", StringComparison.OrdinalIgnoreCase));
                     }
-                    else if (SelectedTrain == "ETR1000 I-F")
+                    else if (matchingOption == null && SelectedTrain == "ETR1000 I-F")
                     {
                         matchingOption = rotabileField.Options.FirstOrDefault(o => (o.Contains("1000", StringComparison.OrdinalIgnoreCase) && (o.Contains("IF", StringComparison.OrdinalIgnoreCase) || o.Contains("I-F", StringComparison.OrdinalIgnoreCase) || o.Contains("ITA", StringComparison.OrdinalIgnoreCase))) || o.Contains("Italia", StringComparison.OrdinalIgnoreCase) || o.Contains("Francia", StringComparison.OrdinalIgnoreCase));
                         matchingOption ??= rotabileField.Options.FirstOrDefault(o => o.Contains("ETR 1000", StringComparison.OrdinalIgnoreCase) || o.Contains("ETR1000", StringComparison.OrdinalIgnoreCase));
                     }
-                    
+
                     matchingOption ??= rotabileField.Options.FirstOrDefault(o => o.Contains(SelectedTrain, StringComparison.OrdinalIgnoreCase));
 
                     if (matchingOption != null) rotabileField.FieldValue = matchingOption;
-                    else rotabileField.FieldValue = SelectedTrain;
+                    else rotabileField.FieldValue = actualTrainType ?? SelectedTrain;
                 }
                 else
                 {
-                    rotabileField.FieldValue = SelectedTrain;
+                    // Campo libero: scrivere l'etichetta significherebbe scrivere "ETR1000 / 1000FH"
+                    // con lo slash, che non è il nome di nessun rotabile.
+                    rotabileField.FieldValue = actualTrainType ?? SelectedTrain;
                 }
             }
 
@@ -816,31 +830,48 @@ namespace PersonalAutomationTool.Modules.Excel
 
                 // Il pattern dipende solo da SelectedTrain, costante per tutto il ciclo: costruirlo
                 // e ricercarlo nella cache statica di Regex a ogni sottocartella era lavoro sprecato.
-                var locoRegex = new Regex($@"{SelectedTrain}\s*[-_]?\s*(\d{{3,4}})", RegexOptions.IgnoreCase);
+                // Costruito ora sui token che compaiono davvero su disco, non sull'etichetta della
+                // ComboBox: vedi ExcelFolderParser per il difetto che questo corregge.
+                var locoRegex = ExcelFolderParser.BuildLocoRegex(SelectedTrain, minDigits: 3);
+
+                // I `tipo` noti servono a LogDumpFolderName.TryParse per distinguere un tipo composto
+                // ("ETR1000 I-F") dal suo prefisso ("ETR1000"). Siamo già dentro un Task.Run, quindi
+                // l'eventuale lettura del database non tocca il thread UI.
+                var knownTypes = Core.FlotteCache.GetDistinctTipiOrderByLengthDesc();
 
                 foreach(var subDir in subDirs)
                 {
                     string subName = Path.GetFileName(subDir);
 
-                    string ticket = "";
-                    var ticketMatch = TicketSrRegex().Match(subName);
-                    if (ticketMatch.Success) ticket = ticketMatch.Groups[1].Value;
-                    else {
-                        var standaloneTicketMatch = StandaloneTicketRegex().Match(subName);
-                        if (standaloneTicketMatch.Success && !standaloneTicketMatch.Value.StartsWith("202"))
-                            ticket = standaloneTicketMatch.Value;
+                    // Percorso primario: il parser condiviso della grammatica LOG/DUMP, che localizza
+                    // ticket e loco per posizione e non dipende dall'etichetta UI selezionata.
+                    var parsed = ExcelFolderParser.TryExtractTicketAndLoco(subName, knownTypes);
+
+                    string ticket = parsed?.Ticket ?? "";
+                    if (ticket.Length == 0)
+                    {
+                        var ticketMatch = TicketSrRegex().Match(subName);
+                        if (ticketMatch.Success) ticket = ticketMatch.Groups[1].Value;
+                        else {
+                            var standaloneTicketMatch = StandaloneTicketRegex().Match(subName);
+                            if (standaloneTicketMatch.Success && !standaloneTicketMatch.Value.StartsWith("202"))
+                                ticket = standaloneTicketMatch.Value;
+                        }
                     }
 
-                    string loco = "";
-                    var locoMatch = locoRegex.Match(subName);
-                    if (locoMatch.Success) loco = locoMatch.Groups[1].Value;
-                    else
+                    string loco = parsed?.Loco ?? "";
+                    if (loco.Length == 0)
                     {
-                        var standaloneLocoMatch = StandaloneLocoRegex().Match(subName);
-                        if (standaloneLocoMatch.Success && !standaloneLocoMatch.Value.StartsWith("202") && standaloneLocoMatch.Value != ticket)
-                            loco = standaloneLocoMatch.Value;
+                        var locoMatch = locoRegex?.Match(subName);
+                        if (locoMatch is { Success: true }) loco = locoMatch.Groups[1].Value;
+                        else
+                        {
+                            var standaloneLocoMatch = StandaloneLocoRegex().Match(subName);
+                            if (standaloneLocoMatch.Success && !standaloneLocoMatch.Value.StartsWith("202") && standaloneLocoMatch.Value != ticket)
+                                loco = standaloneLocoMatch.Value;
+                        }
                     }
-                    
+
                     if (!string.IsNullOrEmpty(ticket))
                     {
                         if (!ticketsList.Contains(ticket)) ticketsList.Add(ticket);
@@ -967,9 +998,10 @@ namespace PersonalAutomationTool.Modules.Excel
                     var snField2 = snField;
                     bool found = false;
                     
-                    // 1. Cerca il nome treno + 3/4 cifre (es. ETR700 101)
-                    var snMatch = Regex.Match(combinedSearchString, $@"{SelectedTrain}\s*[-_]?\s*(\d{{2,4}})", RegexOptions.IgnoreCase);
-                    if (snMatch.Success)
+                    // 1. Cerca il nome treno + 2/4 cifre (es. ETR700 101). Come sopra, i token
+                    // cercati sono quelli reali su disco e non l'etichetta della ComboBox.
+                    var snMatch = ExcelFolderParser.BuildLocoRegex(SelectedTrain, minDigits: 2)?.Match(combinedSearchString);
+                    if (snMatch is { Success: true })
                     {
                         snField2.FieldValue = snMatch.Groups[1].Value;
                         found = true;
@@ -1232,6 +1264,16 @@ namespace PersonalAutomationTool.Modules.Excel
                     return;
                 }
 
+                // Snapshot dei processi EXCEL.EXE già in esecuzione PRIMA di crearne uno nuovo: Excel
+                // non espone il proprio PID sull'oggetto Application quando è invisibile (niente Hwnd
+                // utilizzabile), quindi il PID del processo appena creato si ricava per differenza.
+                // Serve come ultima rete di sicurezza: se Quit() e le ReleaseComObject qui sotto non
+                // bastano a far terminare il processo (COM può lasciare un riferimento vivo per motivi
+                // fuori dal nostro controllo, es. un dialog di Excel rimasto aperto in background),
+                // il PID tracciato permette di terminarlo forzatamente invece di lasciarlo orfano.
+                var excelPidsBefore = new System.Collections.Generic.HashSet<int>(
+                    System.Diagnostics.Process.GetProcessesByName("EXCEL").Select(p => p.Id));
+
                 dynamic? excelApp = Activator.CreateInstance(excelType);
                 if (excelApp == null)
                 {
@@ -1240,6 +1282,10 @@ namespace PersonalAutomationTool.Modules.Excel
                     MessageBox.Show("Impossibile avviare Excel.", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
+
+                int? excelProcessId = System.Diagnostics.Process.GetProcessesByName("EXCEL")
+                    .Select(p => (int?)p.Id)
+                    .FirstOrDefault(id => !excelPidsBefore.Contains(id!.Value));
 
                 await Task.Run(() =>
                 {
@@ -1289,6 +1335,27 @@ namespace PersonalAutomationTool.Modules.Excel
                     TryComCleanup(() => { if (worksheetInterop != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(worksheetInterop); });
                     TryComCleanup(() => { if (workbookInterop != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(workbookInterop); });
                     TryComCleanup(() => { if (excelApp != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(excelApp); });
+
+                    // Rete di sicurezza finale: se il processo tracciato risulta ancora vivo dopo
+                    // Quit(), gli si concede un breve margine (Quit() è asincrono lato Excel) e poi
+                    // viene terminato forzatamente. Senza questo passo, i casi in cui la pulizia COM
+                    // sopra non basta lascerebbero comunque un EXCEL.EXE orfano in memoria.
+                    TryComCleanup(() =>
+                    {
+                        if (!excelProcessId.HasValue) return;
+                        try
+                        {
+                            using var orphan = System.Diagnostics.Process.GetProcessById(excelProcessId.Value);
+                            if (!orphan.HasExited && !orphan.WaitForExit(3000))
+                            {
+                                orphan.Kill();
+                            }
+                        }
+                        catch (ArgumentException)
+                        {
+                            // Il processo è già terminato: GetProcessById lancia se il PID non esiste più.
+                        }
+                    });
                 }
                 }); // Fine Task.Run Interop
                     

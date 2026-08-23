@@ -5,6 +5,7 @@ using System.Linq;
 using System.Windows.Input;
 using System.Windows.Threading;
 using PersonalAutomationTool.Core;
+using PersonalAutomationTool.Core.Dialogs;
 
 namespace PersonalAutomationTool.Modules.Home
 {
@@ -61,11 +62,27 @@ namespace PersonalAutomationTool.Modules.Home
             set => SetProperty(ref _selectedItem, value);
         }
 
+        /// <summary>Overlay di avanzamento (intervento 4.2, Sprint 3) per le operazioni pesanti: zip, spostamento in rete, eliminazione.</summary>
+        private bool _isLoading;
+        public bool IsLoading
+        {
+            get => _isLoading;
+            set => SetProperty(ref _isLoading, value);
+        }
+
+        private string _loadingMessage = string.Empty;
+        public string LoadingMessage
+        {
+            get => _loadingMessage;
+            set => SetProperty(ref _loadingMessage, value);
+        }
+
         public ICommand AggiornaTicketCommand { get; }
         public ICommand ZipCommand { get; }
         public ICommand LogDumpReteCommand { get; }
         public ICommand EliminaCommand { get; }
         public ICommand AggiornaDataCommand { get; }
+        public ICommand AnnullaRinominaCommand { get; }
 
         public HomeViewModel()
         {
@@ -82,6 +99,7 @@ namespace PersonalAutomationTool.Modules.Home
             LogDumpReteCommand = new RelayCommand(OnLogDumpRete);
             EliminaCommand = new RelayCommand(OnElimina);
             AggiornaDataCommand = new RelayCommand(OnAggiornaData);
+            AnnullaRinominaCommand = new RelayCommand(OnAnnullaRinomina);
 
             _ = LoadPendingItemsAsync();
 
@@ -197,76 +215,100 @@ namespace PersonalAutomationTool.Modules.Home
                 return;
 
             string path = SelectedItem.Percorso;
-            if (Directory.Exists(path))
+            if (!Directory.Exists(path))
+                return;
+
+            try
             {
-                try
+                // Usa OldTicket come "Ticket 1" e NewTicket come "Ticket 2"
+                string? ticket1 = OldTicket?.Trim();
+                string? ticket2 = NewTicket?.Trim();
+
+                if (string.IsNullOrWhiteSpace(ticket1) && string.IsNullOrWhiteSpace(ticket2))
+                    return;
+
+                // Calcola il piano (nessuna scrittura) su thread pool: la logica di decisione è
+                // identica a prima, solo separata dall'esecuzione per poter mostrare l'anteprima
+                // (intervento 4.1, Sprint 3) prima di spostare qualunque cartella.
+                var plan = await System.Threading.Tasks.Task.Run(() =>
                 {
-                    // Usa OldTicket come "Ticket 1" e NewTicket come "Ticket 2"
-                    string? ticket1 = OldTicket?.Trim();
-                    string? ticket2 = NewTicket?.Trim();
+                    var operations = new System.Collections.Generic.List<(string OldPath, string NewPath)>();
+                    var subDirs = Directory.GetDirectories(path);
 
-                    if (string.IsNullOrWhiteSpace(ticket1) && string.IsNullOrWhiteSpace(ticket2))
-                        return;
+                    // Trova i ticket correnti (assumendo che il ticket sia la prima parola nel nome della cartella)
+                    var currentTickets = subDirs
+                        .Select(d => new DirectoryInfo(d).Name.Split(' ').FirstOrDefault())
+                        .Where(t => !string.IsNullOrEmpty(t))
+                        .Distinct()
+                        .OrderBy(t => t) // Ordina alfabeticamente per coerenza
+                        .ToList();
 
-                    await System.Threading.Tasks.Task.Run(() =>
+                    foreach (var subDir in subDirs)
                     {
-                        var subDirs = Directory.GetDirectories(path);
-                        
-                        // Trova i ticket correnti (assumendo che il ticket sia la prima parola nel nome della cartella)
-                        var currentTickets = subDirs
-                            .Select(d => new DirectoryInfo(d).Name.Split(' ').FirstOrDefault())
-                            .Where(t => !string.IsNullOrEmpty(t))
-                            .Distinct()
-                            .OrderBy(t => t) // Ordina alfabeticamente per coerenza
-                            .ToList();
-
-                        for (int i = 0; i < subDirs.Length; i++)
+                        var dirInfo = new DirectoryInfo(subDir);
+                        var parts = dirInfo.Name.Split(' ');
+                        if (parts.Length > 0)
                         {
-                            var dirInfo = new DirectoryInfo(subDirs[i]);
-                            var parts = dirInfo.Name.Split(' ');
-                            if (parts.Length > 0)
+                            string currentTicket = parts[0];
+                            string? newTicketForThisDir = null;
+
+                            // Assegna il nuovo ticket in base a se è il primo o il secondo ticket trovato
+                            if (currentTickets.Count > 0 && currentTicket == currentTickets[0] && !string.IsNullOrWhiteSpace(ticket1))
                             {
-                                string currentTicket = parts[0];
-                                string? newTicketForThisDir = null;
+                                newTicketForThisDir = ticket1;
+                            }
+                            else if (currentTickets.Count > 1 && currentTicket == currentTickets[1] && !string.IsNullOrWhiteSpace(ticket2))
+                            {
+                                newTicketForThisDir = ticket2;
+                            }
+                            // Se il treno ha un solo ticket ma l'utente ha compilato ticket1 e ticket2,
+                            // il ticket1 viene applicato a tutte le cartelle di quel ticket.
 
-                                // Assegna il nuovo ticket in base a se è il primo o il secondo ticket trovato
-                                if (currentTickets.Count > 0 && currentTicket == currentTickets[0] && !string.IsNullOrWhiteSpace(ticket1))
+                            if (!string.IsNullOrEmpty(newTicketForThisDir))
+                            {
+                                parts[0] = newTicketForThisDir;
+                                string newName = string.Join(" ", parts);
+                                string? parentFolder = dirInfo.Parent?.FullName;
+                                if (parentFolder != null)
                                 {
-                                    newTicketForThisDir = ticket1;
-                                }
-                                else if (currentTickets.Count > 1 && currentTicket == currentTickets[1] && !string.IsNullOrWhiteSpace(ticket2))
-                                {
-                                    newTicketForThisDir = ticket2;
-                                }
-                                // Se il treno ha un solo ticket ma l'utente ha compilato ticket1 e ticket2, 
-                                // il ticket1 viene applicato a tutte le cartelle di quel ticket.
-
-                                if (!string.IsNullOrEmpty(newTicketForThisDir))
-                                {
-                                    parts[0] = newTicketForThisDir;
-                                    string newName = string.Join(" ", parts);
-                                    string? parentFolder = dirInfo.Parent?.FullName;
-                                    if (parentFolder != null)
+                                    string newPath = Path.Combine(parentFolder, newName);
+                                    if (dirInfo.FullName != newPath)
                                     {
-                                        string newPath = Path.Combine(parentFolder, newName);
-                                        if (dirInfo.FullName != newPath)
-                                            Directory.Move(dirInfo.FullName, newPath);
+                                        operations.Add((dirInfo.FullName, newPath));
                                     }
                                 }
                             }
                         }
-                    });
-                    
-                    await ReloadAndPreserveStateAsync();
-                    
-                    // Ripulisci i campi
-                    OldTicket = string.Empty;
-                    NewTicket = string.Empty;
-                }
-                catch (Exception ex)
+                    }
+                    return operations;
+                });
+
+                if (plan.Count == 0)
+                    return;
+
+                if (!RenamePreviewDialog.Confirm(System.Windows.Application.Current?.MainWindow, plan))
+                    return;
+
+                await System.Threading.Tasks.Task.Run(() =>
                 {
-                    System.Diagnostics.Debug.WriteLine($"Errore aggiornamento ticket: {ex.Message}");
-                }
+                    foreach (var (oldPath, newPath) in plan)
+                    {
+                        Directory.Move(oldPath, newPath);
+                    }
+                });
+
+                // Storico inverso per l'annulla (intervento 4.3, Sprint 3).
+                RenamerLog.RecordBatch(RenameBatchKind.HomeTicket, plan);
+
+                await ReloadAndPreserveStateAsync();
+
+                // Ripulisci i campi
+                OldTicket = string.Empty;
+                NewTicket = string.Empty;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Errore aggiornamento ticket: {ex.Message}");
             }
         }
 
@@ -276,41 +318,85 @@ namespace PersonalAutomationTool.Modules.Home
                 return;
 
             string path = SelectedItem.Percorso;
-            if (Directory.Exists(path))
+            if (!Directory.Exists(path))
+                return;
+
+            try
             {
-                try
+                var plan = await System.Threading.Tasks.Task.Run(() =>
                 {
-                    await System.Threading.Tasks.Task.Run(() =>
+                    var operations = new System.Collections.Generic.List<(string OldPath, string NewPath)>();
+                    var subDirs = Directory.GetDirectories(path);
+                    string todayString = DateTime.Now.ToString("ddMMyy");
+                    foreach (var subDir in subDirs)
                     {
-                        var subDirs = Directory.GetDirectories(path);
-                        string todayString = DateTime.Now.ToString("ddMMyy");
-                        foreach (var subDir in subDirs)
+                        var dirInfo = new DirectoryInfo(subDir);
+                        string currentName = dirInfo.Name;
+
+                        var match = MyDateRegex().Match(currentName);
+                        if (match.Success)
                         {
-                            var dirInfo = new DirectoryInfo(subDir);
-                            string currentName = dirInfo.Name;
-                            
-                            var match = MyDateRegex().Match(currentName);
-                            if (match.Success)
+                            string newName = string.Concat(currentName.AsSpan(0, match.Index), todayString, currentName.AsSpan(match.Index + match.Length));
+                            string? parentFolder = dirInfo.Parent?.FullName;
+                            if (parentFolder != null)
                             {
-                                string newName = string.Concat(currentName.AsSpan(0, match.Index), todayString, currentName.AsSpan(match.Index + match.Length));
-                                string? parentFolder = dirInfo.Parent?.FullName;
-                                if (parentFolder != null)
+                                string newPath = Path.Combine(parentFolder, newName);
+                                if (dirInfo.FullName != newPath)
                                 {
-                                    string newPath = Path.Combine(parentFolder, newName);
-                                    if (dirInfo.FullName != newPath)
-                                        Directory.Move(dirInfo.FullName, newPath);
+                                    operations.Add((dirInfo.FullName, newPath));
                                 }
                             }
                         }
-                    });
-                    
-                    await ReloadAndPreserveStateAsync();
-                }
-                catch (Exception ex)
+                    }
+                    return operations;
+                });
+
+                if (plan.Count == 0)
+                    return;
+
+                if (!RenamePreviewDialog.Confirm(System.Windows.Application.Current?.MainWindow, plan))
+                    return;
+
+                await System.Threading.Tasks.Task.Run(() =>
                 {
-                    System.Windows.MessageBox.Show($"Errore durante l'aggiornamento della data:\n{ex.Message}", "Errore", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
-                }
+                    foreach (var (oldPath, newPath) in plan)
+                    {
+                        Directory.Move(oldPath, newPath);
+                    }
+                });
+
+                RenamerLog.RecordBatch(RenameBatchKind.HomeData, plan);
+
+                await ReloadAndPreserveStateAsync();
             }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show($"Errore durante l'aggiornamento della data:\n{ex.Message}", "Errore", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            }
+        }
+
+        private async void OnAnnullaRinomina(object? parameter)
+        {
+            var result = await System.Threading.Tasks.Task.Run(() =>
+                RenamerLog.UndoLastBatch(RenameBatchKind.HomeTicket, RenameBatchKind.HomeData));
+
+            if (!result.BatchFound)
+            {
+                System.Windows.MessageBox.Show("Nessuna rinomina da annullare.", "Info", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+                return;
+            }
+
+            if (result.Errors.Count > 0)
+            {
+                string msg = $"Ripristinate {result.Restored} cartelle. Alcune non sono state ripristinate:\n\n" + string.Join("\n", result.Errors);
+                System.Windows.MessageBox.Show(msg, "Attenzione", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+            }
+            else
+            {
+                System.Windows.MessageBox.Show($"Rinomina annullata: {result.Restored} cartelle ripristinate al nome precedente.", "Fatto", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+            }
+
+            await ReloadAndPreserveStateAsync();
         }
 
         private async void OnZip(object? parameter)
@@ -319,32 +405,46 @@ namespace PersonalAutomationTool.Modules.Home
                 return;
 
             string path = SelectedItem.Percorso;
-            if (Directory.Exists(path))
+            if (!Directory.Exists(path))
+                return;
+
+            IsLoading = true;
+            LoadingMessage = "Archiviazione in corso...";
+            try
             {
-                try
+                // IProgress<T> cattura il SynchronizationContext della UI al momento della
+                // costruzione: Report() dal thread pool marshalla automaticamente su Dispatcher,
+                // come richiesto da §6.5 (le assegnazioni a proprietà osservabili devono restare
+                // sul thread giusto, qui lo sono per costruzione invece che per affidamento a WPF).
+                IProgress<(int Current, int Total)> progress = new Progress<(int Current, int Total)>(p =>
+                    LoadingMessage = $"Archiviazione {p.Current} di {p.Total}...");
+
+                await System.Threading.Tasks.Task.Run(() =>
                 {
-                    await System.Threading.Tasks.Task.Run(() =>
+                    var subDirs = Directory.GetDirectories(path);
+                    for (int i = 0; i < subDirs.Length; i++)
                     {
-                        var subDirs = Directory.GetDirectories(path);
-                        foreach (var subDir in subDirs)
+                        var dirInfo = new DirectoryInfo(subDirs[i]);
+                        string zipFilePath = Path.Combine(dirInfo.Parent?.FullName ?? string.Empty, dirInfo.Name + ".zip");
+
+                        // Se il file zip non esiste già, crealo
+                        if (!File.Exists(zipFilePath))
                         {
-                            var dirInfo = new DirectoryInfo(subDir);
-                            string zipFilePath = Path.Combine(dirInfo.Parent?.FullName ?? string.Empty, dirInfo.Name + ".zip");
-                            
-                            // Se il file zip non esiste già, crealo
-                            if (!File.Exists(zipFilePath))
-                            {
-                                System.IO.Compression.ZipFile.CreateFromDirectory(subDir, zipFilePath);
-                            }
+                            System.IO.Compression.ZipFile.CreateFromDirectory(subDirs[i], zipFilePath);
                         }
-                    });
-                    
-                    System.Windows.MessageBox.Show("Archiviazione Zip completata con successo!", "Successo", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
-                }
-                catch (Exception ex)
-                {
-                    System.Windows.MessageBox.Show($"Errore durante la creazione dei file Zip:\n{ex.Message}", "Errore", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
-                }
+                        progress.Report((i + 1, subDirs.Length));
+                    }
+                });
+
+                System.Windows.MessageBox.Show("Archiviazione Zip completata con successo!", "Successo", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show($"Errore durante la creazione dei file Zip:\n{ex.Message}", "Errore", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsLoading = false;
             }
         }
 
@@ -391,13 +491,21 @@ namespace PersonalAutomationTool.Modules.Home
                 int movedCount = 0;
                 var skippedLog = new System.Collections.Generic.List<string>();
 
+                IsLoading = true;
+                LoadingMessage = $"Spostamento 0 di {zipFiles.Length}...";
+                IProgress<(int Current, int Total)> progress = new Progress<(int Current, int Total)>(p =>
+                    LoadingMessage = $"Spostamento {p.Current} di {p.Total}...");
+
                 await System.Threading.Tasks.Task.Run(() =>
                 {
-                    foreach (var zipFile in zipFiles)
+                    for (int fi = 0; fi < zipFiles.Length; fi++)
                     {
+                        progress.Report((fi + 1, zipFiles.Length));
+
+                        var zipFile = zipFiles[fi];
                         string fileName = Path.GetFileNameWithoutExtension(zipFile);
                         var parts = fileName.Split(' ');
-                    
+
                         // Ci aspettiamo un nome del tipo: [Ticket] [LOG/DUMP] [Treno] [Loco] ...
                         // Es: "1247654 DUMP ETR700 117 04.02HR 300526 Todde"
                         if (parts.Length >= 4)
@@ -463,6 +571,10 @@ namespace PersonalAutomationTool.Modules.Home
             catch (Exception ex)
             {
                 System.Windows.MessageBox.Show($"Errore durante lo spostamento in rete:\n{ex.Message}", "Errore", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsLoading = false;
             }
         }
 
@@ -669,6 +781,8 @@ namespace PersonalAutomationTool.Modules.Home
                 
             if (result == System.Windows.MessageBoxResult.Yes)
             {
+                IsLoading = true;
+                LoadingMessage = "Eliminazione in corso...";
                 try
                 {
                     // L'intera eliminazione (scansione ricorsiva degli attributi + Directory.Delete)
@@ -676,6 +790,10 @@ namespace PersonalAutomationTool.Modules.Home
                     // finestra restava congelata e Windows la marcava "Non risponde".
                     // Spostata sul thread pool; le eccezioni risalgono comunque all'await e
                     // finiscono nello stesso catch di prima.
+                    // Nessun conteggio "N di M" qui (a differenza di zip/spostamento rete, §6, punto
+                    // 4.2): Directory.Delete(path, true) è una singola chiamata indivisibile, ed
+                    // enumerare prima i file solo per calcolare un totale raddoppierebbe l'I/O senza
+                    // un beneficio reale di percezione — l'operazione è già la più veloce delle tre.
                     await System.Threading.Tasks.Task.Run(() =>
                     {
                         if (!Directory.Exists(path)) return;
@@ -702,6 +820,10 @@ namespace PersonalAutomationTool.Modules.Home
                 catch (Exception ex)
                 {
                     System.Windows.MessageBox.Show($"Errore durante l'eliminazione:\n{ex.Message}", "Errore", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                }
+                finally
+                {
+                    IsLoading = false;
                 }
             }
         }

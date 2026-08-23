@@ -43,18 +43,15 @@ namespace PersonalAutomationTool.Modules.DestinatariMail
                 if (File.Exists(dbPath))
                 {
                     using var dbManager = new DatabaseManager(dbPath);
-                    var data = dbManager.ExecuteQuery("SELECT nome, email, categoria FROM indirizzi_email");
-                    foreach (System.Data.DataRow row in data.Rows)
+                    var contacts = dbManager.Query("SELECT nome, email, categoria FROM indirizzi_email", static reader => new RubricaContact
                     {
-                        if (data.Columns.Contains("Errore") && row["Errore"] != DBNull.Value)
-                            continue;
-
-                        Contacts.Add(new RubricaContact
-                        {
-                            Nome = row["nome"]?.ToString() ?? "",
-                            Email = row["email"]?.ToString() ?? "",
-                            Categoria = row["categoria"]?.ToString() ?? ""
-                        });
+                        Nome = reader.IsDBNull(0) ? "" : reader.GetValue(0)?.ToString() ?? "",
+                        Email = reader.IsDBNull(1) ? "" : reader.GetValue(1)?.ToString() ?? "",
+                        Categoria = reader.IsDBNull(2) ? "" : reader.GetValue(2)?.ToString() ?? ""
+                    });
+                    foreach (var contact in contacts)
+                    {
+                        Contacts.Add(contact);
                     }
                 }
             }

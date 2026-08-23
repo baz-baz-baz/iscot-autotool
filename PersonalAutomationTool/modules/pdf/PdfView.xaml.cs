@@ -4,7 +4,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using PersonalAutomationTool.Core.Naming;
+using PersonalAutomationTool.Core;
+using PersonalAutomationTool.Core.Dialogs;
 using PersonalAutomationTool.Modules.Pdf.Models;
 
 namespace PersonalAutomationTool.Modules.Pdf
@@ -98,170 +99,106 @@ namespace PersonalAutomationTool.Modules.Pdf
 
         private async void BtnRinomina_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button btn && btn.CommandParameter is TrainCardModel card)
+            if (sender is not Button btn || btn.CommandParameter is not TrainCardModel card)
             {
-                var pdfFiles = card.Children.Where(c => !c.IsDirectory && c.Extension == ".pdf").ToList();
-                if (pdfFiles.Count == 0)
-                {
-                    MessageBox.Show("È richiesto almeno 1 file PDF nella cartella per questa operazione.", "Attenzione", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
+                return;
+            }
 
-                var uncheckedFiles = pdfFiles.Where(p => !p.IsNC).ToList();
-                var checkedFiles = pdfFiles.Where(p => p.IsNC).ToList();
-
-                if (uncheckedFiles.Count > 2)
-                {
-                    MessageBox.Show("Sono permessi al massimo 2 file PDF non spuntati (normali) per questa operazione.", "Attenzione", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
-                var logFolders = card.Children.Where(c => c.IsDirectory && c.Name.Contains(" LOG ")).ToList();
-                if (logFolders.Count == 0)
-                {
-                    MessageBox.Show("Nessuna cartella LOG trovata per estrarre le informazioni.", "Attenzione", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
+            // La decisione (quali file spostare dove) vive in PdfRenamePlanner, completamente
+            // disaccoppiato da WPF: qui restano solo il recupero dei dati necessari alla
+            // pianificazione (tipi noti dal DB) e l'esecuzione effettiva del piano.
+            try
+            {
                 var tipi = await GetTipiFromDbAsync();
-                var parsedInfos = new System.Collections.Generic.List<LogDumpFolderName>();
-                foreach (var logDir in logFolders)
+                var plan = PdfRenamePlanner.CreatePlan(card, tipi, GetPdfPageCount);
+
+                switch (plan.Outcome)
                 {
-                    // Migrato al parser condiviso LogDumpFolderName (PersonalAutomationTool.Core.Naming):
-                    // prima di questa migrazione, questa stessa grammatica di nomi veniva
-                    // ridecodificata in modo indipendente in almeno altri sette punti del codice.
-                    // Vedi PROJECT_MEMORY.md §6 per la lista dei chiamanti ancora da migrare.
-                    if (LogDumpFolderName.TryParse(logDir.Name, tipi, out var info))
-                    {
-                        parsedInfos.Add(info!);
-                    }
-                }
-
-                if (parsedInfos.Count == 0)
-                {
-                    MessageBox.Show("Impossibile analizzare i nomi delle cartelle LOG.", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
-
-                var first = parsedInfos.First();
-                string newName = "";
-                string prefix = card.IsND ? "ND FL" : "FL";
-
-                if (parsedInfos.Count == 1)
-                {
-                    newName = $"{prefix} SR{first.Ticket} {first.Tipo} {first.Loco} IMC AV Milano {first.Data} {first.Utente}.pdf";
-                }
-                else
-                {
-                    var second = parsedInfos[1];
-                    string locoPart = first.Loco == second.Loco ? first.Loco : $"{first.Loco} - {second.Loco}";
-                    newName = $"{prefix} SR{first.Ticket} - SR{second.Ticket} {first.Tipo} {locoPart} IMC AV Milano {first.Data} {first.Utente}.pdf";
-                }
-
-                try
-                {
-                    var moveOperations = new System.Collections.Generic.List<(string OldPath, string NewPath)>();
-
-                    if (uncheckedFiles.Count == 1)
-                    {
-                        moveOperations.Add((uncheckedFiles[0].FullPath, Path.Combine(card.FullPath, newName)));
-                    }
-                    else if (uncheckedFiles.Count == 2)
-                    {
-                        int pages1 = GetPdfPageCount(uncheckedFiles[0].FullPath);
-                        int pages2 = GetPdfPageCount(uncheckedFiles[1].FullPath);
-
-                        var smallerPdf = pages1 <= pages2 ? uncheckedFiles[0] : uncheckedFiles[1];
-                        var largerPdf = pages1 <= pages2 ? uncheckedFiles[1] : uncheckedFiles[0];
-
-                        string newNameNdL = "";
-
-                        var txtFiles = card.Children.Where(c => !c.IsDirectory && c.Extension == ".txt").ToList();
-                        if (txtFiles.Count > 0)
-                        {
-                            string txtNameBase = Path.GetFileNameWithoutExtension(txtFiles[0].Name);
-                            string locoStr = parsedInfos.Count == 1 ? parsedInfos[0].Loco :
-                                             (parsedInfos[0].Loco == parsedInfos[1].Loco ? parsedInfos[0].Loco : $"{parsedInfos[0].Loco} - {parsedInfos[1].Loco}");
-                            newNameNdL = $"Checklist {txtNameBase} {parsedInfos[0].Tipo} {locoStr} IMC AV Milano {parsedInfos[0].Data} {parsedInfos[0].Utente}.pdf";
-                        }
-                        else
-                        {
-                            newNameNdL = newName.Replace("ND FL ", "NdL ").Replace("FL ", "NdL ");
-                        }
-
-                        moveOperations.Add((largerPdf.FullPath, Path.Combine(card.FullPath, newName)));
-                        moveOperations.Add((smallerPdf.FullPath, Path.Combine(card.FullPath, newNameNdL)));
-                    }
-
-                    string baseNcName = newName.Replace("ND FL ", "NC ").Replace("FL ", "NC ");
-                    for (int i = 0; i < checkedFiles.Count; i++)
-                    {
-                        string currentNcName = baseNcName;
-                        if (i > 0)
-                        {
-                            currentNcName = SrTicketRegex().Replace(currentNcName, m =>
-                            {
-                                if (long.TryParse(m.Groups[1].Value, out long tic))
-                                {
-                                    return "SR" + (tic + i).ToString();
-                                }
-                                return m.Value;
-                            });
-                        }
-                        moveOperations.Add((checkedFiles[i].FullPath, Path.Combine(card.FullPath, currentNcName)));
-                    }
-
-                    var dests = moveOperations.Select(m => m.NewPath).ToList();
-                    if (dests.Distinct(StringComparer.OrdinalIgnoreCase).Count() != dests.Count)
-                    {
-                        MessageBox.Show("Errore: la rinomina calcolata genererebbe file di destinazione duplicati.", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
+                    case PdfRenameOutcome.Error:
+                        var icon = plan.Severity == PdfRenameErrorSeverity.Warning ? MessageBoxImage.Warning : MessageBoxImage.Error;
+                        var title = plan.Severity == PdfRenameErrorSeverity.Warning ? "Attenzione" : "Errore";
+                        MessageBox.Show(plan.ErrorMessage ?? "Errore sconosciuto.", title, MessageBoxButton.OK, icon);
                         return;
-                    }
 
-                    foreach (var (oldPath, newPath) in moveOperations)
-                    {
-                        if (!string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase) && File.Exists(newPath))
-                        {
-                            bool isOneOfOriginals = moveOperations.Any(m => string.Equals(m.OldPath, newPath, StringComparison.OrdinalIgnoreCase));
-                            if (!isOneOfOriginals)
-                            {
-                                MessageBox.Show("Esiste già un altro file di destinazione nel percorso:\n" + Path.GetFileName(newPath), "Attenzione", MessageBoxButton.OK, MessageBoxImage.Warning);
-                                return;
-                            }
-                        }
-                    }
-
-                    var tempOps = new System.Collections.Generic.List<(string Old, string Temp, string New)>();
-                    foreach (var (oldPath, newPath) in moveOperations)
-                    {
-                        if (string.Equals(oldPath, newPath, StringComparison.Ordinal)) continue;
-                        string tempPath = string.Concat(newPath, ".tmp", Guid.NewGuid().ToString().AsSpan(0, 8));
-                        tempOps.Add((oldPath, tempPath, newPath));
-                    }
-
-                    if (tempOps.Count == 0)
-                    {
+                    case PdfRenameOutcome.NothingToDo:
                         // MessageBox.Show("I file hanno già i nomi corretti.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
                         return;
-                    }
+                }
 
-                    foreach (var (oldPath, tempPath, newPath) in tempOps) File.Move(oldPath, tempPath);
-                    foreach (var (oldPath, tempPath, newPath) in tempOps)
+                // Anteprima "vecchio nome -> nuovo nome" (intervento 4.1, Sprint 3): unica difesa
+                // reale contro un parsing sbagliato prima che diventi un file mal nominato, senza
+                // richiedere che il parser sia perfetto (vedi §6 di PROJECT_MEMORY.md).
+                if (!RenamePreviewDialog.Confirm(Window.GetWindow(this), plan.MoveOperations))
+                {
+                    return;
+                }
+
+                var tempOps = new System.Collections.Generic.List<(string Old, string Temp, string New)>();
+                foreach (var (oldPath, newPath) in plan.MoveOperations)
+                {
+                    string tempPath = string.Concat(newPath, ".tmp", Guid.NewGuid().ToString().AsSpan(0, 8));
+                    tempOps.Add((oldPath, tempPath, newPath));
+                }
+
+                int totalSteps = tempOps.Count * 2;
+                int step = 0;
+                LoadingOverlay.IsBusy = true;
+                try
+                {
+                    foreach (var (oldPath, tempPath, _) in tempOps)
+                    {
+                        File.Move(oldPath, tempPath);
+                        LoadingOverlay.Report(++step, totalSteps, "Rinomina");
+                    }
+                    foreach (var (_, tempPath, newPath) in tempOps)
                     {
                         if (File.Exists(newPath)) File.Delete(newPath);
                         File.Move(tempPath, newPath);
+                        LoadingOverlay.Report(++step, totalSteps, "Rinomina");
                     }
-
-                    string successMsg = "File rinominati con successo:\n\n" + string.Join("\n", tempOps.Select(o => Path.GetFileName(o.New)));
-                    // MessageBox.Show(successMsg, "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
-                
-                // L'aggiornamento UI avverrà automaticamente tramite AppWatcher
-                catch (Exception ex)
+                finally
                 {
-                    MessageBox.Show($"Errore durante la rinomina: {ex.Message}", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
+                    LoadingOverlay.IsBusy = false;
                 }
+
+                // Storico inverso per l'annulla (intervento 4.3, Sprint 3): registrato solo dopo che
+                // entrambe le fasi sono andate a buon fine, con gli stessi percorsi finali risultanti
+                // dal piano (non quelli temporanei, mai visibili all'esterno di questo metodo).
+                RenamerLog.RecordBatch(RenameBatchKind.PdfRename, plan.MoveOperations);
+
+                // string successMsg = "File rinominati con successo:\n\n" + string.Join("\n", tempOps.Select(o => Path.GetFileName(o.New)));
+                // MessageBox.Show(successMsg, "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                // L'aggiornamento UI avverrà automaticamente tramite AppWatcher
             }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Errore durante la rinomina: {ex.Message}", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void BtnAnnullaRinomina_Click(object sender, RoutedEventArgs e)
+        {
+            var result = await System.Threading.Tasks.Task.Run(() => RenamerLog.UndoLastBatch(RenameBatchKind.PdfRename));
+
+            if (!result.BatchFound)
+            {
+                MessageBox.Show("Nessuna rinomina PDF da annullare.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            if (result.Errors.Count > 0)
+            {
+                string msg = $"Ripristinati {result.Restored} file. Alcuni file non sono stati ripristinati:\n\n" + string.Join("\n", result.Errors);
+                MessageBox.Show(msg, "Attenzione", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            else
+            {
+                MessageBox.Show($"Rinomina annullata: {result.Restored} file ripristinati al nome precedente.", "Fatto", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+
+            // L'aggiornamento UI avverrà automaticamente tramite AppWatcher
         }
 
         private static int GetPdfPageCount(string pdfPath)
@@ -281,31 +218,11 @@ namespace PersonalAutomationTool.Modules.Pdf
 
         private static async System.Threading.Tasks.Task<System.Collections.Generic.List<string>> GetTipiFromDbAsync()
         {
-            return await System.Threading.Tasks.Task.Run(() =>
-            {
-                var tipi = new System.Collections.Generic.List<string>();
-                try
-                {
-                    string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                    string dbPath = Path.Combine(baseDir, "modules", "database", "train_software.db");
-                    if (File.Exists(dbPath))
-                    {
-                        using var db = new PersonalAutomationTool.Modules.Database.DatabaseManager(dbPath);
-                        var dt = db.ExecuteQuery("SELECT DISTINCT tipo FROM flotte ORDER BY LENGTH(tipo) DESC;");
-                        foreach (System.Data.DataRow row in dt.Rows)
-                        {
-                            if (row["tipo"] != DBNull.Value)
-                                tipi.Add(row["tipo"].ToString()!);
-                        }
-                    }
-                }
-                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Error retrieving train types: {ex.Message}"); }
-                return tipi;
-            });
+            // FlotteCache (core/FlotteCache.cs): stessa query (DISTINCT tipo, ordinata per
+            // lunghezza decrescente — l'ordine da cui dipende LogDumpFolderName.TryParse per
+            // distinguere "ETR1000 I-F" da "ETR1000"), ora servita dalla cache in memoria.
+            return await System.Threading.Tasks.Task.Run(() => PersonalAutomationTool.Core.FlotteCache.GetDistinctTipiOrderByLengthDesc());
         }
-
-        [System.Text.RegularExpressions.GeneratedRegex(@"SR(\d+)")]
-        private static partial System.Text.RegularExpressions.Regex SrTicketRegex();
 
         private void BtnApri_Click(object sender, RoutedEventArgs e)
         {

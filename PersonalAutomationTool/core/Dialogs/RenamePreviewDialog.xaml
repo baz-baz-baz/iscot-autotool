@@ -1,0 +1,37 @@
+<Window x:Class="PersonalAutomationTool.Core.Dialogs.RenamePreviewDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Anteprima rinomina" Height="450" Width="700"
+        WindowStartupLocation="CenterOwner" Background="#F8FAFC">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,15">
+            <TextBlock Text="Anteprima rinomina" FontSize="20" FontWeight="Bold" Foreground="#1E293B"/>
+            <TextBlock x:Name="SubtitleText" Text="Verranno rinominati i seguenti elementi:" FontSize="14" Foreground="#64748B"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="2">
+            <DataGrid x:Name="ItemsGrid" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                      HeadersVisibility="Column" Background="Transparent" BorderThickness="0"
+                      GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#F1F5F9"
+                      RowHeight="35" FontSize="14">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Nome Attuale" Binding="{Binding NomeAttuale}" Width="*"/>
+                    <DataGridTextColumn Header="Nuovo Nome" Binding="{Binding NuovoNome}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+            <Button Content="Annulla" Click="BtnAnnulla_Click" Width="100" Height="35" Margin="0,0,10,0"
+                    Background="White" Foreground="#64748B" BorderBrush="#E2E8F0" BorderThickness="1"/>
+            <Button Content="Conferma" Click="BtnConferma_Click" Width="120" Height="35"
+                    Background="#3B82F6" Foreground="White" BorderThickness="0"/>
+        </StackPanel>
+    </Grid>
+</Window>

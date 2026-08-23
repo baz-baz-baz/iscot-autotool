@@ -1,15 +1,13 @@
 using System;
 using System.IO;
-using System.Data;
 using System.Windows;
 using System.Windows.Controls;
-using PersonalAutomationTool.Modules.Database;
+using PersonalAutomationTool.Core;
 
 namespace PersonalAutomationTool.Modules.Cartelle
 {
     public partial class CartelleView : UserControl
     {
-        private DatabaseManager? _dbManager;
         private readonly System.Windows.Threading.DispatcherTimer _debounceTimer;
 
         public CartelleView()
@@ -48,14 +46,7 @@ namespace PersonalAutomationTool.Modules.Cartelle
         {
             try
             {
-                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                string dbPath = Path.Combine(baseDir, "modules", "database", "train_software.db");
-
-                if (File.Exists(dbPath))
-                {
-                    _dbManager = new DatabaseManager(dbPath);
-                    await LoadTipiTrenoAsync();
-                }
+                await LoadTipiTrenoAsync();
             }
             catch (Exception ex)
             {
@@ -65,25 +56,17 @@ namespace PersonalAutomationTool.Modules.Cartelle
 
         private async System.Threading.Tasks.Task LoadTipiTrenoAsync()
         {
-            if (_dbManager == null) return;
+            // FlotteCache (core/FlotteCache.cs): la tabella flotte viene letta una sola volta e
+            // tenuta in memoria invece di aprire una connessione SQLite per ogni ricerca tipo/loco.
+            // Il Task.Run resta per non bloccare la UI sul primo caricamento (I/O su disco reale);
+            // le letture successive, già in cache, sono comunque immediate.
+            var tipi = await System.Threading.Tasks.Task.Run(() => FlotteCache.GetDistinctTipiOrderByName());
 
-            string query = "SELECT DISTINCT tipo FROM flotte ORDER BY tipo;";
-
-            // Execute the physical SQL query synchronously on a background thread so the UI thread doesn't hang
-            var dataTable = await System.Threading.Tasks.Task.Run(() => _dbManager.ExecuteQuery(query));
-
-            // Load results back onto the UI thread
-            Application.Current.Dispatcher.Invoke(() =>
+            CmbTipo.Items.Clear();
+            foreach (var tipo in tipi)
             {
-                CmbTipo.Items.Clear();
-                foreach (DataRow row in dataTable.Rows)
-                {
-                    if (row["tipo"] != DBNull.Value)
-                    {
-                        CmbTipo.Items.Add(row["tipo"].ToString());
-                    }
-                }
-            });
+                CmbTipo.Items.Add(tipo);
+            }
         }
 
         private void CmbTipo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -143,18 +126,12 @@ namespace PersonalAutomationTool.Modules.Cartelle
 
         private async System.Threading.Tasks.Task<string> GetTrenoFromDbAsync(string tipo, string loco)
         {
-            if (_dbManager == null || string.IsNullOrWhiteSpace(tipo) || string.IsNullOrWhiteSpace(loco)) return "";
+            if (string.IsNullOrWhiteSpace(tipo) || string.IsNullOrWhiteSpace(loco)) return "";
             return await System.Threading.Tasks.Task.Run(() =>
             {
                 try
                 {
-                    string query = "SELECT treno FROM flotte WHERE tipo = @tipo AND loco = @loco LIMIT 1;";
-                    var parameters = new System.Collections.Generic.Dictionary<string, object?> { { "@tipo", tipo }, { "@loco", loco } };
-                    var dataTable = _dbManager.ExecuteQuery(query, parameters);
-                    if (dataTable.Rows.Count > 0 && dataTable.Rows[0]["treno"] != DBNull.Value)
-                    {
-                        return dataTable.Rows[0]["treno"].ToString()?.Trim() ?? "";
-                    }
+                    return FlotteCache.FindTreno(tipo, loco)?.Trim() ?? "";
                 }
                 catch { }
                 return "";
@@ -223,7 +200,7 @@ namespace PersonalAutomationTool.Modules.Cartelle
                 return;
             }
 
-            if (_dbManager == null || CmbTipo == null || CmbTipo.SelectedItem == null || TxtLoco1 == null || string.IsNullOrWhiteSpace(TxtLoco1.Text) || TxtSoftware == null)
+            if (CmbTipo == null || CmbTipo.SelectedItem == null || TxtLoco1 == null || string.IsNullOrWhiteSpace(TxtLoco1.Text) || TxtSoftware == null)
             {
                 if (TxtSoftware != null) TxtSoftware.Text = string.Empty;
                 return;
@@ -235,18 +212,7 @@ namespace PersonalAutomationTool.Modules.Cartelle
             try
             {
                 string softwareValue = await System.Threading.Tasks.Task.Run(() =>
-                {
-                    // Cerchiamo il software incrociando "tipo" e "loco"
-                    string query = "SELECT software FROM flotte WHERE tipo = @tipo AND loco = @loco LIMIT 1;";
-                    var parameters = new System.Collections.Generic.Dictionary<string, object?> { { "@tipo", selectedTipo }, { "@loco", loco1 } };
-                    var dataTable = _dbManager.ExecuteQuery(query, parameters);
-
-                    if (dataTable.Rows.Count > 0 && dataTable.Rows[0]["software"] != DBNull.Value)
-                    {
-                        return dataTable.Rows[0]["software"].ToString() ?? "";
-                    }
-                    return "Non trovato";
-                });
+                    FlotteCache.FindSoftware(selectedTipo, loco1) ?? "Non trovato");
 
                 TxtSoftware.Text = softwareValue;
             }

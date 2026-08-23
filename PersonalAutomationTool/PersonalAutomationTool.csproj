@@ -8,6 +8,25 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
+  <!--
+    ReadyToRun: velocizza l'avvio a freddo su dischi lenti pre-compilando il codice nativo per la
+    piattaforma target, invece di affidarsi solo alla JIT al primo avvio. Attivo SOLO quando si
+    pubblica specificando un RuntimeIdentifier esplicito (es. dotnet publish -c Release -r win-x64):
+    dotnet build, dotnet run e dotnet test non passano mai un RID, quindi questo blocco è inerte
+    per il lavoro quotidiano e non cambia in alcun modo l'esperienza di sviluppo.
+    SelfContained resta a false (framework-dependent, richiede il runtime .NET installato sulla
+    macchina): passare a true (pacchetto circa 150 MB più pesante, nessuna dipendenza da runtime
+    installato) è una scelta operativa, su come vengono aggiornate le macchine dei tecnici, non
+    tecnica, quindi lasciata esplicita a chi pubblica (proprietà SelfContained a true sulla riga
+    di comando), non decisa qui.
+    NON abilitato il trimming: XAML e le chiamate dynamic verso Excel/Outlook si basano su
+    riflessione, e il trimmer romperebbe cose in modo difficile da diagnosticare.
+  -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <SelfContained>false</SelfContained>
+  </PropertyGroup>
+
   <ItemGroup>
     <ApplicationDefinition Remove="App.xaml" />
     <ApplicationDefinition Include="main\App.xaml" />

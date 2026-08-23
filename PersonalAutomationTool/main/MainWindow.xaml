@@ -45,10 +45,10 @@
 
     <DockPanel>
         <!-- Navbar Estetica senza il "gripper" e la freccia di defult della classica ToolBar WPF -->
+        <!-- DropShadowEffect rimosso: è un effetto a pixel shader (reso via software su macchine
+             senza accelerazione WPF adeguata) per un'ombra con Opacity=0.05, quasi impercettibile
+             a schermo. Il bordo inferiore (BorderThickness="0,0,0,1") resta a marcare la navbar. -->
         <Border DockPanel.Dock="Top" Background="White" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1" Margin="0">
-            <Border.Effect>
-                <DropShadowEffect Color="Black" Opacity="0.05" BlurRadius="5" ShadowDepth="2"/>
-            </Border.Effect>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10">
                 <Button x:Name="BtnHome" Content="HOME" Style="{StaticResource NavButtonStyle}" Click="Nav_Home" />
                 <Button x:Name="BtnCartelle" Content="CARTELLE" Style="{StaticResource NavButtonStyle}" Click="Nav_Cartelle" />
