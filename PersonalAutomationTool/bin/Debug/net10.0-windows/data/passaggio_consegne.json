@@ -2,12 +2,13 @@
   "Etr700": {
     "TipoTreno": "ETR 700",
     "NotaUfficioCt": "ETR 700 (da aggiornare durante il turno con verifica presso ufficio CT Hitachi)",
-    "Nome": "",
-    "Cognome": "",
-    "OraInizio": "",
-    "OraFine": "",
-    "OraInizioFine": "",
-    "Data": "22/07/2026",
+    "Nome": "Alessio",
+    "Cognome": "Bassetto",
+    "TurnoPredefinito": "1\u00B0 Turno",
+    "OraInizio": "06:00",
+    "OraFine": "14:00",
+    "OraInizioFine": "06:00 - 14:00",
+    "Data": "23/08/2026",
     "Movimenti": [
       {
         "Numero": 1,
@@ -108,8 +109,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -118,8 +118,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -128,8 +127,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -138,8 +136,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -148,8 +145,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -158,8 +154,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -168,8 +163,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -178,8 +172,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -188,8 +181,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -198,8 +190,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       }
     ]
@@ -207,17 +198,18 @@
   "Etr1000": {
     "TipoTreno": "ETR 1000",
     "NotaUfficioCt": "ETR 1000 (da aggiornare durante il turno con verifica presso ufficio CT Hitachi)",
-    "Nome": "",
-    "Cognome": "",
+    "Nome": "Alessio",
+    "Cognome": "Bassetto",
+    "TurnoPredefinito": "1\u00B0 Turno",
     "OraInizio": "",
     "OraFine": "",
     "OraInizioFine": "",
-    "Data": "22/07/2026",
+    "Data": "23/08/2026",
     "Movimenti": [
       {
         "Numero": 1,
-        "Treno": "",
-        "Loco": "",
+        "Treno": "31",
+        "Loco": "831",
         "DataIngresso": "",
         "OraIngresso": "",
         "DataUscita": "",
@@ -225,8 +217,8 @@
       },
       {
         "Numero": 2,
-        "Treno": "",
-        "Loco": "",
+        "Treno": "2",
+        "Loco": "102",
         "DataIngresso": "",
         "OraIngresso": "",
         "DataUscita": "",
@@ -234,8 +226,8 @@
       },
       {
         "Numero": 3,
-        "Treno": "",
-        "Loco": "",
+        "Treno": "49",
+        "Loco": "849",
         "DataIngresso": "",
         "OraIngresso": "",
         "DataUscita": "",
@@ -305,7 +297,22 @@
         "OraUscita": ""
       }
     ],
-    "Interventi": [],
+    "Interventi": [
+      {
+        "TrenoLoco": "ETR1000-837",
+        "Descrizione": "perdita ridodonanza radio",
+        "CompilazioneOdlBool": true,
+        "CompilazioneOdl": "S\u00EC",
+        "ChiusuraTicketBool": true,
+        "ChiusuraTicket": "S\u00EC",
+        "CompReportBool": true,
+        "CompReport": "S\u00EC",
+        "EmailIngegneriaBool": false,
+        "EmailIngegneria": "No",
+        "AggiornareVerificheBool": false,
+        "AggiornareVerifiche": "No"
+      }
+    ],
     "InterventiNonSvolti": [
       {
         "Numero": 1,
@@ -313,8 +320,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -323,8 +329,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -333,8 +338,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -343,8 +347,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -353,8 +356,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -363,8 +365,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -373,8 +374,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -383,8 +383,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -393,8 +392,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -403,8 +401,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       }
     ]
@@ -414,15 +411,16 @@
     "NotaUfficioCt": "ETR 500 (da aggiornare durante il turno con verifica presso ufficio CT Trenitalia)",
     "Nome": "",
     "Cognome": "",
+    "TurnoPredefinito": "",
     "OraInizio": "",
     "OraFine": "",
     "OraInizioFine": "",
-    "Data": "22/07/2026",
+    "Data": "23/08/2026",
     "Movimenti": [
       {
         "Numero": 1,
-        "Treno": "",
-        "Loco": "",
+        "Treno": "Y01",
+        "Loco": "649 - 652",
         "DataIngresso": "",
         "OraIngresso": "",
         "DataUscita": "",
@@ -430,8 +428,8 @@
       },
       {
         "Numero": 2,
-        "Treno": "",
-        "Loco": "",
+        "Treno": "50",
+        "Loco": "636",
         "DataIngresso": "",
         "OraIngresso": "",
         "DataUscita": "",
@@ -439,8 +437,8 @@
       },
       {
         "Numero": 3,
-        "Treno": "",
-        "Loco": "",
+        "Treno": "21",
+        "Loco": "608",
         "DataIngresso": "",
         "OraIngresso": "",
         "DataUscita": "",
@@ -448,8 +446,8 @@
       },
       {
         "Numero": 4,
-        "Treno": "",
-        "Loco": "",
+        "Treno": "37",
+        "Loco": "611",
         "DataIngresso": "",
         "OraIngresso": "",
         "DataUscita": "",
@@ -457,8 +455,8 @@
       },
       {
         "Numero": 5,
-        "Treno": "",
-        "Loco": "",
+        "Treno": "41",
+        "Loco": "655",
         "DataIngresso": "",
         "OraIngresso": "",
         "DataUscita": "",
@@ -518,8 +516,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -528,8 +525,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -538,8 +534,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -548,8 +543,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -558,8 +552,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -568,8 +561,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -578,8 +570,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -588,8 +579,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -598,8 +588,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       },
       {
@@ -608,8 +597,7 @@
         "Motivazione": "",
         "OraRichiesta": "",
         "Referente": "",
-        "InviataEmailBool": false,
-        "InviataEmail": "NO",
+        "InviataEmail": "",
         "PassaggioConsegna": ""
       }
     ]

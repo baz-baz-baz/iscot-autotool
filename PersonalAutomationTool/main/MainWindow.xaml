@@ -64,7 +64,6 @@
                 <Rectangle Width="2" Fill="#E2E8F0" Margin="15,10,15,10" RadiusX="1" RadiusY="1"/>
                 
                 <Button x:Name="BtnVerifiche" Content="VERIFICHE" Style="{StaticResource NavButtonStyle}" Click="Nav_Verifiche" />
-                <Button x:Name="BtnPassaggioConsegne" Content="PASSAGGIO DI CONSEGNE" Style="{StaticResource NavButtonStyle}" Click="Nav_PassaggioConsegne" />
             </StackPanel>
         </Border>
         

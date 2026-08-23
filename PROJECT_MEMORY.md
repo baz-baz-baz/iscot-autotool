@@ -31,12 +31,33 @@
 > `FileShare.Delete`, più guardia anti-ricaricamento estesa, riprova con backoff e diagnostica
 > specifica. Chiude lo **Sprint 8** (§6.1-decies), due correzioni mirate su richiesta del
 > committente: prefisso `"SR"` ripristinato in "Aggiorna Ticket" (HOME) e dialog di anteprima
-> rimosso dalla rinomina PDF (l'overlay e lo storico su `renamer_log` restano invariati).
+> rimosso dalla rinomina PDF (l'overlay e lo storico su `renamer_log` restano invariati). Chiude lo
+> **Sprint 9** (§6.1-undecies), tre correzioni sul modulo PASSAGGIO DI CONSEGNE: data odierna forzata
+> dopo il caricamento (bug: `CaricaDati()` riportava indietro la data dell'ultimo salvataggio),
+> checkbox nascoste durante l'esportazione PDF a favore del solo testo "Sì"/"No", fallback "No" nelle
+> ultime 4 colonne della tabella Movimenti limitato alle sole righe già compilate — e da **quattro**
+> correzioni successive sullo stesso punto 2, guidate da screenshot del committente: le prime tre
+> (percorso `RelativeSource` accorciato, finestra `IsExporting` ristretta fuori dalle chiamate COM)
+> erano migliorie legittime ma non la causa; la quarta e risolutiva ha eliminato le proprietà stringa
+> derivate dal percorso di visualizzazione (`BoolToSiNoConverter`, legato allo stesso bool di
+> `IsChecked` invece che a una proprietà separata con notifica propagata a mano) — vedi §6.1-undecies
+> per la sequenza completa e la lezione su come è stata trovata. **Segue lo Sprint 10
+> (§6.1-duodecies): il committente ha deciso di riprogettare da zero il modulo PASSAGGIO DI CONSEGNE
+> e ha richiesto la rimozione completa di ogni residuo della vecchia implementazione prima di ricevere
+> le nuove specifiche.** Rimossi fisicamente tutti i file dedicati (vista, ViewModel, modelli,
+> converter, export PDF, servizio email), il pulsante/voce di navigazione in `MainWindow`, la logica
+> di seed `EnsurePassaggioConsegneActions` in `DestinatariManager` (e le relative voci di default) e i
+> 4 file di test dedicati. **§1, §2.1, §2.2, §2.5 e §2.7 sono stati aggiornati di conseguenza** (il
+> modulo non esiste più nel codice corrente); le narrazioni storiche negli sprint precedenti (§4.13,
+> §6.1-bis, §6.1-sexies, §6.1-nonies, §6.1-decies, §6.1-undecies) non sono state riscritte e restano
+> come registro di ciò che fu fatto finché il codice esisteva — vedi la nota introduttiva di
+> §6.1-duodecies prima di fare affidamento su un dettaglio implementativo lì descritto.
 > **Stato build alla chiusura sessione:** `dotnet build` sull'intera `.sln` → 0 errori, 0 warning su
 > `PersonalAutomationTool` e `PersonalAutomationTool.Tests` (i 2 warning residui sono preesistenti nello
-> scratch `TestClosedXML`, fuori scope — vedi §6.5). `dotnet test` → **181/181 superati**. L'eseguibile è
-> stato avviato manualmente per verificare l'assenza di eccezioni allo startup — vedi la nota su cosa
-> **non** è stato verificato in §6.1-ter. **Da leggere prima di toccare il modulo EXCEL: §5.3-bis**
+> scratch `TestClosedXML`, fuori scope — vedi §6.5). `dotnet test` → **181/181 superati** (erano 212;
+> i 31 test del modulo rimosso sono spariti insieme al codice che testavano — vedi §6.1-duodecies).
+> L'eseguibile non è stato riavviato manualmente in questa sessione: la modifica è solo rimozione di
+> codice morto, senza nuova superficie da verificare a schermo. **Da leggere prima di toccare il modulo EXCEL: §5.3-bis**
 > (ETR1000 / ETR1000FH / ETR1000IF sono tre treni distinti; solo in EXCEL i primi due condividono il
 > report).
 
@@ -63,7 +84,7 @@ generazione di email Outlook precompilate e produzione del rapportino di turno.
 | Gestire l'anagrafica destinatari per treno/azione, con rubrica | **DESTINATARI MAIL** |
 | Consultare/editare i database SQLite locali | **DATABASE** |
 | Vedere le verifiche aperte estratte dai file Excel di flotta | **VERIFICHE** |
-| Compilare ed esportare in PDF il rapportino di turno + email | **PASSAGGIO DI CONSEGNE** |
+| Compilare ed esportare in PDF il rapportino di turno + email | **PASSAGGIO DI CONSEGNE** — ⚠️ **rimosso in questa sessione, in attesa di riscrittura da zero: vedi §6.1-duodecies** |
 
 ### Flotte gestite
 `E404P` (ETR500), `ETR700`, `ETR1000`, `ETR1000 I-F` (Italia-Francia / bi-standard KVB),
@@ -90,8 +111,10 @@ iscot-autotool.sln
 │   ├── modules/                     un sottoalbero per modulo funzionale
 │   │   ├── home/  cartelle/  excel/  verifiche/  database/
 │   │   ├── pdf/                  PdfView, PdfRenamePlanner (§6.1-bis, intervento 2.1)
-│   │   ├── destinatari_mail/  passaggio_consegne/
+│   │   ├── destinatari_mail/     (§6.1-duodecies: non genera più le voci "Passaggio di consegne")
 │   │   └── email/               EmailService, EmailView, dialogs/, trains/
+│   │       ⚠️ `modules/passaggio_consegne/` **rimosso in questa sessione** (§6.1-duodecies), in
+│   │       attesa della riscrittura da zero del modulo PASSAGGIO DI CONSEGNE
 │   └── modules/database/*.db        train_software.db, emails.db (copiati in output)
 ├── PersonalAutomationTool.Tests/    ← xUnit, ProjectReference verso PersonalAutomationTool.
 │                                       Zero dipendenza da WPF: solo classi pure sotto core/ e
@@ -111,7 +134,7 @@ Ibrido, **non uniforme** — è importante saperlo prima di intervenire:
 
 | Modulo | Pattern usato |
 |---|---|
-| Home, Excel, Verifiche, PassaggioConsegne | **MVVM** (`ViewModelBase` + `RelayCommand`, DataContext creato in XAML) |
+| Home, Excel, Verifiche | **MVVM** (`ViewModelBase` + `RelayCommand`, DataContext creato in XAML) — PassaggioConsegne era MVVM anch'esso, ma il modulo è stato rimosso (§6.1-duodecies) |
 | Cartelle, PDF, Database, DestinatariMail, RubricaDialog, ChiusuraTicketDialog | **Code-behind** diretto, accesso ai controlli per nome |
 | Email/trains (E404P, ETR700, ETR1000…) | Code-behind sottile che delega a `TrainViewHelper` |
 
@@ -166,7 +189,9 @@ Sottoscrittori: `HomeViewModel`, `ExcelViewModel`, `CartelleView` (Loaded/Unload
   per il motivo per cui questa scansione è comunque su thread pool) che riscandaglia 5 alberi di
   cartelle confrontando le date di modifica, come rete di sicurezza per eventi persi dai watcher;
 - espone `static VerificheViewModel? Instance` e l'evento statico `OnVerificheDataUpdated`,
-  a cui si aggancia `PassaggioConsegneViewModel` per auto-compilare la tabella movimenti.
+  a cui si agganciava `PassaggioConsegneViewModel` per auto-compilare la tabella movimenti — modulo
+  **rimosso** in questa sessione (§6.1-duodecies); l'evento resta comunque generico e disponibile per
+  qualunque futuro sottoscrittore.
 
 ### 2.6 Persistenza
 
@@ -176,7 +201,7 @@ Sottoscrittori: `HomeViewModel`, `ExcelViewModel`, `CartelleView` (Loaded/Unload
 | `emails.db` | idem | `indirizzi_email(id, nome, email, categoria)` — rubrica |
 | `destinatari.json` | `{BaseDirectory}\` | destinatari To/Cc per **treno × azione**; auto-generato al primo avvio |
 | `shortcuts.json` | `{BaseDirectory}\` | macro-testi "Nulla Riscontrato", "SIM-GIT", … per treno |
-| `data\passaggio_consegne.json` | `{BaseDirectory}\data\` | i 3 rapportini di turno (ETR700/1000/500) |
+| ~~`data\passaggio_consegne.json`~~ | `{BaseDirectory}\data\` | i 3 rapportini di turno (ETR700/1000/500) — **nessun codice la legge/scrive più** dopo la rimozione del modulo (§6.1-duodecies); il file può ancora esistere fisicamente da esecuzioni precedenti (non è stato cancellato, è dato non codice) e conserva il formato `RapportiniDataContainer` per un'eventuale migrazione nella riscrittura |
 | `info_ticket.json` | dentro ogni cartella madre di `LOG & DUMP` | avvisi/avarie/interventi per locomotore |
 | `hitachi_paths.json` | `{BaseDirectory}\` | cartella Hitachi base per treno, usata da `ExcelViewModel` (Sposta/Riporta Report); auto-generato al primo avvio — vedi §6.1 |
 
@@ -196,10 +221,10 @@ aggiornati (supporta inserimento/modifica/eliminazione righe dal vivo).
 
 | Integrazione | Dove | Uso |
 |---|---|---|
-| **Outlook** (`Outlook.Application`) | `EmailService`, `PassaggioConsegneEmailService` | crea `MailItem`, forza l'`Inspector` per ottenere la firma, inserisce il corpo HTML **prima** della firma, allega i PDF, `Display(false)` |
+| **Outlook** (`Outlook.Application`) | `EmailService` (~~`PassaggioConsegneEmailService`, rimosso §6.1-duodecies~~) | crea `MailItem`, forza l'`Inspector` per ottenere la firma, inserisce il corpo HTML **prima** della firma, allega i PDF, `Display(false)` |
 | **Excel** (`Excel.Application`) | `ExcelViewModel.ExecuteScriviReport` | scrive la nuova riga del report **in modo nativo** per non alterare formattazione/struttura; PID del processo tracciato per terminazione forzata di sicurezza se `Quit()` non basta (§6.1-bis, intervento 1.4) |
 | **ClosedXML** | Excel, Verifiche | sola **lettura** (intestazioni, data validation, ultima riga compilata, parsing verifiche) |
-| **PdfSharp** | PdfView, PassaggioConsegnePdfExporter | conteggio pagine PDF; render del rapportino in PDF |
+| **PdfSharp** | PdfView (~~PassaggioConsegnePdfExporter, rimosso §6.1-duodecies~~) | conteggio pagine PDF |
 
 > Excel è usato **due volte con due tecnologie diverse nello stesso comando**: ClosedXML per *leggere*
 > l'ultima riga (file rilasciato subito), poi Interop per *scrivere*. È voluto: ClosedXML in scrittura
@@ -1532,6 +1557,343 @@ collection propria) che non era sbagliato in sé ma non era la causa del sintomo
 (170 preesistenti + 11 nuovi), confermati su 12 esecuzioni consecutive. Eseguibile avviato
 manualmente, nessuna eccezione allo startup.
 
+### 6.1-undecies Sprint 9 — tre correzioni sul modulo PASSAGGIO DI CONSEGNE
+
+Il committente ha chiesto tre correzioni puntuali su `PassaggioConsegneView`/`PassaggioConsegneViewModel`.
+Su un punto (§3, il fallback "No") la richiesta iniziale era ambigua sullo scope esatto: chiesto un
+chiarimento invece di indovinare, dato che l'esito finisce in un documento aziendale reale mandato via
+email — il committente ha risposto con uno screenshot che ha reso lo scope inequivocabile.
+
+#### 1. Data odierna non aggiornata all'apertura
+
+**Causa.** `RapportinoTurnoModel.Data` è inizializzata correttamente a oggi da un field initializer
+(`DateTime.Now.ToString("dd/MM/yyyy")`). Ma il costruttore di `PassaggioConsegneViewModel` chiama
+subito dopo `CaricaDati()`, che — se `passaggio_consegne.json` esiste da una sessione precedente —
+**sostituisce l'intero oggetto** `RapportinoTurnoModel` con quello deserializzato dal file, portando
+con sé anche il valore di `Data` congelato al momento dell'ultimo salvataggio. Riaprendo l'app in un
+giorno diverso, la data corretta impostata dal costruttore veniva quindi silenziosamente scartata.
+
+**Correzione:** `PassaggioConsegneViewModel.EnsureDataOdierna(RapportinoTurnoModel)`, metodo puro
+(nessuna dipendenza da I/O o stato statico) che imposta `Data` a `DateTime.Today.ToString("dd/MM/yyyy")`
+passando dal setter reale della proprietà — quindi la notifica di cambio proprietà scatta
+correttamente e il binding `TwoWay` esistente si aggiorna senza bisogno di altre modifiche XAML.
+Chiamato per tutti e tre i rapportini subito dopo `CaricaDati()` nel costruttore, incondizionatamente
+(sia che un salvataggio precedente sia stato trovato sia che non lo sia stato — nel secondo caso è un
+riassegnamento innocuo dello stesso valore già corretto).
+
+**4 test** in `PassaggioConsegneViewModelTests.cs`: sovrascrittura di una data di un giorno diverso,
+nessuna alterazione se la data è già odierna, notifica di `PropertyChanged` effettivamente sollevata,
+applicazione indipendente a tre rapportini distinti senza interferenze reciproche.
+`PassaggioConsegneViewModel` non è testata direttamente (il suo costruttore innesca I/O su disco e
+sottoscrizioni a eventi statici) — stesso limite già documentato per `HomeViewModel`/`VerificheViewModel`,
+da cui solo funzioni pure estratte sono coperte da test.
+
+#### 2. Checkbox non visibili nel PDF esportato, sostituite da "Sì"/"No"
+
+Le cinque colonne booleane di "Dettaglio interventi" (Compilazione ODL, Chiusura Ticket, Comp.
+Report, Email Ingegneria, Aggiornare Verifiche) mostravano già un'etichetta testuale accanto alla
+checkbox, ma nella forma `"SI"`/`"NO"` (tutto maiuscolo, senza accento) invece di `"Sì"`/`"No"` come
+richiesto — corretto in `DettaglioInterventoRow` (`PassaggioConsegneModels.cs`), 5 proprietà,
+getter e setter aggiornati insieme (il setter confrontava `value == "SI"`: lasciarlo con la vecchia
+stringa avrebbe rotto silenziosamente la deserializzazione di dati salvati con la nuova forma).
+
+**Il problema principale — il quadratino grafico della checkbox compariva comunque nel PDF —**
+richiedeva un meccanismo di "modalità export", dato che `PassaggioConsegnePdfExporter` cattura con
+`RenderTargetBitmap` esattamente ciò che è a schermo in quel momento (WYSIWYG, nessun percorso di
+rendering alternativo per la stampa). Aggiunta `PassaggioConsegneViewModel.IsExporting` (bool),
+`False` di default. In XAML, ogni cella booleana diventa una `Grid` con **due** elementi sovrapposti:
+la `CheckBox` originale (invariata: stesso `IsChecked`, stesso `Content`) più un `TextBlock` con lo
+stesso testo "Sì"/"No". Due stili condivisi (`ExportAwareCheckBoxStyle`/`ExportAwareSiNoTextStyle`)
+usano un `DataTrigger` su `IsExporting` per invertirne la visibilità: normalmente si vede solo la
+checkbox (comportamento a schermo identico a prima), durante l'esportazione si vede solo il
+`TextBlock`. Il binding risale fino allo `UserControl` (`RelativeSource AncestorType=UserControl`)
+perché il `DataContext` del `CellTemplate` di una riga `DataGrid` è la riga stessa
+(`DettaglioInterventoRow`), non il ViewModel.
+
+`PassaggioConsegneView.BtnPassaggioConsegne_Click` imposta `IsExporting = true`, esegue l'export
+dentro un `try`, lo riporta a `false` in un `finally`. **Nessuno sfarfallio percepibile per
+l'utente**, non per una temporizzazione ad hoc ma per una proprietà del modello di binding di WPF:
+l'intero ciclo (impostare `IsExporting`, propagazione sincrona del binding/trigger, invalidazione del
+layout, `Measure`/`Arrange`/`UpdateLayout` dentro `ExportToPdf`, `RenderTargetBitmap.Render`,
+ripristino di `IsExporting`) avviene nello stesso blocco sincrono, senza mai un `await` o un
+`Dispatcher.Invoke` di mezzo — quindi WPF non ha mai l'occasione di eseguire un passaggio di
+rendering verso lo **schermo** con lo stato "esportazione" attivo, anche se quello stato esiste
+realmente (e correttamente) nel momento in cui la bitmap viene catturata.
+
+#### 3. Fallback "No" nelle celle vuote — solo ultime 4 colonne, solo righe compilate
+
+Richiesta chiarita con il committente dopo un primo giro ambiguo (screenshot della tabella
+Movimenti): il fallback si applica **solo** a DATA INGRESSO/ORA INGRESSO/DATA USCITA/ORA USCITA (non
+a TRENO/LOCO, già popolate correttamente dall'autocompilazione da VERIFICHE) e **solo** sulle righe
+già "compilate" — cioè con Treno o Loco presenti. Le righe fra le dieci pre-create ancora
+interamente inutilizzate restano vuote anche in quelle 4 colonne.
+
+`RowFilledEmptyToNoConverter` (`PassaggioConsegneConverters.cs`), `IMultiValueConverter` puro: prende
+in ingresso `[Treno, Loco, valore del campo]` via `MultiBinding` su ciascuna delle 4 colonne. Se il
+campo ha un valore lo restituisce invariato; se è vuoto restituisce `"No"` quando Treno o Loco non
+sono vuoti, altrimenti stringa vuota. **Il fallback non viene mai scritto nel modello**: `ConvertBack`
+scrive nella sola cella modificata (gli altri due valori del `MultiBinding`, Treno e Loco, restano
+inalterati tramite `Binding.DoNothing`) esattamente ciò che il tecnico digita — `passaggio_consegne.json`
+continua a contenere stringa vuota per un campo mai compilato, mai la lettera "No": il fallback resta
+un fatto di presentazione, non di dati salvati. Essendo un `MultiBinding` su Treno e Loco, la cella si
+riaggiorna automaticamente anche quando quei due campi vengono compilati in un momento successivo
+dall'autocompilazione da VERIFICHE, non solo quando cambia la cella stessa.
+
+**8 test** in `RowFilledEmptyToNoConverterTests.cs`: campo valorizzato restituito invariato (anche con
+spazi interni, per escludere che vengano scambiati per vuoti), fallback "No" con solo Treno presente,
+fallback "No" con sola Loco presente, riga interamente vuota → stringa vuota (il caso che distingue
+questo converter da un fallback ingenuo "vuoto → No"), Treno/Loco fatti di soli spazi trattati come
+assenti, `ConvertBack` che scrive solo il terzo valore lasciando gli altri due a `Binding.DoNothing`,
+valore nullo in `ConvertBack` gestito senza eccezioni.
+
+#### Non toccato, deliberatamente
+
+`PassaggioConsegneViewModel.OpzioniSiNo` (`ObservableCollection<string>` con `"SI"`/`"NO"`) non è
+referenziata da alcun binding XAML — verificato con una ricerca su tutto il modulo, non per
+supposizione: è codice morto preesistente. Lasciata invariata perché normalizzarla non era richiesto
+e avrebbe ampliato lo scope oltre quanto chiesto per una collezione che, non essendo usata, non ha
+alcun effetto osservabile.
+
+**Build/test:** `dotnet build` → 0 errori, 0 warning. `dotnet test` → **204/204 superati**
+(181 preesistenti + 23 nuovi), confermati su 5 esecuzioni consecutive. Eseguibile avviato
+manualmente, nessuna eccezione allo startup.
+
+**Cosa non è stato verificato in questo ambiente** (limite dell'ambiente, non del codice — stesso
+limite dichiarato più volte in sessioni precedenti): senza un tool di automazione UI Windows non è
+stato possibile verificare **a schermo** che il PDF esportato mostri davvero "Sì"/"No" testuale senza
+il quadratino, che il fallback "No" compaia correttamente nella tabella Movimenti, e che riaprendo
+l'app con un `passaggio_consegne.json` di un giorno precedente la data mostrata sia davvero quella
+odierna. Sono stati verificati: build pulita, compilazione XAML senza errori (che valida
+staticamente le chiavi delle risorse, i `MultiBinding` e i `RelativeSource`), i 23 test sulla logica
+pura, e l'avvio dell'app senza eccezioni. Vedi il punto 28 della checklist §7.1.
+
+#### Correzione successiva, stessa sessione: `RelativeSource AncestorType=UserControl` inaffidabile su righe aggiunte dopo il caricamento
+
+Il committente ha verificato il punto 2 sul campo e segnalato: le righe presenti al caricamento
+mostravano correttamente "Sì"/"No" accanto alla checkbox, ma le righe aggiunte con "+ Aggiungi
+Intervento" **dopo** mostravano la checkbox senza alcuna etichetta.
+
+Il binding `{Binding DataContext.IsExporting, RelativeSource={RelativeSource AncestorType=UserControl}}`
+usato nei due stili `ExportAwareCheckBoxStyle`/`ExportAwareSiNoTextStyle` risaliva un percorso lungo e
+attraversato da molti livelli intermedi generati (DataGrid → righe → `Border` → `StackPanel` →
+`ScrollViewer` → `UserControl`). Per le righe presenti fin dal primo caricamento, quando l'intero
+albero visuale viene costruito in un'unica passata connessa dall'alto verso il basso, questo percorso
+si risolve correttamente. Per una riga aggiunta **dopo**, il container della sua cella può essere
+generato dal `DataGrid` prima che quella catena lunga sia interamente connessa — un problema noto di
+WPF con `RelativeSource`/`AncestorType` dentro `ItemsControl` virtualizzati, non specifico di questa
+applicazione.
+
+**Corretto accorciando il percorso di risalita da `AncestorType=UserControl` a
+`AncestorType=DataGrid`**: il `DataGrid` immediatamente contenitore esiste per costruzione prima che
+una sua cella possa esistere, quindi la risalita a un solo livello è garantita indipendentemente da
+quando la riga è stata aggiunta. È il pattern standard e documentato per raggiungere il `DataContext`
+di un ViewModel da dentro un `DataGridTemplateColumn.CellTemplate`, più robusto di una risalita a un
+antenato distante.
+
+> ⚠️ **Onestà sul livello di certezza.** Non è stato possibile riprodurre il problema in questo
+> ambiente (nessun tool di automazione UI Windows disponibile, §6.1-undecies): la diagnosi si basa
+> su un meccanismo WPF noto e ben documentato per questa esatta combinazione (RelativeSource +
+> ItemsControl virtualizzato + riga aggiunta a runtime), non su un'osservazione diretta del difetto.
+> La correzione è comunque **strettamente migliorativa e a rischio nullo** — un percorso di risalita
+> più corto e più standard non può peggiorare nulla — ma se il sintomo dovesse persistere dopo questo
+> fix, serve sapere: (a) se accade sempre o solo a volte, (b) se scorrere la griglia o cambiare
+> scheda e tornare indietro fa ricomparire l'etichetta (indicherebbe un problema di timing alla
+> creazione del container, coerente con questa diagnosi) o se resta assente anche dopo (indicherebbe
+> una causa diversa, probabilmente nei dati piuttosto che nel rendering).
+
+**Build/test dopo la correzione:** `dotnet build` → 0 errori, 0 warning. `dotnet test` → 204/204
+superati (nessun nuovo test: il comportamento è puramente di rendering WPF, non coperto dalla suite
+per lo stesso motivo per cui `RenamePreviewDialog`/`ProgressOverlay` non lo sono, §6.5). Eseguibile
+avviato manualmente, nessuna eccezione.
+
+#### Terzo giro, stessa sessione: la causa vera non era quella sopra
+
+Il committente ha allegato un secondo screenshot dopo il fix precedente: il sintomo era peggiorato,
+non risolto — una riga mostrava **solo testo** "Sì"/"No" **senza alcuna checkbox visibile**, un'altra
+non mostrava **né** checkbox **né** testo. Questo esclude direttamente l'ipotesi precedente (un
+binding che fallisce a risolversi lascerebbe la checkbox visibile con la sua Content, mai il
+contrario) e ha indicato la causa reale: `IsExporting` era **visibilmente `true` a schermo**, non
+solo durante la cattura — la modalità "esportazione" (checkbox nascosta, solo testo) stava
+comparendo nell'interfaccia normale, non nel solo PDF.
+
+**Causa.** `BtnPassaggioConsegne_Click` teneva `IsExporting = true` per tutta la durata del blocco
+`try`, che includeva **anche** `PassaggioConsegneEmailService.OpenDraftEmail` — chiamata che crea un
+oggetto COM Outlook (`Activator.CreateInstance`, poi `mailItem.Display`). Una chiamata verso un
+server COM STA fuori processo può **pompare internamente la coda messaggi di Windows** durante
+l'attesa del marshalling — la stessa coda da cui WPF pesca i propri cicli di rendering — e questo dà
+a WPF l'occasione di disegnare un frame con `IsExporting` ancora attivo mentre Outlook si avvia
+(operazione da secondi, non istantanea: tempo più che sufficiente perché l'utente veda lo stato
+intermedio, altro che "nessuno sfarfallio"). L'assunto scritto nel commento della proprietà —
+"tutto resta sincrono quindi nessuno sfarfallio" — era vero **solo** per `ExportToPdf` (I/O e
+rendering WPF puri, nessuna chiamata COM, nessun pompaggio messaggi) e falso includendo
+`OpenDraftEmail`, che invece ci stava dentro. La seconda riga senza né checkbox né testo era
+probabilmente un frame "strappato", catturato a metà di un passaggio di layout/render mentre la UI
+restava bloccata in attesa di Outlook — coerente con la stessa causa, non un difetto separato.
+
+**Corretto restringendo la finestra `IsExporting = true` alla sola chiamata a `ExportToPdf`**:
+`OpenDraftEmail` parte ora **dopo** che `IsExporting` è già tornato a `false`, fuori dal blocco
+`try`/`finally` che lo protegge. La cattura `RenderTargetBitmap` in sé non coinvolge COM né pompaggio
+di messaggi, quindi confinare la modalità "esportazione" a quel solo passo elimina la finestra di
+tempo in cui poteva diventare visibile.
+
+**Lezione per letture future:** l'ipotesi del giro precedente (`RelativeSource AncestorType`
+inaffidabile su righe aggiunte a runtime) resta un miglioramento legittimo e a rischio nullo — non è
+stata ritirata — ma **non era la causa di questo sintomo**. La diagnosi corretta è arrivata solo
+confrontando **due** screenshot in sequenza (prima: checkbox visibile senza testo; dopo il primo fix:
+testo visibile senza checkbox) — un singolo screenshot non l'avrebbe resa distinguibile dall'ipotesi
+sbagliata. Se una correzione basata su un meccanismo "noto ma non osservato" non risolve un sintomo
+segnalato, il passo successivo è cercare cosa **cambia** fra i due tentativi, non solo se il sintomo
+persiste.
+
+**Build/test dopo la correzione:** `dotnet build` → 0 errori, 0 warning. `dotnet test` → 204/204
+superati. Eseguibile avviato manualmente, nessuna eccezione.
+
+> ⚠️ **Ancora da confermare sul campo.** Anche questa correzione non è stata verificabile a schermo in
+> questo ambiente (stesso limite dichiarato sopra). La spiegazione è però più solida della precedente:
+> non si basa su un meccanismo WPF "noto in generale", ma su una lettura diretta e specifica del
+> codice che collega esattamente la sequenza osservata (checkbox nascosta + solo testo, a schermo, per
+> un tempo percepibile) a un'operazione COM realmente presente nello stesso blocco sincrono.
+
+#### Quarto giro, stessa sessione: causa reale trovata, era strutturale — non di timing
+
+Il committente ha allegato **due** screenshot in sequenza (schermo e PDF generato dallo stesso stato)
+dopo il terzo fix: il sintomo era identico a prima, sulla stessa riga, **in entrambe le modalità**.
+Questo è il dato decisivo che ha smontato **entrambe** le ipotesi precedenti: se il problema fosse
+stato di *timing* (checkbox/testo che si scambiano nel momento sbagliato, come nei tentativi 2 e 3),
+i due screenshot — schermo normale e PDF — avrebbero dovuto mostrare esiti **diversi** fra loro. Li
+mostravano invece **identici** sulla stessa riga: l'etichetta "Sì"/"No" mancava lì a prescindere da
+quale elemento (`CheckBox.Content` o `TextBlock.Text`) fosse quello visibile in quel momento. Il
+problema non era MAI stato "quale elemento si vede", ma "cosa mostra l'elemento", in entrambi i casi.
+
+**Causa reale.** Ogni cella booleana aveva due binding **diversi** sulla stessa riga: `IsChecked` legge
+`CompilazioneOdlBool` (il campo bool) **direttamente**; `Content`/`Text` leggevano `CompilazioneOdl`
+(una proprietà **stringa derivata**, il cui `PropertyChanged` viene sollevato **a mano** dentro il
+setter del bool: `OnPropertyChanged(nameof(CompilazioneOdl))`). In tutti gli screenshot, lo stato
+spuntato/despuntato della checkbox (`IsChecked`) era **sempre** corretto; solo l'etichetta derivata
+falliva, sulla riga che cambiava di prova in prova. L'unica differenza strutturale fra un binding che
+funzionava sempre e uno che falliva a intermittenza sulla stessa riga era esattamente quel salto in
+più — la notifica propagata manualmente su una proprietà derivata, invece di un binding diretto sulla
+sorgente. Non è stato necessario isolare il meccanismo WPF esatto per cui quel salto falliva talvolta
+(virtualizzazione/rigenerazione dei container di una riga, con ordine di applicazione dei binding
+diverso da quello di `IsChecked` — la spiegazione più plausibile, ma qui non decisiva): bastava
+eliminare il salto.
+
+**Corretto eliminando le proprietà stringa derivate dal percorso di visualizzazione.**
+`BoolToSiNoConverter` (nuovo, in `PassaggioConsegneConverters.cs`): converter stateless
+`bool → "Sì"/"No"`. `Content` e `Text` delle 5 celle ora leggono lo **stesso** campo bool di
+`IsChecked` (es. `Content="{Binding CompilazioneOdlBool, Converter={StaticResource BoolToSiNoConverter}}"`),
+non più `CompilazioneOdl`. Se `IsChecked` è corretto — e lo era sempre, in ogni screenshot — ora lo è
+anche il testo, perché condividono **esattamente lo stesso binding**, non due binding paralleli su
+proprietà diverse che potevano disallinearsi. Le proprietà stringa derivate (`CompilazioneOdl`,
+`ChiusuraTicket`, `CompReport`, `EmailIngegneria`, `AggiornareVerifiche`) restano nel modello,
+corrette, semplicemente non più usate da questa vista.
+
+**8 test** in `BoolToSiNoConverterTests.cs`: mappatura `true`→"Sì"/`false`→"No", valori non booleani
+(inclusi `null`) trattati come "No" invece di lanciare, `ConvertBack` che riconosce solo la stringa
+esatta "Sì" come vero.
+
+**Lezione, la più concreta delle quattro di questa sessione:** le prime due correzioni erano basate su
+meccanismi WPF "noti in generale" applicati per analogia, non su una lettura che spiegasse **perché
+proprio quella riga**, ogni volta diversa. La correzione risolutiva è arrivata confrontando cosa
+**cambiava** e cosa **restava costante** fra un binding funzionante (`IsChecked`) e uno che falliva
+(`Content`/`Text`) sulla stessa identica istanza di riga, nello stesso identico momento — non
+cercando un meccanismo WPF plausibile, ma cercando la differenza strutturale fra i due binding.
+
+**Build/test dopo la correzione:** `dotnet build` → 0 errori, 0 warning. `dotnet test` → **212/212
+superati** (204 preesistenti + 8 nuovi), confermati su 3 esecuzioni consecutive. Eseguibile avviato
+manualmente, nessuna eccezione.
+
+> ⚠️ **Ancora da confermare sul campo**, per lo stesso limite d'ambiente dichiarato sopra — ma qui la
+> certezza è più alta delle tre correzioni precedenti: non elimina "un rischio teorico", elimina
+> l'unica differenza strutturale osservata fra un binding-controllo positivo (`IsChecked`, sempre
+> corretto in ogni screenshot) e il binding difettoso (`Content`/`Text`).
+
+### 6.1-duodecies Sprint 10 — rimozione completa del modulo PASSAGGIO DI CONSEGNE in vista della riscrittura da zero
+
+> ⚠️ **Nota di lettura per chi arriva qui in futuro.** Questa voce documenta una **rimozione**, non
+> un'evoluzione: il codice descritto nelle sezioni §4.13, §6.1-bis (scoperta #3), §6.1-sexies
+> (criticità E/F), §6.1-nonies, §6.1-decies e §6.1-undecies **non esiste più** nel repository a partire
+> da questa sessione. Quelle sezioni **non sono state riscritte al passato** e restano come registro
+> storico di cosa fu fatto e perché, utile soprattutto come lezione tecnica per la riscrittura (vedi
+> "Cosa resta utile per la riscrittura" più sotto) — ma qualunque riferimento a un file, un metodo o un
+> comportamento **attuale** del modulo PASSAGGIO DI CONSEGNE in quelle sezioni è da considerare
+> obsoleto. Lo stato corrente è descritto in §1, §2.1, §2.2, §2.5, §2.6, §2.7.
+
+**Richiesta del committente (23/08/2026).** Riprogettare completamente da zero il modulo "Passaggio di
+Consegne", a partire da una codebase ripulita da ogni residuo della vecchia implementazione, mantenendo
+la soluzione compilabile. Le nuove specifiche dettagliate arriveranno in una sessione successiva: questa
+voce copre **solo** la rimozione, non ancora la riscrittura.
+
+**Rimozione fisica dei file dedicati** (`PersonalAutomationTool/modules/passaggio_consegne/`, intera
+cartella eliminata):
+- `PassaggioConsegneView.xaml` + `PassaggioConsegneView.xaml.cs`
+- `PassaggioConsegneViewModel.cs`
+- `PassaggioConsegneModels.cs` (`RapportinoTurnoModel`, `MovimentoTrenoRow`, `DettaglioInterventoRow`,
+  `InterventoNonSvoltoRow`, `RapportiniDataContainer`)
+- `PassaggioConsegneConverters.cs` (`RowFilledEmptyToNoConverter`, `BoolToSiNoConverter`)
+- `PassaggioConsegnePdfExporter.cs`
+- `PassaggioConsegneEmailService.cs`
+
+**Test dedicati rimossi** (`PersonalAutomationTool.Tests/Modules/PassaggioConsegne/`, intera cartella
+eliminata): `PassaggioConsegneViewModelTests.cs`, `PassaggioConsegneModelsTests.cs`,
+`RowFilledEmptyToNoConverterTests.cs`, `BoolToSiNoConverterTests.cs` — 31 test in tutto (23 + 8, vedi
+§6.1-undecies per la loro origine).
+
+**Disaccoppiamento dal resto dell'app:**
+- `MainWindow.xaml` — rimosso il pulsante `BtnPassaggioConsegne` dalla navbar.
+- `MainWindow.xaml.cs` — rimossi lo `using PersonalAutomationTool.Modules.PassaggioConsegne;` e il
+  metodo `Nav_PassaggioConsegne`.
+- `DestinatariManager.cs` (`modules/destinatari_mail/`) — rimosso `EnsurePassaggioConsegneActions`
+  (il metodo che, a ogni `LoadConfig()`, inseriva una voce "Passaggio di consegne" mancante in
+  `destinatari.json`) insieme alla sua chiamata da `LoadConfig()`, e rimosse le 5 voci
+  `ActionName = "Passaggio di consegne"` dalla configurazione di default generata per E404P, ETR700,
+  ETR1000, ETR1000IF, ETR1000FH. **`DestinatariManager.GetRecipients(trainType, actionName)` è stato
+  mantenuto**: è un'API generica (qualunque coppia treno/azione), non esclusiva del modulo rimosso, e
+  resta utilizzabile dalla riscrittura per recuperare i destinatari se la nuova implementazione
+  riprenderà l'invio email.
+- `HomeView.xaml` — aggiornato un commento che confrontava la virtualizzazione di `HomeView` con
+  `PassaggioConsegneView` (la vista non esiste più, il confronto non aveva più senso).
+- Nessun'altra istanziazione, `using` o riferimento residuo trovato (verificato con una ricerca
+  case-insensitive di "PassaggioConsegne" sull'intero repository, fuori da questo file).
+
+**Dato non toccato.** `PersonalAutomationTool/bin/Debug/net10.0-windows/data/passaggio_consegne.json`
+(output di build, contiene gli ultimi rapportini salvati da esecuzioni precedenti) **non è stato
+cancellato**: è dato generato a runtime, non codice, e non impedisce la build. Nessun codice lo legge o
+scrive più. Vedi §2.6.
+
+**Verifica.** `dotnet clean` sull'intera `.sln`, poi `dotnet build` → **0 errori, 0 warning** su
+`PersonalAutomationTool` e `PersonalAutomationTool.Tests` (i 2 warning NU1510 residui sono preesistenti
+su `TestClosedXML`, fuori scope, vedi §6.5). `dotnet test` → **181/181 superati** (erano 212 prima
+della rimozione dei 31 test dedicati).
+
+**Cosa resta utile per la riscrittura** (lezioni dal codice rimosso, da rileggere quando arriveranno le
+nuove specifiche, non da riapplicare automaticamente):
+- **Cattura a bitmap per l'export PDF.** `PassaggioConsegnePdfExporter` catturava l'intera vista con
+  `RenderTargetBitmap` e imponeva un tetto di 8 milioni di pixel (riducendo i DPI, non le dimensioni
+  logiche) per non finire nella Large Object Heap su hardware con poca RAM — vedi §4.13 e §6.1-sexies
+  (criticità E). Se la riscrittura userà ancora un export "a schermata", questo vincolo va riproposto.
+- **Rilascio COM Outlook.** `PassaggioConsegneEmailService.OpenDraftEmail` seguiva lo stesso pattern di
+  `EmailService`: riferimenti COM dichiarati fuori dal `try`, rilasciati in `finally` con una funzione
+  che assorbe gli errori del singolo rilascio — vedi §4.4.
+- **Autocompilazione da VERIFICHE.** Il vecchio ViewModel si agganciava a
+  `VerificheViewModel.OnVerificheDataUpdated` (evento statico, ancora presente e generico, §2.5) per
+  popolare la tabella Movimenti; la lettura iniziale era stata spostata su thread pool per non bloccare
+  l'apertura del modulo — vedi §6.1-sexies (criticità F).
+- **Sottoscrizione statica mai rilasciata.** Era la criticità **D** aperta in §6.4: la lambda su
+  `OnVerificheDataUpdated` non aveva mai un `-=` corrispondente. Innocuo solo perché `MainWindow` tiene
+  una sola istanza per vista; da non ripetere ciecamente se la riscrittura cambia quel presupposto.
+- **Formato dati storico.** `RapportiniDataContainer` (Etr700/Etr1000/Etr500, ciascuno un
+  `RapportinoTurnoModel`) serializzato in `data\passaggio_consegne.json`. Se la riscrittura deve
+  recuperare i rapportini già salvati dai tecnici, questo è lo schema da leggere per un'eventuale
+  migrazione — il file fisico non è stato toccato (vedi sopra).
+- **Le tre correzioni di prodotto dello Sprint 9** (§6.1-undecies): data odierna forzata dopo il
+  caricamento, checkbox nascoste a favore del testo "Sì"/"No" nell'export, fallback "No" limitato alle
+  righe già compilate — tutti requisiti comportamentali confermati dal committente sul vecchio modulo,
+  probabilmente da riproporre nella riscrittura salvo indicazione contraria nelle nuove specifiche.
+
+**In attesa delle nuove specifiche del committente.** Nessuna decisione di design per la riscrittura è
+stata presa in questa sessione: questa voce si ferma alla rimozione pulita.
+
 ### 6.2 Le 4 macro-aree della roadmap strategica
 
 Elaborata come risposta alla domanda "se fossi il Lead Architect, cosa faresti dopo l'audit
@@ -1673,36 +2035,43 @@ Priorità aggiornata dopo lo Sprint 3 (vedi §6.1-ter per il perché di questo o
 > (§6.1-bis); **I** è stata valutata e scartata (non applicabile, non "da fare").
 > **E, F e G sono state risolte nello Sprint 4** (§6.1-sexies): `RenderTargetBitmap` con tetto di
 > pixel, caricamento verifiche fuori dal costruttore di `PassaggioConsegneViewModel`, risoluzione
-> percorsi di rete su thread pool. **Resta aperta la sola D.**
+> percorsi di rete su thread pool. **D** restava aperta, ma **C, D, E ed F riguardavano codice del
+> modulo PASSAGGIO DI CONSEGNE rimosso nello Sprint 10 (§6.1-duodecies): sono ormai prive di oggetto**,
+> lasciate qui solo come lezione per la riscrittura (vedi "Cosa resta utile" in §6.1-duodecies).
 
 **C. `ScrollViewer.CanContentScroll="False"`** su HomeView e sui 3 DataGrid di PassaggioConsegne —
 **risolta per HomeView, esclusa per PassaggioConsegneView con motivo tecnico concreto (Sprint 2)**.
 HomeView virtualizzata con lo stesso pattern di `VerificheView` (`ScrollUnit` a `Item`, non `Pixel`,
 proprio per la ragione di maniglia-scrollbar-instabile ipotizzata qui). PassaggioConsegneView
-**non** virtualizzata: la sua griglia viene catturata per intero via `RenderTargetBitmap` per
-l'export PDF del rapportino — virtualizzarla rischierebbe di troncare silenziosamente righe fuori
-viewport dal PDF esportato. Vedi §6.1-bis, scoperta #3, per il dettaglio.
+**non** virtualizzata: la sua griglia veniva catturata per intero via `RenderTargetBitmap` per
+l'export PDF del rapportino — virtualizzarla avrebbe rischiato di troncare silenziosamente righe fuori
+viewport dal PDF esportato. Vedi §6.1-bis, scoperta #3, per il dettaglio. **Voce sul modulo rimosso
+(§6.1-duodecies): la scelta tecnica va rivalutata da capo se la riscrittura userà ancora un export a
+bitmap.**
 
-**D. `PassaggioConsegneViewModel` — sottoscrizione statica mai rilasciata**
+**D. `PassaggioConsegneViewModel` — sottoscrizione statica mai rilasciata (modulo rimosso, §6.1-duodecies)**
 ```csharp
 VerificheViewModel.OnVerificheDataUpdated += () => { … };   // lambda anonima, nessun -=
 ```
-Innocuo **solo** finché `MainWindow` tiene una sola istanza della vista. Se un giorno la vista venisse
-ricreata, ogni istanza resterebbe viva per sempre. Stesso schema in `HomeViewModel`
+Innocuo **solo** finché `MainWindow` teneva una sola istanza della vista. Non era mai stata corretta
+prima della rimozione del modulo: se la riscrittura si aggancia di nuovo a `OnVerificheDataUpdated`, va
+prevista una `-=` corrispondente fin dall'inizio. Stesso schema tuttora presente in `HomeViewModel`
 (`AppWatcher.OnLogDumpFolderChanged`, mai rimosso; `DispatcherTimer` mai fermato).
 `ExcelViewModel` implementa `IDisposable` ma **nessuno chiama `Dispose()`**: è codice morto.
 
-**E. `PassaggioConsegnePdfExporter` — `RenderTargetBitmap` non vincolata — risolta (Sprint 4).**
+**E. `PassaggioConsegnePdfExporter` — `RenderTargetBitmap` non vincolata — risolta (Sprint 4), modulo poi rimosso (§6.1-duodecies).**
 Era: `RenderTargetBitmap` Pbgra32 della dimensione piena del rapportino, 4 byte per pixel in un blocco
 contiguo (quindi Large Object Heap) — ~48 MB per un rapportino 3000×4000, con rischio di fallimento su
 macchine a poca RAM. Ora un tetto di 8 milioni di pixel riduce i DPI di render in modo proporzionale
 **solo oltre la soglia**: per i rapportini ordinari l'immagine è identica a prima. Vedi §6.1-sexies.
 
-**F. `VerificheViewModel.GetVerificheForFleetStatic` — fallback sincrono — risolta (Sprint 4).**
+**F. `VerificheViewModel.GetVerificheForFleetStatic` — fallback sincrono — risolta (Sprint 4), modulo poi rimosso (§6.1-duodecies).**
 Era: aprendo "Passaggio di Consegne" prima di "Verifiche", il costruttore di
 `PassaggioConsegneViewModel` eseguiva sul thread UI il caricamento completo di 3 flotte (enumerazione
-ricorsiva OneDrive + parsing Excel), con freeze di secondi. Ora la lettura è su `Task.Run` e solo
-l'applicazione dei risultati resta sul dispatcher (`AutoCompilaTreniDaVerificheAsync`). Vedi §6.1-sexies.
+ricorsiva OneDrive + parsing Excel), con freeze di secondi. Diventata sincrona su `Task.Run`, con solo
+l'applicazione dei risultati sul dispatcher (`AutoCompilaTreniDaVerificheAsync`) — vedi §6.1-sexies.
+`GetVerificheForFleetStatic` (in `VerificheViewModel`, non rimosso) resta comunque disponibile per
+qualunque futuro chiamante che debba leggere le verifiche di una flotta senza I/O sul thread UI.
 
 **G. `HomeViewModel.OnLogDumpRete` — risoluzione percorsi di rete sul thread UI — risolta (Sprint 4).**
 `GetLogDumpReteBasePath()` e `ResolveTrainTypePath()` sono ora eseguite su thread pool insieme
@@ -1711,9 +2080,10 @@ all'enumerazione degli ZIP, con overlay di attesa. Vedi §6.1-sexies.
 **H. `MainWindow.xaml` — `DropShadowEffect` sulla navbar — risolta (Sprint 2).**
 Era un effetto a pixel shader su un `Border` a tutta larghezza (`Opacity="0.05"`, appena percettibile).
 Rimosso; il bordo inferiore del `Border` (`BorderThickness="0,0,0,1"`) resta a marcare la navbar.
-Non toccati gli altri usi di `DropShadowEffect` nell'app (`PassaggioConsegneView` — sulla stessa
-`RapportinoSheetBorder` catturata per il PDF, quindi parte dello stile del documento esportato, non
-solo chrome UI — e le viste email/dialog): non auditati in questa sessione, lasciati come sono.
+Non toccati gli altri usi di `DropShadowEffect` nell'app (era presente anche in `PassaggioConsegneView`
+— sulla stessa `RapportinoSheetBorder` catturata per il PDF, quindi parte dello stile del documento
+esportato, non solo chrome UI, ma la vista è stata rimossa nello Sprint 10, §6.1-duodecies — e nelle
+viste email/dialog): non auditati in questa sessione, lasciati come sono.
 
 **I. `RenderOptions.BitmapScalingMode="HighQuality"` — valutata e scartata, non "da fare" (Sprint 2).**
 Verificato (ricerca su tutti gli `.xaml`): l'app **non ha alcun elemento `<Image>`**. MaterialDesign
@@ -1762,7 +2132,10 @@ all'interfaccia, rivalutare a quel punto.
       percorso ETR1000 I-F), 12 Tier 2 (`FileOperationRetryTests`, **lock reali del file system** e
       riprova su violazione di condivisione), 5 Tier 2 (`DatabaseManagerLockTests`, rilascio
       deterministico dell'handle SQLite), 11 Tier 1 (`HomeViewModelTests`, prefisso "SR" in Aggiorna
-      Ticket) — **181 in tutto**. Restano
+      Ticket) — **181 in tutto** (erano 212: i 31 test del modulo PASSAGGIO DI CONSEGNE — 23 Tier 1 in
+      `PassaggioConsegneViewModelTests`/`PassaggioConsegneModelsTests`/`RowFilledEmptyToNoConverterTests`
+      + 8 Tier 1 in `BoolToSiNoConverterTests` — sono stati rimossi insieme al modulo nello Sprint 10,
+      §6.1-duodecies). Restano
       da coprire: `ExtractLocosFromFolder`, `BuildSubject`, `AreTrainTypesCompatible`, `MatchesTrain`
       (Tier 1, non dipendono da `LogDumpFolderName`, possono procedere in parallelo a §6.3); Tier 3
       (COM) non affrontato, dipende da 1.7 (wrapper Outlook), rimandato. **Non testata da xUnit** (per costruzione, sono WPF): `RenamePreviewDialog` e
@@ -1947,3 +2320,18 @@ non può proteggerle. Ogni modifica al parsing va verificata su casi reali presi
     lo spostamento dei file, e che "Annulla ultima rinomina" continui a funzionare subito dopo — è
     l'unica rete di sicurezza rimasta contro un parsing sbagliato, ora che la conferma preventiva non
     c'è più.
+28. ~~**PASSAGGIO DI CONSEGNE** (§6.1-undecies)~~ — **obsoleto: il modulo è stato rimosso nello
+    Sprint 10 (§6.1-duodecies)** in vista di una riscrittura da zero: non esiste più alcuna UI su cui
+    eseguire queste tre verifiche. Lasciato qui solo perché, se la riscrittura riproporrà gli stessi tre
+    comportamenti (data odierna forzata, checkbox nascoste nell'export PDF, fallback "No" limitato alle
+    righe compilate — vedi "Cosa resta utile per la riscrittura" in §6.1-duodecies), la checklist
+    originale è un buon punto di partenza:
+    (a) impostare `Data` a una data passata, chiudere e riaprire l'app: alla riapertura
+    "Data" deve mostrare il giorno corrente, non quello lasciato prima della chiusura; (b) in
+    "Dettaglio interventi", spuntare qualche checkbox e generare il PDF ("Passaggio di consegne"):
+    aprire il PDF e verificare che compaia **solo** il testo "Sì"/"No", senza alcun quadratino di
+    checkbox visibile, e che a schermo (prima e dopo l'export) la UI resti quella di sempre, senza
+    sfarfallii percepibili durante la generazione; (c) nella tabella Movimenti, verificare che le
+    righe con Treno/Loco compilati (es. dall'autocompilazione da VERIFICHE) mostrino "No" nelle
+    colonne Data/Ora Ingresso e Data/Ora Uscita finché non vengono compilate a mano, mentre le righe
+    ancora del tutto vuote restino vuote anche in quelle colonne.

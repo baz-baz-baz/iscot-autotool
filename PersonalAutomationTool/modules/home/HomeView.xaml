@@ -59,8 +59,7 @@
                      righe: come in VerificheView, ScrollUnit resta il default "Item" (non "Pixel")
                      perché il RowDetailsTemplate sottostante (sottocartelle espandibili) rende le
                      righe ad altezza variabile, e lo scorrimento a pixel farebbe ballare la maniglia
-                     della scrollbar. A differenza di PassaggioConsegneView, questa griglia non viene
-                     mai catturata via RenderTargetBitmap: virtualizzarla è sicura. -->
+                     della scrollbar. -->
                 <DataGrid Grid.Row="2" ItemsSource="{Binding PendingItems}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}" AutoGenerateColumns="False" CanUserAddRows="False"
                           HeadersVisibility="Column" Background="White" RowBackground="White" AlternatingRowBackground="#FAFAFA"
                           BorderBrush="#EEEEEE" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#EEEEEE"
