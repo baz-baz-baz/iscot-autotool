@@ -220,9 +220,13 @@ namespace PersonalAutomationTool.Modules.Home
 
             try
             {
-                // Usa OldTicket come "Ticket 1" e NewTicket come "Ticket 2"
-                string? ticket1 = OldTicket?.Trim();
-                string? ticket2 = NewTicket?.Trim();
+                // Usa OldTicket come "Ticket 1" e NewTicket come "Ticket 2". Normalizzati con il
+                // prefisso "SR": l'utente compila questi campi con il solo numero (es. "1234567"),
+                // ma il valore sostituisce l'intero primo token del nome di cartella, che su disco è
+                // "SR1234567" (invariante §5.1, grammatica SR{ticket} {LOG|DUMP} ...). Senza
+                // normalizzazione il prefisso spariva dal nome risultante.
+                string ticket1 = NormalizeTicketPrefix(OldTicket);
+                string ticket2 = NormalizeTicketPrefix(NewTicket);
 
                 if (string.IsNullOrWhiteSpace(ticket1) && string.IsNullOrWhiteSpace(ticket2))
                     return;
@@ -310,6 +314,32 @@ namespace PersonalAutomationTool.Modules.Home
             {
                 System.Diagnostics.Debug.WriteLine($"Errore aggiornamento ticket: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Garantisce il prefisso "SR" richiesto dalla grammatica dei nomi di sottocartella
+        /// (invariante §5.1 di PROJECT_MEMORY.md: <c>SR{ticket} {LOG|DUMP} {tipo} {loco} {software}
+        /// {ddMMyy} {utente}</c>). L'utente compila i campi "Cambio ticket" con il solo numero, non
+        /// con il token completo di cartella: senza normalizzazione quel numero sostituiva l'intero
+        /// primo token del nome esistente, facendo sparire "SR" dal risultato.
+        /// <list type="bullet">
+        /// <item>"1234567" → "SR1234567" (prefisso assente, aggiunto).</item>
+        /// <item>"SR1234567" → "SR1234567" (già presente, non duplicato).</item>
+        /// <item>"sr1234567" → "SR1234567" (presente ma non in maiuscolo: normalizzato, perché il
+        /// resto della grammatica cerca il marcatore "SR" con maiuscole esatte, senza
+        /// <c>IgnoreCase</c> — vedi <c>LogDumpFolderName.FolderPrefixRegex</c>).</item>
+        /// </list>
+        /// </summary>
+        internal static string NormalizeTicketPrefix(string? ticket)
+        {
+            string trimmed = ticket?.Trim() ?? string.Empty;
+            if (trimmed.Length == 0) return trimmed;
+
+            string withoutPrefix = trimmed.StartsWith("SR", StringComparison.OrdinalIgnoreCase)
+                ? trimmed[2..]
+                : trimmed;
+
+            return "SR" + withoutPrefix;
         }
 
         private async void OnAggiornaData(object? parameter)

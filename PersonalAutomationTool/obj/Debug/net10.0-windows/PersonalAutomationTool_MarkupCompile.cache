@@ -12,7 +12,7 @@ TRACE;DEBUG;NET;NET10_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_O
 C:\Users\peli\Documents\GitHub\iscot-autotool\PersonalAutomationTool\main\App.xaml
 22-184878646
 
-55-637065797
+56-1358245308
 2311271337490
 core\Controls\ProgressOverlay.xaml;core\Dialogs\RenamePreviewDialog.xaml;main\MainWindow.xaml;modules\cartelle\CartelleView.xaml;modules\database\DatabaseView.xaml;modules\destinatari_mail\DestinatariMailView.xaml;modules\destinatari_mail\RubricaDialog.xaml;modules\email\dialogs\ChiusuraTicketDialog.xaml;modules\email\EmailView.xaml;modules\email\trains\E404PView.xaml;modules\email\trains\ETR1000FHView.xaml;modules\email\trains\ETR1000IFView.xaml;modules\email\trains\ETR1000View.xaml;modules\email\trains\ETR421View.xaml;modules\email\trains\ETR521View.xaml;modules\email\trains\ETR522View.xaml;modules\email\trains\ETR700View.xaml;modules\excel\ExcelView.xaml;modules\home\HomeView.xaml;modules\passaggio_consegne\PassaggioConsegneView.xaml;modules\pdf\PdfView.xaml;modules\verifiche\VerificheView.xaml;
 

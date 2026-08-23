@@ -23,10 +23,18 @@
 > a 1. Chiude lo **Sprint 5** (§6.1-septies), audit di **integrità strutturale** del Report Interventi:
 > verificato che il percorso di scrittura attuale (Excel Interop) è già non distruttivo — in tutto il
 > codice non esiste un solo `SaveAs()` di ClosedXML — più `ReportInterventiWriter` (OpenXML chirurgico,
-> non sostituisce Interop) e 30 test che ispezionano il pacchetto OpenXML parte per parte.
+> non sostituisce Interop) e 30 test che ispezionano il pacchetto OpenXML parte per parte. Chiude lo
+> **Sprint 6** (§6.1-octies): fix del percorso Hitachi per ETR1000 I-F ("ETR1000 ITA-FRA" →
+> "ETR1000 ITA-FR", il nome reale su disco), segnalato a runtime dal committente — **azione richiesta
+> anche sulla macchina reale**, vedi §6.1-octies. Chiude lo **Sprint 7** (§6.1-nonies): risolto il bug
+> intermittente "file in uso" su *Riporta report* — causa reale `FileShare.ReadWrite` senza
+> `FileShare.Delete`, più guardia anti-ricaricamento estesa, riprova con backoff e diagnostica
+> specifica. Chiude lo **Sprint 8** (§6.1-decies), due correzioni mirate su richiesta del
+> committente: prefisso `"SR"` ripristinato in "Aggiorna Ticket" (HOME) e dialog di anteprima
+> rimosso dalla rinomina PDF (l'overlay e lo storico su `renamer_log` restano invariati).
 > **Stato build alla chiusura sessione:** `dotnet build` sull'intera `.sln` → 0 errori, 0 warning su
 > `PersonalAutomationTool` e `PersonalAutomationTool.Tests` (i 2 warning residui sono preesistenti nello
-> scratch `TestClosedXML`, fuori scope — vedi §6.5). `dotnet test` → **149/149 superati**. L'eseguibile è
+> scratch `TestClosedXML`, fuori scope — vedi §6.5). `dotnet test` → **181/181 superati**. L'eseguibile è
 > stato avviato manualmente per verificare l'assenza di eccezioni allo startup — vedi la nota su cosa
 > **non** è stato verificato in §6.1-ter. **Da leggere prima di toccare il modulo EXCEL: §5.3-bis**
 > (ETR1000 / ETR1000FH / ETR1000IF sono tre treni distinti; solo in EXCEL i primi due condividono il
@@ -1291,6 +1299,239 @@ fallirebbe se qualcuno introducesse un salvataggio ClosedXML sul percorso del re
 **Build/test:** `dotnet build` → 0 errori, 0 warning (stessi 2 NU1510 preesistenti in
 `TestClosedXML`). `dotnet test` → **149/149 superati** (119 preesistenti + 30 di integrità).
 
+### 6.1-octies Sprint 6 — fix percorso Hitachi ETR1000 I-F ("ITA-FRA" → "ITA-FR")
+
+Il committente ha segnalato a runtime l'errore *"Cartella Hitachi non trovata:
+C:\Users\peli\Hitachi Group\SSB_SST - Interventi ETR1000\ETR1000 ITA-FRA"*: la cartella reale su
+disco si chiama **"ETR1000 ITA-FR"**, senza la "A" finale.
+
+**Causa:** `HitachiPathsManager.CreateDefaultConfig()` (§6.1, intervento 2.3 dello Sprint 1) conteneva
+il segmento di percorso sbagliato fin dalla sua introduzione. Non un refactoring che ha rotto qualcosa
+di funzionante: il valore era **già** sbagliato quando è stato estratto dal codice duplicato di
+`ExecuteSpostaReport`/`ExecuteRiportaReport` — l'estrazione ha copiato fedelmente un errore
+preesistente, senza introdurne uno nuovo. Nessun test lo copriva: la build e i 149 test restavano
+verdi perché nessuno asseriva sul *contenuto* della configurazione di default, solo sul suo
+comportamento strutturale.
+
+**Corretto in due punti**, entrambi necessari:
+1. `HitachiPathsManager.cs` — il valore di default usato quando `hitachi_paths.json` non esiste.
+2. Il file `hitachi_paths.json` **già generato** in questo ambiente di sviluppo
+   (`PersonalAutomationTool/bin/Debug/net10.0-windows/`), che altrimenti avrebbe continuato a
+   contenere il valore vecchio: la cache legge dal file se esiste, e lo rigenera dal default **solo**
+   se manca. Questo file non è tracciato in git (non risulta né come modificato né come nuovo in
+   `git status`): è un artefatto di build locale, non un file distribuito con l'app.
+
+**`ExecuteSpostaReport` ed `ExecuteRiportaReport` non richiedevano modifiche**: entrambi già
+costruiscono i propri percorsi (`Path.Combine(hitachiDir, "OLD Report")` per l'archiviazione,
+`Path.Combine(hitachiDir, newFileName)` per il ripristino) a partire da `hitachiDir`, senza un
+proprio riferimento hardcoded a "ITA-FRA" — la correzione della sola fonte del percorso li corregge
+entrambi per costruzione. Verificato leggendo entrambi i metodi, non assunto.
+
+**Deliberatamente non toccato — con motivo, non per svista.** `ExcelViewModel.MatchesTrain`
+contiene due controlli `fileName.Contains("ITA-FRA", ...)` (righe ~1574 e ~1583), usati per
+riconoscere a quale flotta appartiene un **nome di file di report** (`"Report Interventi*.xls*"`),
+non il nome della cartella Hitachi. È un contesto diverso: un nome di file è testo libero scelto da
+chi lo salva, non vincolato al nome della cartella che lo contiene, e non c'è alcuna evidenza che
+quella stringa sia sbagliata nello stesso modo. La logica è inoltre già in OR con altri marcatori
+(`Italia`, `Francia`, `I-F`, `1000IF`): anche se "ITA-FRA" non trovasse mai corrispondenza, gli altri
+bastano a riconoscere la flotta — non è un difetto funzionale, solo un'alternativa potenzialmente
+inerte. Toccarla senza un file reale su cui verificare sarebbe stato estendere la correzione oltre
+l'evidenza disponibile.
+
+> ⚠️ **Da fare sulla macchina reale del tecnico, non copribile da questa sessione.** Se
+> `hitachi_paths.json` esiste già nella cartella dell'eseguibile installato (probabile: è così che si
+> è manifestato l'errore), la correzione del codice sorgente **non lo corregge retroattivamente** —
+> quel file, una volta creato, non viene più rigenerato dal default. Va **cancellato** (si rigenera da
+> solo al prossimo avvio con il valore corretto) oppure **modificato a mano**, cambiando
+> `"ETR1000 ITA-FRA"` in `"ETR1000 ITA-FR"` nella voce `"Train": "ETR1000 I-F"`.
+
+**4 test** in `HitachiPathsManagerTests.cs` (nuovo — prima non esisteva copertura per questa classe):
+regressione mirata sul percorso "ITA-FR" risultante, verifica che la cartella I-F sia annidata sotto
+la stessa base di "ETR1000 / 1000FH" (un errore qui manderebbe Sposta/Riporta Report nell'albero
+sbagliato), treno non configurato → `null`, presenza di tutte e quattro le voci di default.
+
+**Build/test:** `dotnet build` → 0 errori, 0 warning. `dotnet test` → **153/153 superati**
+(149 preesistenti + 4 nuovi).
+
+### 6.1-nonies Sprint 7 — bug intermittente "file in uso" su Riporta report
+
+Il committente ha segnalato un errore **intermittente** cliccando "Riporta report": il file non può
+essere caricato perché risulta in uso da un altro processo.
+
+#### Causa individuata: `FileShare.ReadWrite` non concede il diritto di **eliminazione**
+
+`LoadExcelFieldsAsync` (e la lettura dell'ultima riga in `ExecuteScriviReport`) aprivano il report
+con `FileShare.ReadWrite`. Quella combinazione consente ad altri processi di **leggere e scrivere** il
+file, ma **non** di eliminarlo o rinominarlo — e `File.Move` richiede sul file di origine proprio il
+diritto di eliminazione. Finché uno di quegli stream era aperto, lo spostamento falliva con
+`ERROR_SHARING_VIOLATION` (HRESULT `0x80070020`).
+
+**Perché intermittente.** Lo stream non è quasi mai aperto: viene aperto solo mentre si (ri)carica il
+report. Ma il ricaricamento può partire da solo, per un evento di `AppWatcher` — che scatta su
+**qualunque** modifica dentro `LOG & DUMP`, incluse quelle non correlate — e la finestra di
+sovrapposizione con il clic dell'utente su "Riporta report" è di poche centinaia di millisecondi.
+Da qui il comportamento apparentemente casuale.
+
+**Seconda causa concorrente:** il flag di guardia `_isWritingReport`, che impedisce a
+`CheckAndLoadExistingReportAsync` di riaprire il file, copriva **solo** "Scrivi report". "Riporta
+report" e "Sposta report" ne erano scoperti — proprio le due operazioni che spostano il file.
+
+#### Correzioni applicate
+
+1. **`FileShare.ReadWrite | FileShare.Delete`** nei tre punti che aprono un file Excel in lettura
+   (`LoadExcelFieldsAsync`, `ExecuteScriviReport`, `VerificheExcelReader`). Su Windows l'handle
+   segue il file, non il percorso: lo stream resta valido anche se il file viene spostato mentre lo
+   si legge — verificato da un test, non assunto.
+2. **Guardia estesa**: `_isWritingReport` rinominato `_isReportFileOperationInProgress` e attivato
+   anche in `ExecuteSpostaReport` ed `ExecuteRiportaReport`, con rilascio nel `finally`.
+3. **`FileOperationRetry`** (`core/FileOperationRetry.cs`): riprova con backoff esponenziale
+   (200→400→800→1600 ms, 5 tentativi, ~3 s complessivi) **solo** sulle violazioni di condivisione
+   (codici Win32 32 e 33). Un file mancante o un accesso negato per permessi non migliorano
+   aspettando: rilanciano subito, senza far perdere secondi all'utente. Applicato a `File.Move` di
+   "Riporta report" e a `File.Copy`/`File.Move` di "Sposta report". Durante le riprove l'overlay
+   mostra "File temporaneamente in uso, nuovo tentativo N di 5...".
+4. **Diagnostica specifica**: se tutti i tentativi falliscono, un `catch` filtrato mostra quale file
+   è bloccato, il percorso completo e le tre cause più probabili (Excel aperto, sincronizzazione
+   OneDrive in corso, antivirus/indicizzatore) — invece del solo messaggio di sistema, che non indica
+   né il file né una via d'uscita.
+5. **`DatabaseManager.Dispose` → `SqliteConnection.ClearPool`**: `Microsoft.Data.Sqlite` mantiene un
+   pool, quindi `Close()`/`Dispose()` restituiscono la connessione al pool **senza** chiudere
+   l'handle nativo sul `.db` né i collaterali `-wal`/`-shm`. Il rilascio è ora deterministico. Costo
+   trascurabile: gli accessi al database sono già rari e brevi, perché `FlotteCache` tiene l'intera
+   tabella in memoria (§6.1-bis).
+
+#### Sul ".db" citato nella segnalazione — nessuna evidenza che sia la causa
+
+La segnalazione menzionava un blocco "da un file .db". **Non è stata trovata evidenza che il database
+sia coinvolto nel lock del report**, e i due file non hanno alcun rapporto: `train_software.db` sta in
+`{BaseDirectory}\modules\database\`, il report sta fra `LOG & DUMP` (Desktop) e la cartella Hitachi;
+`ExecuteRiportaReport` non esegue alcuna query. In questo ambiente il progetto risiede in
+`Documents\GitHub\`, **fuori** da OneDrive (`OneDrive - Iscot Italia S.p.A` è un percorso distinto):
+i `.db` non sono quindi sincronizzati. Il `ClearPool` è stato comunque applicato perché è corretto in
+sé e chiude un rilascio non deterministico reale, **ma non è la correzione del bug segnalato**: quella
+è il punto 1.
+
+> ⚠️ **Da verificare sulla macchina del tecnico**, dove l'installazione potrebbe trovarsi altrove: se
+> la cartella dell'eseguibile è dentro un percorso sincronizzato (OneDrive/SharePoint, o `Documenti`
+> reindirizzato con Known Folder Move), i file `.db`, `-wal` e `-shm` vengono continuamente toccati
+> dal client di sincronizzazione. In quel caso **spostare l'installazione fuori dalla cartella
+> sincronizzata** è la soluzione corretta: isolare il solo database (per esempio in `%LOCALAPPDATA%`)
+> è possibile ma cambierebbe dove `DatabaseView` legge e scrive e dove finiscono i dati distribuiti
+> con l'app — una decisione di prodotto, non un dettaglio tecnico, da prendere esplicitamente.
+
+#### Test — 17 nuovi, con lock reali del file system
+
+`FileOperationRetryTests` (12): il test cardine apre un file con `FileShare.ReadWrite` e verifica che
+`File.Move` **fallisca** con violazione di condivisione (riproduce la causa del bug), poi che con
+`FileShare.Delete` **riesca** anche a stream aperto, con lo stream ancora leggibile dopo lo
+spostamento. Più: riconoscimento delle eccezioni riprovabili e non, riprova che riesce dopo il
+rilascio, propagazione dopo l'ultimo tentativo, errore non riprovabile che **non** attende (misurato
+con cronometro), backoff che raddoppia davvero, variante sincrona, contenuto del messaggio
+diagnostico, e una prova end-to-end con un lock vero rilasciato da un altro thread dopo 250 ms.
+
+`DatabaseManagerLockTests` (5): dopo `Dispose` il `.db` può essere spostato ed eliminato, non restano
+`-wal`/`-shm`, dieci aperture consecutive non accumulano handle. Include una **controprova**: con il
+`DatabaseManager` ancora aperto lo spostamento deve fallire — senza di essa gli altri test non
+proverebbero nulla, perché passerebbero anche se il rilascio non funzionasse.
+
+#### Test instabile individuato e corretto durante la sessione
+
+Una singola esecuzione della suite ha mostrato **1 fallimento non riproducibile** (169/170), poi
+scomparso. Un test che fallisce a intermittenza è un difetto del test, non rumore: indagato invece di
+ignorato. Il candidato per costruzione era `HitachiPathsManagerTests`, l'unica classe che manipola
+**stato globale** — il file `hitachi_paths.json` nella cartella di output condivisa più la cache
+statica di `HitachiPathsManager` — mentre xUnit esegue in parallelo classi di collection diverse.
+Isolata con `[Collection("SharedBaseDirectoryState")]`, che la serializza rispetto a chiunque altro
+dichiari la stessa collection. **Cinque esecuzioni consecutive successive: 170/170 ogni volta.**
+Non essendo stato possibile catturare il nome del test fallito prima che il sintomo sparisse, la
+correlazione restava la spiegazione più probabile ma non provata in quella sessione.
+> **Aggiornamento, Sprint 8 (§6.1-decies): causa reale trovata, non era questa.** Ripetendo la
+> suite più volte con log completo per ogni esecuzione, il test che falliva a intermittenza
+> (~3 volte su 8) era in realtà `FileOperationRetryTests.ExecuteAsync_SuFileRealmenteBloccato_RiescQuandoIlLockVieneRilasciato`,
+> non un effetto di `HitachiPathsManagerTests`. Il test avviava il tentativo di spostamento senza
+> attendere che il thread "locker" avesse **davvero** aperto il file: se lo spostamento correva più
+> veloce dell'apertura dello stream, riusciva subito (nessun lock esisteva ancora), e il locker
+> trovava poi il file già spostato — `FileNotFoundException` o `IOException` a seconda del timing
+> esatto, esattamente i due messaggi di errore osservati. Corretto aggiungendo un secondo
+> `ManualResetEventSlim` che segnala l'avvenuta apertura dello stream, atteso prima di avviare la
+> riprova. **12 esecuzioni consecutive dopo la correzione: 181/181 ogni volta** (era ~5/8 prima).
+> L'isolamento di `HitachiPathsManagerTests` in una collection propria resta comunque una buona
+> pratica indipendente e non è stato rimosso, ma non era la causa di quell'episodio.
+
+**Build/test:** `dotnet build` → 0 errori, 0 warning. `dotnet test` → **170/170 superati**
+(153 preesistenti + 17 nuovi), confermati su 5 esecuzioni consecutive. Eseguibile avviato
+manualmente, nessuna eccezione allo startup.
+
+### 6.1-decies Sprint 8 — prefisso "SR" in Aggiorna Ticket + rimozione del dialog di anteprima in PDF
+
+Due modifiche indipendenti richieste dal committente, una per modulo.
+
+#### 1. HOME — "Aggiorna Ticket" perdeva il prefisso "SR"
+
+**Causa.** `HomeViewModel.OnAggiornaTicket` non passa mai da `LogDumpFolderName` (è uno dei 6
+chiamanti ancora non migrati all'intervento 1.1, §6.3): sostituisce direttamente il primo token del
+nome di cartella (`parts[0]`, che su disco è l'intero `"SR1234567"`) con il valore digitato
+nell'omonima casella di testo. L'utente digita però il **solo numero** (`"1234567"`), non l'intero
+token — il prefisso `"SR"` spariva quindi dal nome risultante, violando l'invariante §5.1
+(`SR{ticket} {LOG|DUMP} {tipo} {loco} {software} {ddMMyy} {utente}`).
+
+**Correzione:** `HomeViewModel.NormalizeTicketPrefix(string?)`, funzione pura applicata a `OldTicket`
+e `NewTicket` prima di essere usati come sostituzione. Antepone `"SR"` se assente; se già presente (in
+qualunque combinazione di maiuscole/minuscole) non lo duplica, e lo **normalizza in maiuscolo** —
+necessario perché il resto della grammatica cerca il marcatore `"SR"` con un regex senza
+`IgnoreCase` (`LogDumpFolderName.FolderPrefixRegex`): un `"sr1234567"` digitato dall'utente sarebbe
+altrimenti rimasto non analizzabile dal parser condiviso, pur "sembrando" corretto a vista.
+
+**Deliberatamente non fatto:** migrare `OnAggiornaTicket` a `LogDumpFolderName.TryParse`/`Format` per
+intero. È il refactoring più ampio già rimandato nella roadmap (1.1, §6.3) — qui serviva una
+correzione mirata al sintomo segnalato, non l'occasione per assorbire un intervento più grande e
+rischioso senza che fosse stato richiesto.
+
+**11 test** in `HomeViewModelTests.cs` (nuovo — prima questa classe non aveva copertura): i tre casi
+del committente (assente → aggiunto, presente → non duplicato) più le varianti di maiuscole/minuscole
+(`sr`, `Sr`, `sR` → tutte normalizzate a `SR`), spazi iniziali/finali, valore vuoto o solo spazi →
+stringa vuota (non `"SR"` da solo), e la conferma che applicare la normalizzazione due volte di
+seguito non produce `"SRSR..."`.
+
+#### 2. PDF — rimosso il dialog di conferma prima della rinomina
+
+Rimossa la sola chiamata `RenamePreviewDialog.Confirm(...)` in `PdfView.BtnRinomina_Click`
+(intervento 4.1 dello Sprint 3): la rinomina calcolata da `PdfRenamePlanner` parte ora
+immediatamente alla pressione del pulsante. **Tutto il resto del metodo resta invariato**, per
+richiesta esplicita: l'overlay di avanzamento (`LoadingOverlay`, intervento 4.2) continua a mostrare
+"Rinomina N di M..." durante le due fasi del salvataggio atomico (§5.7), e `RenamerLog.RecordBatch`
+continua a scrivere lo storico su `renamer_log` a operazione completata — quindi "Annulla ultima
+rinomina" (intervento 4.3) resta pienamente funzionante ed è ora l'unica rete di sicurezza contro un
+parsing sbagliato, al posto della conferma preventiva.
+
+`RenamePreviewDialog` **non è stata eliminata** dal codice: resta usata da
+`HomeViewModel.OnAggiornaTicket`/`OnAggiornaData`, non toccate da questa richiesta (limitata al solo
+modulo PDF). Nessun test esistente referenziava la classe dal lato PDF (è WPF, non testabile da
+xUnit per costruzione, §6.5) — non c'era quindi nulla da aggiornare in `PersonalAutomationTool.Tests`
+per questa metà dell'intervento.
+
+#### Effetto collaterale: risolto il test instabile lasciato aperto dallo Sprint 7
+
+La verifica di questa sessione ha riprodotto l'instabilità già notata (non risolta) nello Sprint 7:
+su 8 esecuzioni consecutive della suite, 3 fallivano con un test diverso ogni volta apparentemente
+casuale. Ripetendo con log completo per ogni run, il colpevole si è rivelato sempre lo stesso:
+`FileOperationRetryTests.ExecuteAsync_SuFileRealmenteBloccato_RiescQuandoIlLockVieneRilasciato`
+(§6.1-nonies) — non `HitachiPathsManagerTests`, come ipotizzato senza prova nello sprint precedente.
+**Causa:** una race condition nel test stesso, non nel codice applicativo. Il thread che avrebbe
+dovuto bloccare il file veniva avviato con `Task.Run` ma il test tentava lo spostamento subito dopo,
+senza attendere che quel thread avesse *davvero* aperto lo stream: se lo spostamento vinceva la
+gara, riusciva immediatamente (nessun lock esisteva ancora) e il thread "locker" trovava poi il file
+già spostato — da cui `FileNotFoundException` o `IOException`, a seconda di quale istante esatto
+vincesse. Corretto con un secondo `ManualResetEventSlim` segnalato subito dopo l'apertura dello
+stream, atteso dal thread principale prima di avviare la riprova. **12 esecuzioni consecutive dopo
+la correzione: 181/181 ogni volta** (era ~5/8 prima). Vedi §6.1-nonies per la correzione del
+resoconto: quella sessione aveva applicato un rimedio (isolare `HitachiPathsManagerTests` in una
+collection propria) che non era sbagliato in sé ma non era la causa del sintomo osservato.
+
+**Build/test:** `dotnet build` → 0 errori, 0 warning. `dotnet test` → **181/181 superati**
+(170 preesistenti + 11 nuovi), confermati su 12 esecuzioni consecutive. Eseguibile avviato
+manualmente, nessuna eccezione allo startup.
+
 ### 6.2 Le 4 macro-aree della roadmap strategica
 
 Elaborata come risposta alla domanda "se fossi il Lead Architect, cosa faresti dopo l'audit
@@ -1517,7 +1758,11 @@ all'interfaccia, rivalutare a quel punto.
       9 Tier 1 (`VerificheViewModelTests`, deduplicazione radici), 21 Tier 2
       (`VerificheExcelReaderTests`, **equivalenza SAX ↔ ClosedXML** su file .xlsx reali), 30 Tier 2
       (`ReportInterventiWriterTests`, **integrità strutturale** del pacchetto OpenXML su un .xlsm con
-      VBA, convalide, filtri e tabelle) — **149 in tutto**. Restano
+      VBA, convalide, filtri e tabelle), 4 Tier 2 (`HitachiPathsManagerTests`, regressione sul
+      percorso ETR1000 I-F), 12 Tier 2 (`FileOperationRetryTests`, **lock reali del file system** e
+      riprova su violazione di condivisione), 5 Tier 2 (`DatabaseManagerLockTests`, rilascio
+      deterministico dell'handle SQLite), 11 Tier 1 (`HomeViewModelTests`, prefisso "SR" in Aggiorna
+      Ticket) — **181 in tutto**. Restano
       da coprire: `ExtractLocosFromFolder`, `BuildSubject`, `AreTrainTypesCompatible`, `MatchesTrain`
       (Tier 1, non dipendono da `LogDumpFolderName`, possono procedere in parallelo a §6.3); Tier 3
       (COM) non affrontato, dipende da 1.7 (wrapper Outlook), rimandato. **Non testata da xUnit** (per costruzione, sono WPF): `RenamePreviewDialog` e
@@ -1678,3 +1923,27 @@ non può proteggerle. Ogni modifica al parsing va verificata su casi reali presi
     corrotto: è un intervallo (`C2:C100`, il range della tabella, ecc.) che non arriva fino a quella
     riga e va esteso una volta sola nel template aziendale. Verificare inoltre che le macro
     funzionino ancora e che il file resti `.xlsm`.
+24. **EXCEL / percorso ETR1000 I-F** (§6.1-octies) ⭐ *richiede un'azione sulla macchina reale, non
+    solo la nuova build* → sulla macchina del tecnico, individuare `hitachi_paths.json` accanto
+    all'eseguibile: se esiste già, cancellarlo (si rigenera da solo al prossimo avvio) oppure aprirlo
+    e cambiare a mano `"ETR1000 ITA-FRA"` in `"ETR1000 ITA-FR"` nella voce `"ETR1000 I-F"` — la nuova
+    build da sola **non corregge** un file già generato in precedenza. Poi selezionare `ETR1000 I-F`
+    ed eseguire "Sposta Report" e "Riporta Report": entrambi devono risolvere la cartella corretta
+    senza più l'errore "Cartella Hitachi non trovata".
+25. **EXCEL / "file in uso" su Riporta report** (§6.1-nonies) → ripetere il flusso completo più volte
+    di seguito (Sposta → compila → Scrivi → Riporta), possibilmente mentre OneDrive sta
+    sincronizzando: l'errore intermittente non deve più comparire. Se ricomparisse, il messaggio ora
+    indica **quale file** è bloccato e le cause probabili: annotarlo così com'è, perché dice se il
+    blocco viene da Excel, dalla sincronizzazione o da altro — informazione che il messaggio
+    precedente non dava. Verificare inoltre che, se il file è davvero aperto in Excel, dopo circa 3
+    secondi di tentativi compaia il messaggio diagnostico e non un errore generico.
+26. **HOME / prefisso "SR"** (§6.1-decies) → in "Cambio ticket", digitare un ticket **senza** "SR"
+    (es. `1234567`) e premere "Aggiorna ticket": i nomi di sottocartella risultanti devono iniziare
+    con `SR1234567`, non con `1234567` nudo. Ripetere digitando il ticket **con** "SR" già presente
+    (es. `SR1234567`): il risultato deve essere identico, senza `SRSR1234567`.
+27. **PDF / rinomina immediata** (§6.1-decies) ⭐ *modifica a comportamento visibile, voluta* →
+    premendo "Rinomina" su una cartella madre, l'operazione deve partire **subito**, senza alcun
+    dialog di conferma intermedio. Verificare che l'overlay di avanzamento compaia comunque durante
+    lo spostamento dei file, e che "Annulla ultima rinomina" continui a funzionare subito dopo — è
+    l'unica rete di sicurezza rimasta contro un parsing sbagliato, ora che la conferma preventiva non
+    c'è più.

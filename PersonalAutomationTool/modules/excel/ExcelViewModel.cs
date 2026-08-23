@@ -87,7 +87,20 @@ namespace PersonalAutomationTool.Modules.Excel
         }
 
         private string? _currentExcelFilePath;
-        private bool _isWritingReport = false;
+
+        /// <summary>
+        /// Vero mentre è in corso un'operazione che scrive o sposta il file del report
+        /// (<c>Scrivi report</c>, <c>Sposta report</c>, <c>Riporta report</c>). Blocca
+        /// <see cref="CheckAndLoadExistingReportAsync"/>, che altrimenti — su un evento di
+        /// <c>AppWatcher</c>, che scatta anche per modifiche non correlate in <c>LOG &amp; DUMP</c> —
+        /// riaprirebbe in lettura proprio il file che stiamo spostando.
+        /// <para>
+        /// Copriva in origine il solo "Scrivi report" (da cui il nome precedente
+        /// <c>_isWritingReport</c>): "Riporta report" restava scoperto, ed è lì che si manifestava
+        /// l'errore intermittente di file in uso.
+        /// </para>
+        /// </summary>
+        private bool _isReportFileOperationInProgress = false;
 
         public ExcelViewModel()
         {
@@ -110,6 +123,11 @@ namespace PersonalAutomationTool.Modules.Excel
 
         private async void ExecuteSpostaReport(object? parameter)
         {
+            // Stessa guardia di "Riporta report": anche qui si copia e si sposta il file del report
+            // fra una cartella sincronizzata e LOG & DUMP, quindi un ricaricamento concorrente
+            // scatenato da AppWatcher lo terrebbe aperto durante lo spostamento.
+            _isReportFileOperationInProgress = true;
+
             IsLoading = true;
             LoadingMessage = "Spostamento report in corso...";
             try
@@ -200,8 +218,12 @@ namespace PersonalAutomationTool.Modules.Excel
                         string copyDestination = Path.Combine(targetFolder, fileName);
                         movedFile = Path.Combine(AppConfig.LogAndDumpFolder, fileName);
 
-                        File.Copy(originalFile, copyDestination, true);
-                        File.Move(originalFile, movedFile, true);
+                        // Riprova su violazione di condivisione: l'origine è la cartella Hitachi
+                        // sincronizzata, dove il client di sync può agganciare il file per brevi
+                        // istanti. Variante sincrona perché siamo già dentro un Task.Run.
+                        string source = originalFile;
+                        Core.FileOperationRetry.Execute(() => File.Copy(source, copyDestination, true));
+                        Core.FileOperationRetry.Execute(() => File.Move(source, movedFile, true));
                     }
                 });
 
@@ -232,6 +254,14 @@ namespace PersonalAutomationTool.Modules.Excel
                     MessageBox.Show("Report spostato e campi caricati con successo!", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
+            catch (Exception ex) when (Core.FileOperationRetry.IsSharingViolation(ex))
+            {
+                IsLoading = false;
+                await Task.Delay(100);
+                MessageBox.Show(
+                    Core.FileOperationRetry.BuildDiagnosticMessage(_currentExcelFilePath ?? "Report Interventi", ex),
+                    "File in uso", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
             catch (Exception ex)
             {
                 IsLoading = false;
@@ -240,6 +270,7 @@ namespace PersonalAutomationTool.Modules.Excel
             }
             finally
             {
+                _isReportFileOperationInProgress = false;
                 IsLoading = false;
             }
         }
@@ -253,7 +284,12 @@ namespace PersonalAutomationTool.Modules.Excel
                 var fields = await Task.Run(() => 
                 {
                     var result = new List<ExcelFieldViewModel>();
-                    using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                    // FileShare.Delete oltre a ReadWrite: senza di esso, finché questo stream resta
+                    // aperto Windows rifiuta qualunque rinomina o spostamento del file, perché
+                    // File.Move richiede sul file di origine il diritto di eliminazione. Era la causa
+                    // dell'errore intermittente su "Riporta report": un ricaricamento scatenato da
+                    // AppWatcher poteva tenere il report aperto proprio mentre lo si spostava.
+                    using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
                     using var workbook = new XLWorkbook(fs);
                     var worksheet = workbook.Worksheets.FirstOrDefault();
                     if (worksheet == null) return result;
@@ -513,7 +549,7 @@ namespace PersonalAutomationTool.Modules.Excel
         {
             try
             {
-                if (_isWritingReport) return;
+                if (_isReportFileOperationInProgress) return;
                 IsLoading = true;
                 LoadingMessage = "Caricamento report in corso...";
                 FormFields.Clear();
@@ -1192,14 +1228,16 @@ namespace PersonalAutomationTool.Modules.Excel
             LoadingMessage = "Scrittura report in corso...";
             try
             {
-                _isWritingReport = true;
+                _isReportFileOperationInProgress = true;
                 var fieldsData = FormFields.Select(f => f.FieldValue).ToList();
                 int targetRow = 1;
 
                 await Task.Run(() => 
                 {
                     // 1. Usa ClosedXML per trovare l'ultima riga reale in modo veloce e preciso, ignorando spazi vuoti o formattazione.
-                    using var fs = new FileStream(_currentExcelFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                    // FileShare.Delete: vedi la nota in LoadExcelFieldsAsync — senza, questo stream
+                    // bloccherebbe rinomine e spostamenti del report finché resta aperto.
+                    using var fs = new FileStream(_currentExcelFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
                     using var workbook = new XLWorkbook(fs);
                     var ws = workbook.Worksheets.FirstOrDefault();
                     if (ws != null)
@@ -1395,7 +1433,7 @@ namespace PersonalAutomationTool.Modules.Excel
             }
             finally
             {
-                _isWritingReport = false;
+                _isReportFileOperationInProgress = false;
                 IsLoading = false;
             }
         }
@@ -1414,6 +1452,10 @@ namespace PersonalAutomationTool.Modules.Excel
                     MessageBox.Show("Nessun file Excel caricato.", "Errore", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
+
+                // Impedisce ad AppWatcher di far riaprire in lettura il report proprio mentre lo
+                // stiamo spostando: è la condizione di gara che rendeva l'errore intermittente.
+                _isReportFileOperationInProgress = true;
 
                 IsLoading = true;
                 LoadingMessage = "Ripristino report in corso...";
@@ -1486,18 +1528,35 @@ namespace PersonalAutomationTool.Modules.Excel
                 }
 
                 string destinationPath = Path.Combine(hitachiDir, newFileName);
+                string sourcePath = _currentExcelFilePath;
 
-                await Task.Run(() => 
-                {
-                    File.Move(_currentExcelFilePath, destinationPath, true);
-                });
+                // Riprova su violazione di condivisione con backoff esponenziale: la destinazione è
+                // una cartella sincronizzata, dove il client OneDrive/SharePoint può agganciare il
+                // file per centinaia di millisecondi. Un solo tentativo falliva, il successivo riesce.
+                IProgress<(int Attempt, int DelayMs)> retryProgress = new Progress<(int Attempt, int DelayMs)>(p =>
+                    LoadingMessage = $"File temporaneamente in uso, nuovo tentativo {p.Attempt + 1} di {Core.FileOperationRetry.DefaultMaxAttempts}...");
+
+                await Core.FileOperationRetry.ExecuteAsync(
+                    () => File.Move(sourcePath, destinationPath, true),
+                    onRetry: (attempt, delayMs) => retryProgress.Report((attempt, delayMs)));
 
                 IsLoading = false;
                 await Task.Delay(100);
                 MessageBox.Show($"Report riportato con successo nella cartella d'origine come:\n{newFileName}", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
-                
+
                 _currentExcelFilePath = null;
                 FormFields.Clear();
+            }
+            catch (Exception ex) when (Core.FileOperationRetry.IsSharingViolation(ex))
+            {
+                // Diagnostica specifica: dice quale file è bloccato e cosa fare, invece del solo
+                // messaggio di sistema ("Impossibile accedere al file perché è utilizzato da un
+                // altro processo"), che non indica né il file né una via d'uscita.
+                IsLoading = false;
+                await Task.Delay(100);
+                MessageBox.Show(
+                    Core.FileOperationRetry.BuildDiagnosticMessage(_currentExcelFilePath ?? string.Empty, ex),
+                    "File in uso", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             catch (Exception ex)
             {
@@ -1507,6 +1566,7 @@ namespace PersonalAutomationTool.Modules.Excel
             }
             finally
             {
+                _isReportFileOperationInProgress = false;
                 IsLoading = false;
             }
         }

@@ -55,7 +55,10 @@ namespace PersonalAutomationTool.Modules.Verifiche
         /// </summary>
         internal static List<VerificaRow> Read(string filePath)
         {
-            using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            // FileShare.Delete oltre a ReadWrite: i file Verifiche stanno in cartelle sincronizzate,
+            // dove il client OneDrive può doverli sostituire o rinominare mentre li stiamo leggendo.
+            // Senza questo flag la nostra lettura farebbe fallire quelle operazioni.
+            using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             using var document = SpreadsheetDocument.Open(stream, isEditable: false);
 
             var workbookPart = document.WorkbookPart;

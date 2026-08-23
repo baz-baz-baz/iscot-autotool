@@ -42,6 +42,25 @@ namespace PersonalAutomationTool.Modules.Database
             }
         }
 
+        /// <summary>
+        /// Chiude e rilascia la connessione **in modo deterministico**, svuotando anche il pool.
+        ///
+        /// <para>
+        /// <b>Perché non basta <c>Dispose()</c>.</b> <c>Microsoft.Data.Sqlite</c> mantiene un pool di
+        /// connessioni: chiudere una <see cref="SqliteConnection"/> la restituisce al pool invece di
+        /// chiudere davvero l'handle nativo sul file <c>.db</c>. L'handle resta quindi aperto, e con
+        /// esso gli eventuali file collaterali <c>-wal</c> e <c>-shm</c>. Finché è così, il file
+        /// risulta in uso per qualunque altro processo — compreso il client OneDrive/SharePoint, che
+        /// non riesce a sincronizzarlo o lo segnala in conflitto.
+        /// </para>
+        ///
+        /// <para>
+        /// <see cref="SqliteConnection.ClearPool"/> forza la chiusura effettiva. Il costo è
+        /// trascurabile qui: gli accessi al database sono già rari e di breve durata
+        /// (<c>FlotteCache</c> tiene l'intera tabella in memoria, §6.1-bis), quindi non stiamo
+        /// annullando un'ottimizzazione che serviva davvero.
+        /// </para>
+        /// </summary>
         public void Dispose()
         {
             lock (_dbLock)
@@ -52,6 +71,11 @@ namespace PersonalAutomationTool.Modules.Database
                     {
                         _connection.Close();
                     }
+
+                    // Prima di Dispose: dopo, la connessione non è più utilizzabile come argomento.
+                    try { SqliteConnection.ClearPool(_connection); }
+                    catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"ClearPool non riuscita: {ex.Message}"); }
+
                     _connection.Dispose();
                     _connection = null;
                 }

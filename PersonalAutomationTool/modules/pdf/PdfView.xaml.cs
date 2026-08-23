@@ -5,7 +5,6 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using PersonalAutomationTool.Core;
-using PersonalAutomationTool.Core.Dialogs;
 using PersonalAutomationTool.Modules.Pdf.Models;
 
 namespace PersonalAutomationTool.Modules.Pdf
@@ -125,14 +124,11 @@ namespace PersonalAutomationTool.Modules.Pdf
                         return;
                 }
 
-                // Anteprima "vecchio nome -> nuovo nome" (intervento 4.1, Sprint 3): unica difesa
-                // reale contro un parsing sbagliato prima che diventi un file mal nominato, senza
-                // richiedere che il parser sia perfetto (vedi §6 di PROJECT_MEMORY.md).
-                if (!RenamePreviewDialog.Confirm(Window.GetWindow(this), plan.MoveOperations))
-                {
-                    return;
-                }
-
+                // Il dialog di anteprima (intervento 4.1, Sprint 3) è stato rimosso su richiesta
+                // esplicita del committente: la rinomina parte subito alla pressione del pulsante,
+                // senza passaggio di conferma intermedio. La difesa contro un parsing sbagliato resta
+                // "Annulla ultima rinomina" (BtnAnnullaRinomina_Click), che si appoggia allo stesso
+                // storico scritto qui sotto — vedi PROJECT_MEMORY.md §6.1-decies.
                 var tempOps = new System.Collections.Generic.List<(string Old, string Temp, string New)>();
                 foreach (var (oldPath, newPath) in plan.MoveOperations)
                 {

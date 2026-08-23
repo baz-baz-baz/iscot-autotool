@@ -145,7 +145,10 @@ namespace PersonalAutomationTool.Core
                 new() { Train = "ETR700", RelativePath = new List<string> { "Hitachi Group", "SSB_SST - INTERVENTI ETR700 ELO BL3" } },
                 new() { Train = "E404P", RelativePath = new List<string> { "Hitachi Group", "SSB_SST - Interventi ETR500", "REPORT INTERVENTI NAPOLI - MILANO" } },
                 new() { Train = "ETR1000 / 1000FH", RelativePath = new List<string> { "Hitachi Group", "SSB_SST - Interventi ETR1000" } },
-                new() { Train = "ETR1000 I-F", RelativePath = new List<string> { "Hitachi Group", "SSB_SST - Interventi ETR1000", "ETR1000 ITA-FRA" } }
+                // "ETR1000 ITA-FR" (senza la "A" finale): nome reale della cartella su disco,
+                // confermato dal committente dopo l'errore "Cartella Hitachi non trovata" — il
+                // valore precedente, "ETR1000 ITA-FRA", non corrisponde a nessuna cartella esistente.
+                new() { Train = "ETR1000 I-F", RelativePath = new List<string> { "Hitachi Group", "SSB_SST - Interventi ETR1000", "ETR1000 ITA-FR" } }
             };
         }
     }
