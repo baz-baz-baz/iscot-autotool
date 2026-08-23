@@ -17,7 +17,7 @@
 > aperta per due sprint, è **risolta**.
 > **Stato build alla chiusura sessione:** `dotnet build` sull'intera `.sln` → 0 errori, 0 warning su
 > `PersonalAutomationTool` e `PersonalAutomationTool.Tests` (i 2 warning residui sono preesistenti nello
-> scratch `TestClosedXML`, fuori scope — vedi §6.5). `dotnet test` → **64/64 superati**. L'eseguibile è
+> scratch `TestClosedXML`, fuori scope — vedi §6.5). `dotnet test` → **88/88 superati**. L'eseguibile è
 > stato avviato manualmente per verificare l'assenza di eccezioni allo startup — vedi la nota su cosa
 > **non** è stato verificato in §6.1-ter. **Da leggere prima di toccare il modulo EXCEL: §5.3-bis**
 > (ETR1000 / ETR1000FH / ETR1000IF sono tre treni distinti; solo in EXCEL i primi due condividono il
@@ -456,7 +456,9 @@ precisa, non per svista.
 | `shortcuts.json` | `ETR1000` | `ETR1000FH` | `ETR1000IF` |
 | VERIFICHE (cartelle Hitachi) | `Interventi ETR1000` | `Interventi ETR1000FH` | `Interventi ETR1000IF` |
 | `flotte`, colonna `tipo` | `ETR1000` (116 righe) | `ETR1001FH` (2 righe) | `ETR1000 I-F` (18 righe) |
+| Nome nelle cartelle su disco | `ETR1000` | `ETR1001FH` | `ETR1000IF` (attaccato) |
 | **EXCEL** | \| ← **stesso Report Interventi**, voce `ETR1000 / 1000FH` → \| | | `ETR1000 I-F` (report proprio, `maxCol` 24) |
+| Voce nel menu ROTABILE del report | `ETR1000` | `ETR1001FH` | *(assente: foglio separato)* |
 
 **Regola operativa.** In EXCEL, ETR1000 e FH condividono report, cartella Hitachi
 (`SSB_SST - Interventi ETR1000`) e opzioni del form: la voce unica di ComboBox è **corretta**, non va
@@ -945,20 +947,27 @@ ETR1000 pura. **Nessuna regressione possibile:** se il foglio non offre un'opzio
 variante (report che elenca solo `"ETR 1000"`), la funzione restituisce `null` e valgono esattamente
 i criteri di selezione preesistenti.
 
-**39 test Tier 1** in `Modules/Excel/ExcelFolderParserTests.cs`, tutti su funzioni pure: i 4 nomi reali
+**Le opzioni reali del menu ROTABILE sono state confermate dal committente** (screenshot del foglio):
+il Report Interventi ETR1000 espone **esattamente due voci, `ETR1000` e `ETR1001FH`**, senza spazi
+interni e senza alcuna voce Italia-Francia (che ha il proprio foglio, `maxCol` 24). Questo rende il fix
+**attivo e non inerte su dati reali**: prima entrambe le flotte ottenevano `ETR1000`, perché la
+selezione prendeva la prima opzione contenente quella sottostringa. Da notare, verificato da un test
+dedicato: `"ETR1001FH"` **non** contiene la sottostringa `"IF"` (non ha alcuna lettera `I`), quindi non
+viene scambiata per la variante Italia-Francia; ed è riconosciuta come appartenente alla famiglia
+ETR1000 tramite il token `ETR1001`, non `ETR1000`. Per un tipo I-F su questo foglio la funzione
+restituisce `null` — meglio nessuna scelta che la voce `ETR1000`, che sarebbe il rotabile sbagliato.
+
+**44 test Tier 1** in `Modules/Excel/ExcelFolderParserTests.cs`, tutti su funzioni pure: i 4 nomi reali
 (ticket e loco, via `[Theory]`), tipo e `LOG`/`DUMP` sugli stessi 4, software non confuso con la loco,
 esclusione delle forme I-F dall'etichetta non-I-F **e** viceversa, ordinamento dei token per lunghezza
 decrescente, non-cattura della loco di una cartella I-F sotto l'etichetta non-I-F, invarianza di
 `ETR700` (che già funzionava), nomi fuori grammatica → `null`, le due guardie ticket/loco non numerici,
-il riconoscimento della variante FH come tipo distinto da `ETR1000`, e i casi ROTABILE nelle due
-direzioni (FH non prende `ETR 1000`; ETR1000 puro non prende `ETR 1000 FH`) più il caso "foglio senza
-varianti → nessun cambiamento".
+il riconoscimento della variante FH come tipo distinto da `ETR1000`, i casi ROTABILE nelle due
+direzioni (FH non prende `ETR1000`; ETR1000 puro non prende la variante FH) **sulle opzioni reali del
+foglio**, e il caso "foglio senza varianti → nessun cambiamento".
 
-> ⚠️ **Limite noto sui nomi FH.** Il committente ha fornito nomi di cartella reali solo per `ETR1000`
-> ed `ETR1000IF`. Per la variante FH i test usano `ETR1001FH` — che **non è inventato**, è il valore
-> reale della colonna `tipo` in `flotte` — e la forma alternativa `1000FH`. Se le cartelle FH reali
-> usassero un token diverso, quei test vanno aggiornati con quello: **portare un nome di cartella FH
-> reale** è il tassello mancante per chiudere del tutto questa verifica.
+**Token FH confermato dal committente:** le cartelle della variante FH usano `ETR1001FH`, lo stesso
+valore della colonna `tipo` in `flotte`. I test coprono anche la forma alternativa `1000FH`.
 
 **Build/test:** `dotnet build` → 0 errori, 0 warning (stessi 2 NU1510 preesistenti in `TestClosedXML`).
 `dotnet test` → **64/64 superati**.
@@ -1186,7 +1195,8 @@ all'interfaccia, rivalutare a quel punto.
       (§6.1/§6.1-bis/§6.1-ter/§6.1-quater): 19 test Tier 1 (`LogDumpFolderName`), 11 Tier 2
       (`PdfRenamePlanner`, alberi di cartelle reali), 2 golden-file (`EmailService.BuildHtmlBody`),
       5 Tier 2 (`DatabaseManagerTests`, SQLite temporaneo reale), 7 Tier 2 (`RenamerLogTests`, idem),
-      39 Tier 1 (`ExcelFolderParserTests`, sui **nomi di cartella reali**) — **83 in tutto**. Restano
+      44 Tier 1 (`ExcelFolderParserTests`, sui **nomi di cartella e opzioni di report reali**) —
+      **88 in tutto**. Restano
       da coprire: `ExtractLocosFromFolder`, `BuildSubject`, `AreTrainTypesCompatible`, `MatchesTrain`
       (Tier 1, non dipendono da `LogDumpFolderName`, possono procedere in parallelo a §6.3); Tier 3
       (COM) non affrontato, dipende da 1.7 (wrapper Outlook), rimandato. **Non testata da xUnit** (per costruzione, sono WPF): `RenamePreviewDialog` e
@@ -1316,10 +1326,9 @@ non può proteggerle. Ogni modifica al parsing va verificata su casi reali presi
     che una cartella I-F **non** compaia nell'elenco sotto l'etichetta non-I-F e viceversa (le due
     flotte scrivono su report con numero di colonne diverso, §5.4). Verificare che `ETR700` ed `E404P`,
     che già funzionavano, diano esattamente gli stessi valori di prima.
-20. **EXCEL / ROTABILE** (§5.3-bis, §6.1-quater) ⭐ *modifica a comportamento visibile* → selezionare
-    `ETR1000 / 1000FH` e aprire **una cartella FH**: il campo `ROTABILE` deve ora proporre il rotabile
-    FH e **non più** `ETR 1000`. Poi aprire una cartella **ETR1000 pura** sotto la stessa voce e
-    verificare che proponga `ETR 1000` e non la variante FH. Se il menu a tendina ROTABILE del report
-    non ha una voce FH distinta, il valore deve restare identico a prima (nessuna regressione):
-    annotare quali opzioni contiene davvero quel menu, perché è l'informazione che manca per chiudere
-    la verifica.
+20. **EXCEL / ROTABILE** (§5.3-bis, §6.1-quater) ⭐ *modifica a comportamento visibile, con effetto
+    reale sul report* → il menu ROTABILE ha due voci, `ETR1000` e `ETR1001FH`. Selezionare
+    `ETR1000 / 1000FH` e aprire **una cartella FH**: il campo deve ora proporre **`ETR1001FH`** —
+    prima proponeva sempre `ETR1000`, cioè il rotabile sbagliato scritto nel report ufficiale. Poi
+    aprire una cartella **ETR1000 pura** sotto la stessa voce e verificare che proponga `ETR1000` e
+    non la variante FH. È la verifica che dimostra il valore concreto dell'intero intervento.

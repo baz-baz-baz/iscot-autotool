@@ -288,6 +288,44 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
             Assert.Equal("ETR 1000", ExcelFolderParser.SelectRotabileOption(senzaVarianti, "ETR1000"));
         }
 
+        /// <summary>
+        /// Le opzioni <b>reali</b> del menu a tendina ROTABILE del Report Interventi ETR1000,
+        /// confermate dal committente con uno screenshot del foglio: esattamente due voci, senza
+        /// spazi interni. Sono il caso che conta davvero — gli altri test usano una lista più ricca
+        /// per esercitare anche la variante I-F, che su questo report non compare.
+        /// </summary>
+        private static readonly string[] RotabileOptionsReali = ["ETR1000", "ETR1001FH"];
+
+        [Theory]
+        [InlineData("ETR1000", "ETR1000")]
+        [InlineData("ETR1001FH", "ETR1001FH")]
+        [InlineData("1000FH", "ETR1001FH")]
+        public void SelectRotabileOption_SuOpzioniRealiDelReport_ScegliLaVoceDelTrenoReale(string actualType, string expected)
+        {
+            // Prima della correzione entrambi i tipi ottenevano "ETR1000": la selezione partiva
+            // dall'etichetta della ComboBox e prendeva la prima opzione contenente "ETR1000", cioè
+            // sempre la voce sbagliata per una cartella FH.
+            Assert.Equal(expected, ExcelFolderParser.SelectRotabileOption(RotabileOptionsReali, actualType));
+        }
+
+        [Fact]
+        public void SelectRotabileOption_OpzioniReali_Etr1001FhNonVieneScambiataPerItaliaFrancia()
+        {
+            // "ETR1001FH" non contiene la sottostringa "IF" (nessuna lettera I): verificato qui
+            // perché un falso positivo manderebbe la cartella FH sul ramo Italia-Francia.
+            Assert.False(ExcelFolderParser.IsItaliaFranciaType("ETR1001FH"));
+            Assert.Equal("ETR1001FH", ExcelFolderParser.SelectRotabileOption(RotabileOptionsReali, "ETR1001FH"));
+        }
+
+        [Fact]
+        public void SelectRotabileOption_OpzioniReali_TipoIFNonTrovaCorrispondenzaEnonRipiegaSuEtr1000()
+        {
+            // Questo report non ha una voce Italia-Francia (ha il proprio foglio, maxCol 24): meglio
+            // nessuna scelta che la voce ETR1000, che sarebbe il rotabile sbagliato. Il chiamante
+            // ricade sui criteri preesistenti.
+            Assert.Null(ExcelFolderParser.SelectRotabileOption(RotabileOptionsReali, "ETR1000IF"));
+        }
+
         [Fact]
         public void SelectRotabileOption_SenzaTipoRealeOSenzaOpzioni_RestituisceNull()
         {
