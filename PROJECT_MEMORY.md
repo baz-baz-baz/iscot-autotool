@@ -57,12 +57,21 @@
 > di root (`ep_test.cs`, `test.cs`), i log di build committati e i `.DS_Store`; **669 artefatti di build
 > tolti dal tracking Git** (restano su disco). Da 805 a 97 file tracciati. `MatchesTrain` — che
 > `TestClosedXML` era l'unico a verificare — è stata portata in xUnit **prima** della cancellazione.
+> Chiude infine lo **Sprint 12** (§6.1-quaterdecies): **riscrittura da zero del modulo PASSAGGIO
+> CONSEGNE**, sulla base del template Excel reale "rapportino di turno.xlsx" fornito dal committente.
+> Tre schede (ETR 500 / ETR 700 / ETR 1000), MVVM con dipendenze iniettate, e soprattutto **PDF
+> vettoriale disegnato da uno snapshot immutabile** invece della cattura `RenderTargetBitmap` della
+> vista: la scelta che da sola chiude le criticità **C, D, E ed F** di §6.4 e rende il modulo
+> testabile: da 0 a **84 test**. Una correzione dopo segnalazione del committente: il nome
+> dell'azione dei destinatari doveva essere quello storico `"Passaggio di consegne"`, non uno nuovo —
+> vedi il riquadro in §6.1-quaterdecies.
 > **Stato build alla chiusura sessione:** `dotnet clean` + `dotnet build` sull'intera `.sln` → **0 errori
 > e 0 warning assoluti** (non più "0 salvo i 2 preesistenti in `TestClosedXML`": quel progetto non
-> esiste più, e con esso i 2 NU1510 — vedi §6.1-terdecies). `dotnet test` → **202/202 superati**
-> (181 dopo la rimozione del modulo, +21 per la nuova copertura di `MatchesTrain`).
-> L'eseguibile non è stato riavviato manualmente in questa sessione: le modifiche sono rimozione di
-> codice morto e di file non compilati, senza nuova superficie da verificare a schermo.
+> esiste più, e con esso i 2 NU1510 — vedi §6.1-terdecies). `dotnet test` → **286/286 superati**.
+> Vista verificata a runtime con un harness WPF usa-e-getta (fuori dal repository): le tre schede si
+> rendono senza eccezioni e **senza alcun errore di binding**. **Non verificati in questo ambiente:**
+> l'aspetto del PDF a schermo (manca un rasterizzatore) e la bozza Outlook (manca Office) — vedi la
+> checklist al punto 29 di §7.1.
 > **Da leggere prima di toccare il modulo EXCEL: §5.3-bis**
 > (ETR1000 / ETR1000FH / ETR1000IF sono tre treni distinti; solo in EXCEL i primi due condividono il
 > report).
@@ -90,7 +99,7 @@ generazione di email Outlook precompilate e produzione del rapportino di turno.
 | Gestire l'anagrafica destinatari per treno/azione, con rubrica | **DESTINATARI MAIL** |
 | Consultare/editare i database SQLite locali | **DATABASE** |
 | Vedere le verifiche aperte estratte dai file Excel di flotta | **VERIFICHE** |
-| Compilare ed esportare in PDF il rapportino di turno + email | **PASSAGGIO DI CONSEGNE** — ⚠️ **rimosso in questa sessione, in attesa di riscrittura da zero: vedi §6.1-duodecies** |
+| Compilare ed esportare in PDF il rapportino di turno + email | **PASSAGGIO CONSEGNE** (riscritto da zero nello Sprint 12, §6.1-quaterdecies) |
 
 ### Flotte gestite
 `E404P` (ETR500), `ETR700`, `ETR1000`, `ETR1000 I-F` (Italia-Francia / bi-standard KVB),
@@ -117,10 +126,11 @@ iscot-autotool.sln
 │   ├── modules/                     un sottoalbero per modulo funzionale
 │   │   ├── home/  cartelle/  excel/  verifiche/  database/
 │   │   ├── pdf/                  PdfView, PdfRenamePlanner (§6.1-bis, intervento 2.1)
-│   │   ├── destinatari_mail/     (§6.1-duodecies: non genera più le voci "Passaggio di consegne")
+│   │   ├── destinatari_mail/     DestinatariManager (+ seeding azioni, §6.1-quaterdecies)
+│   │   ├── passaggio_consegne/   riscritto da zero nello Sprint 12 (§6.1-quaterdecies):
+│   │   │                         Models, Snapshot, ViewModel, PdfExporter, EmailService,
+│   │   │                         Services (interfacce), View, Assets/logo-isman.png
 │   │   └── email/               EmailService, EmailView, dialogs/, trains/
-│   │       ⚠️ `modules/passaggio_consegne/` **rimosso in questa sessione** (§6.1-duodecies), in
-│   │       attesa della riscrittura da zero del modulo PASSAGGIO DI CONSEGNE
 │   └── modules/database/*.db        train_software.db, emails.db (copiati in output)
 ├── PersonalAutomationTool.Tests/    ← xUnit, ProjectReference verso PersonalAutomationTool.
 │                                       Zero dipendenza da WPF: solo classi pure sotto core/ e
@@ -144,7 +154,8 @@ Ibrido, **non uniforme** — è importante saperlo prima di intervenire:
 
 | Modulo | Pattern usato |
 |---|---|
-| Home, Excel, Verifiche | **MVVM** (`ViewModelBase` + `RelayCommand`, DataContext creato in XAML) — PassaggioConsegne era MVVM anch'esso, ma il modulo è stato rimosso (§6.1-duodecies) |
+| Home, Excel, Verifiche | **MVVM** (`ViewModelBase` + `RelayCommand`, DataContext creato in XAML) |
+| PassaggioConsegne | **MVVM con dipendenze iniettate** — unico modulo dell'app in cui PDF, posta e finestre di dialogo passano da interfacce, quindi l'unico il cui flusso completo è verificabile da xUnit (§6.1-quaterdecies) |
 | Cartelle, PDF, Database, DestinatariMail, RubricaDialog, ChiusuraTicketDialog | **Code-behind** diretto, accesso ai controlli per nome |
 | Email/trains (E404P, ETR700, ETR1000…) | Code-behind sottile che delega a `TrainViewHelper` |
 
@@ -198,10 +209,11 @@ Sottoscrittori: `HomeViewModel`, `ExcelViewModel`, `CartelleView` (Loaded/Unload
 - **più** un `DispatcherTimer` di backstop (60 s dal §6.1 di questa sessione, prima 5 s — vedi §4.1
   per il motivo per cui questa scansione è comunque su thread pool) che riscandaglia 5 alberi di
   cartelle confrontando le date di modifica, come rete di sicurezza per eventi persi dai watcher;
-- espone `static VerificheViewModel? Instance` e l'evento statico `OnVerificheDataUpdated`,
-  a cui si agganciava `PassaggioConsegneViewModel` per auto-compilare la tabella movimenti — modulo
-  **rimosso** in questa sessione (§6.1-duodecies); l'evento resta comunque generico e disponibile per
-  qualunque futuro sottoscrittore.
+- espone `static VerificheViewModel? Instance` e l'evento statico `OnVerificheDataUpdated`.
+  ⚠️ Il modulo PASSAGGIO CONSEGNE **non si sottoscrive** a questo evento, a differenza della sua prima
+  versione: legge le verifiche una volta all'apertura e poi solo su richiesta esplicita del tecnico.
+  Il motivo è in §6.1-quaterdecies (un aggiornamento automatico sovrascriverebbe gli orari di
+  ingresso/uscita annotati a mano durante il turno) e chiude anche la criticità **D** di §6.4.
 
 ### 2.6 Persistenza
 
@@ -211,7 +223,7 @@ Sottoscrittori: `HomeViewModel`, `ExcelViewModel`, `CartelleView` (Loaded/Unload
 | `emails.db` | idem | `indirizzi_email(id, nome, email, categoria)` — rubrica |
 | `destinatari.json` | `{BaseDirectory}\` | destinatari To/Cc per **treno × azione**; auto-generato al primo avvio |
 | `shortcuts.json` | `{BaseDirectory}\` | macro-testi "Nulla Riscontrato", "SIM-GIT", … per treno |
-| ~~`data\passaggio_consegne.json`~~ | `{BaseDirectory}\data\` | i 3 rapportini di turno (ETR700/1000/500) — **nessun codice la legge/scrive più** dopo la rimozione del modulo (§6.1-duodecies); il file può ancora esistere fisicamente da esecuzioni precedenti (non è stato cancellato, è dato non codice) e conserva il formato `RapportiniDataContainer` per un'eventuale migrazione nella riscrittura |
+| ~~`data\passaggio_consegne.json`~~ | `{BaseDirectory}\data\` | **non più usato da alcun codice.** Il modulo riscritto ha stato **volatile** per richiesta esplicita del committente: riparte vuoto a ogni avvio e non salva nulla su disco (§6.1-quaterdecies). Un file residuo da versioni precedenti è inerte e può essere cancellato |
 | `info_ticket.json` | dentro ogni cartella madre di `LOG & DUMP` | avvisi/avarie/interventi per locomotore |
 | `hitachi_paths.json` | `{BaseDirectory}\` | cartella Hitachi base per treno, usata da `ExcelViewModel` (Sposta/Riporta Report); auto-generato al primo avvio — vedi §6.1 |
 
@@ -231,10 +243,10 @@ aggiornati (supporta inserimento/modifica/eliminazione righe dal vivo).
 
 | Integrazione | Dove | Uso |
 |---|---|---|
-| **Outlook** (`Outlook.Application`) | `EmailService` (~~`PassaggioConsegneEmailService`, rimosso §6.1-duodecies~~) | crea `MailItem`, forza l'`Inspector` per ottenere la firma, inserisce il corpo HTML **prima** della firma, allega i PDF, `Display(false)` |
+| **Outlook** (`Outlook.Application`) | `EmailService`, `OutlookRapportinoMailService` | crea `MailItem`, forza l'`Inspector` per ottenere la firma, inserisce il corpo HTML **dentro** la firma via `EmailService.ComponiCorpoConFirma` (funzione pura condivisa, §6.1-quaterdecies), allega i PDF, `Display(false)` |
 | **Excel** (`Excel.Application`) | `ExcelViewModel.ExecuteScriviReport` | scrive la nuova riga del report **in modo nativo** per non alterare formattazione/struttura; PID del processo tracciato per terminazione forzata di sicurezza se `Quit()` non basta (§6.1-bis, intervento 1.4) |
 | **ClosedXML** | Excel, Verifiche | sola **lettura** (intestazioni, data validation, ultima riga compilata, parsing verifiche) |
-| **PdfSharp** | PdfView (~~PassaggioConsegnePdfExporter, rimosso §6.1-duodecies~~) | conteggio pagine PDF |
+| **PdfSharp** | PdfView, `PassaggioConsegnePdfExporter` | conteggio pagine PDF; **disegno vettoriale** del rapportino di turno (non più cattura bitmap — §6.1-quaterdecies). Richiede `GlobalFontSettings.UseWindowsFontsUnderWindows = true`: in PDFsharp 6 senza quella riga `XFont` non risolve alcun carattere |
 
 > Excel è usato **due volte con due tecnologie diverse nello stesso comando**: ClosedXML per *leggere*
 > l'ultima riga (file rilasciato subito), poi Interop per *scrivere*. È voluto: ClosedXML in scrittura
@@ -1985,6 +1997,148 @@ build — e per giunta era diventato l'unico custode di una verifica che nessun 
 ha reso la sua rimozione più delicata di quanto sembrasse. Per una verifica rapida, un test in
 `PersonalAutomationTool.Tests` costa meno e non lascia sedimenti.
 
+### 6.1-quaterdecies Sprint 12 — riscrittura da zero del modulo PASSAGGIO CONSEGNE
+
+**Contesto.** Lo Sprint 10 (§6.1-duodecies) aveva rimosso il vecchio modulo su richiesta del
+committente. Qui viene ricostruito da zero sulla base del **template Excel reale**
+("rapportino di turno.xlsx"), fornito in questa sessione e prima mai visto: è la fonte di verità della
+struttura, e averlo ha cambiato diverse scelte rispetto alla vecchia implementazione.
+
+#### Struttura letta dal template (fonte di verità)
+
+Il workbook ha 3 fogli operativi — `ETR500`, `ETR700`, `ETR1000` — **identici fra loro tranne il
+sottotitolo di riga 4**. Area di stampa `A1:I34`, `fitToPage` al **63%**, A4 **orizzontale**, centrato.
+
+| Blocco | Righe Excel | Struttura colonne (merge) | Righe dati |
+|---|---|---|---|
+| Intestazione | 1-2 | logo in A; `B1:G1` titolo, `H1` DATA, `I1` valore; riga 2: NOME `B2:C2`, COGNOME `E2:F2`, ORA-INIZIO/FINE `H2`/`I2` | — |
+| Attività richieste da ingegneria | 3-15 | `A` \| `B:C` \| `D:E` \| `F` \| `G` \| `H` \| `I` | **10** |
+| Dettaglio interventi | 16-22 | `A` \| `B:D` \| `E` \| `F` \| `G` \| `H` \| `I` | **5** |
+| Interventi non svolti | 23-34 | `A` \| `B` \| `C:E` \| `F` \| `G` \| `H` \| `I` | **10** |
+
+> ⚠️ **Le etichette sono riprodotte alla lettera dal foglio**, refusi inclusi: `CORRETIVA` (una sola
+> "T"), `CHIUSURA TICKET MAXIMO+ EMAIL` (senza spazio prima del "+"), `COMP.REPORT INTERVENTI` (senza
+> spazio dopo il punto). Il committente le aveva riscritte in forma "corretta" nella richiesta, ma la
+> consegna era *replicare fedelmente* il template: il tecnico deve riconoscere il proprio documento.
+> Se un giorno si volessero correggere, vanno corrette **anche nel foglio Excel**, non solo qui.
+
+#### La decisione strutturale: PDF vettoriale al posto della cattura schermo
+
+La vecchia versione fotografava la vista WPF con `RenderTargetBitmap`. Il nuovo esportatore
+(`PassaggioConsegnePdfExporter`) **disegna** il rapportino con primitive PdfSharp a partire da un
+`RapportinoSnapshot` immutabile. Non è un dettaglio realizzativo: è la scelta da cui discende quasi
+tutto il resto.
+
+| Problema della prima versione | Come sparisce |
+|---|---|
+| **E** (§6.4) — bitmap Pbgra32 da decine di MB nella Large Object Heap | Non esiste alcuna bitmap. Il PDF campione pesa ~110 KB |
+| **§6.1-bis scoperta #3** — griglie non virtualizzabili, o il PDF avrebbe troncato le righe fuori viewport | Il PDF non guarda le griglie: la virtualizzazione torna una libera scelta di UI |
+| **§6.1-undecies** — flag `IsExporting` che nascondeva le checkbox mutando la UI, con lo sfarfallio inseguito per quattro correzioni | Nessuna proprietà viene alterata per "preparare" la stampa. La regola Si/No è applicata nello snapshot, non a schermo |
+| **F** (§6.4) — I/O VERIFICHE sul thread UI | Lo snapshot è catturato sul dispatcher, il disegno gira su thread pool senza corse con l'utente che digita |
+| Modulo non testabile (richiedeva una finestra WPF) | L'esportatore non tocca WPF: **PDF generato e riaperto dentro xUnit** |
+
+**Impaginazione.** Contenuto disegnato in coordinate "naturali" (larghezza 900) con le proporzioni
+reali delle 9 colonne Excel, poi **una sola trasformazione di scala** lo fa entrare in una pagina,
+centrata — cioè quello che fa Excel con `fitToPage`.
+
+> ⚠️ **Trappola nei test, trovata scrivendoli.** Il primo test asseriva `PageCount == 1`: è **vacuo**.
+> PDFsharp non impagina da solo, quindi un contenuto troppo alto non produce una seconda pagina, viene
+> semplicemente **tagliato al bordo** — il test sarebbe rimasto verde proprio nel caso da intercettare.
+> L'invariante vera è che *larghezza e altezza in scala stiano dentro la pagina*: da qui
+> `CalcolaScala`/`CalcolaIngombro` esposti come `internal` e verificati da 0 a 60 righe per tabella.
+
+**Font.** PDFsharp 6 non presume più una piattaforma: senza
+`GlobalFontSettings.UseWindowsFontsUnderWindows = true` **nessun `XFont` si risolve** e il disegno del
+testo fallisce a runtime. È il tipo di guasto che una build pulita non rivela; è coperto dal test che
+genera davvero il PDF.
+
+#### Le altre scelte, con il loro perché
+
+- **Stato volatile** (richiesta esplicita): nessuna persistenza su disco. Il difetto della data
+  "congelata" all'ultimo salvataggio (§6.1-undecies) non è più possibile *per costruzione*. Entro la
+  sessione lo stato sopravvive alla navigazione, perché `MainWindow` tiene una sola istanza per vista.
+- **Nessuna sottoscrizione a `OnVerificheDataUpdated`.** La prima versione si agganciava all'evento
+  statico e riscriveva la tabella movimenti a ogni cambiamento sui file di flotta: **a metà turno
+  questo cancella senza preavviso le date e gli orari di ingresso/uscita appena annotati a mano**.
+  Ora la lettura avviene una volta all'apertura e poi solo dal pulsante "Aggiorna da VERIFICHE", con
+  conferma esplicita che avverte della sovrascrittura. Chiude anche la criticità **D** di §6.4 (la
+  lambda mai rilasciata), che semplicemente non esiste più.
+- **Le 4 colonne di ingresso/uscita nascono a `"No"`** sulle sole righe popolate da VERIFICHE; le
+  righe inutilizzate restano **completamente vuote**. Nella vecchia versione era un converter di sola
+  visualizzazione; ora è un valore reale nel modello, quindi più semplice e testabile.
+- **Interfacce iniettate** (`IRapportinoPdfExporter`, `IRapportinoMailService`, `INotificaUtente`) più
+  una funzione per le VERIFICHE. È l'unico modulo dell'app costruito così, ed è la ragione per cui il
+  flusso "Genera Mail" è verificabile per intero senza aprire Outlook, scrivere su disco o far
+  comparire finestre modali. Risponde anche alla richiesta di un `IMailService` e realizza in piccolo
+  l'intervento **1.7** di §6.2, finora sempre rimandato.
+- **`EmailService.ComponiCorpoConFirma` estratta come funzione pura e condivisa.** La vecchia
+  `PassaggioConsegneEmailService` aveva una propria copia della logica e **violava §5.5**: faceva
+  `HTMLBody = corpo + firma`, cioè esattamente l'anti-pattern che manda la firma in testa all'email.
+  Ora esiste una sola implementazione, usata da entrambi i moduli e coperta da 7 test: l'invariante
+  §5.5 è verificabile per la prima volta senza aprire Outlook.
+- **Chiavi destinatari**: la scheda "ETR 500" usa la chiave **`E404P`** in `destinatari.json` (§5.3).
+  L'azione da cercare è **`"Passaggio di consegne"`** — vedi il riquadro qui sotto.
+
+> ⚠️ **Errore commesso e corretto in questa sessione: il nome dell'azione dei destinatari.**
+> La prima stesura del modulo aveva usato `"Passaggio Consegne"` e, non trovandola, aveva aggiunto a
+> `DestinatariManager` un innesto (`EnsureAzioniRichieste`) che la creava. Ma la voce **esisteva già**
+> in tutti i `destinatari.json` installati, sotto il nome storico `"Passaggio di consegne"`, con gli
+> indirizzi reali personalizzati a mano dal tecnico. Risultato osservato dal committente su
+> screenshot: **due righe quasi identiche** nella schermata DESTINATARI MAIL, e il modulo che usava
+> quella sbagliata.
+>
+> **Correzione:** costante riportata a `"Passaggio di consegne"`, innesto rimosso del tutto,
+> voci ripristinate con il nome storico in `GenerateDefaultConfig` per tutti e 5 i treni.
+> Nessun dato perso: l'innesto agiva solo in memoria, quindi il file su disco non era mai stato
+> riscritto — verificato dopo la correzione.
+>
+> **Lezione, valida oltre questo caso:** una configurazione utente già installata è un'interfaccia
+> con un contratto, non uno spazio vuoto da popolare. Prima di introdurre una chiave nuova va
+> verificato cosa contiene davvero il file sulla macchina di destinazione — qui sarebbe bastato
+> guardarlo. Due nomi che differiscono per una sola parola sono inoltre indistinguibili a colpo
+> d'occhio nella UI, ed è per questo che il difetto è sopravvissuto fino allo screenshot.
+> Protetto ora da `AzioneDestinatariTests` (6 test), che verifica il nome esatto, la risoluzione dei
+> destinatari per tutte e 3 le flotte, e **l'assenza di voci quasi-duplicate**.
+- **Logo.** `Assets/logo-isman.png`, estratto dal template ed **incorporato nell'assembly** con
+  `LogicalName` esplicito (un nome derivato dal percorso si romperebbe in silenzio rinominando la
+  cartella). È decorativo: se manca, il rapportino resta valido.
+
+#### Deviazione dichiarata dalla richiesta: destinatari da SQLite
+
+> La richiesta diceva di leggere i destinatari "dal database SQLite (tabella rubrica/destinatari)
+> filtrata per la specifica flotta". **Non è realizzabile come scritto, e la verifica lo dimostra:**
+> `emails.db` contiene `indirizzi_email(id, nome, email, categoria)` dove `categoria` è
+> l'**organizzazione** ("Hitachi Rail", "Iscot", "ADV Service", "Sovel Rail Traction"), non la flotta.
+> Non esiste alcuna colonna su cui filtrare per ETR 500/700/1000.
+>
+> La mappa **flotta × azione → destinatari To/Cc** vive in `destinatari.json`, gestita da
+> `DestinatariManager` ed editabile dal tecnico nella schermata DESTINATARI MAIL. È quella che il
+> modulo usa. `emails.db` resta la rubrica generica usata da `RubricaDialog`. Se in futuro si volesse
+> davvero spostare i destinatari su SQLite, servirebbe prima aggiungere una dimensione "flotta" allo
+> schema — è una modifica di dati, non di codice.
+
+#### Copertura di test: da 0 a 78
+
+| Suite | Test | Cosa copre |
+|---|---|---|
+| `PassaggioConsegneModelsTests` | 26 | orari dei 4 turni, regola Si/No/vuoto, nozione di "riga compilata", struttura iniziale conforme al template |
+| `PassaggioConsegneViewModelTests` | 24 | tre schede e loro chiavi, raggruppamento VERIFICHE per treno, flusso "Genera Mail" completo, fallimenti di PDF e Outlook, reset |
+| `PassaggioConsegnePdfExporterTests` | 12 | PDF vero su disco, risoluzione dei font, ingombro entro la pagina, celle con testo sproporzionato |
+| `ComponiCorpoConFirmaTests` | 7 | invariante §5.5 (corpo dentro la firma) |
+| `AzioneDestinatariTests` | 6 | nome esatto dell'azione in `destinatari.json`, risoluzione per le 3 flotte, assenza di voci quasi-duplicate (vedi il riquadro sopra) |
+| `PassaggioConsegneSnapshot` (dentro le suite sopra) | 9 | applicazione della regola Si/No al momento della cattura |
+
+**Verifica della vista.** Il XAML è compilato in BAML dalla build, quindi errori di tipo o di sintassi
+farebbero fallire la compilazione; ma **istanziazione, `StaticResource` e binding sono errori di
+runtime**. Sono stati verificati con un harness WPF usa-e-getta creato **fuori dal repository** (nella
+cartella temporanea di sessione, poi cancellato — la lezione di §6.1-terdecies sui progetti scratch che
+sedimentano): carica la vista, la rende, cambia tutte e tre le schede e **intercetta il trace del
+motore di binding**. Esito: nessuna eccezione, **nessun errore di binding**.
+
+**Non verificato in questo ambiente, resta al committente** (punto 29 di §7.1): l'aspetto del PDF —
+manca un rasterizzatore, `convert` su questa macchina è l'utility Windows, non ImageMagick — e la
+bozza Outlook, perché Office non è installato qui.
+
 ### 6.2 Le 4 macro-aree della roadmap strategica
 
 Elaborata come risposta alla domanda "se fossi il Lead Architect, cosa faresti dopo l'audit
@@ -2126,9 +2280,13 @@ Priorità aggiornata dopo lo Sprint 3 (vedi §6.1-ter per il perché di questo o
 > (§6.1-bis); **I** è stata valutata e scartata (non applicabile, non "da fare").
 > **E, F e G sono state risolte nello Sprint 4** (§6.1-sexies): `RenderTargetBitmap` con tetto di
 > pixel, caricamento verifiche fuori dal costruttore di `PassaggioConsegneViewModel`, risoluzione
-> percorsi di rete su thread pool. **D** restava aperta, ma **C, D, E ed F riguardavano codice del
-> modulo PASSAGGIO DI CONSEGNE rimosso nello Sprint 10 (§6.1-duodecies): sono ormai prive di oggetto**,
-> lasciate qui solo come lezione per la riscrittura (vedi "Cosa resta utile" in §6.1-duodecies).
+> percorsi di rete su thread pool.
+> **C, D, E ed F riguardavano tutte il modulo PASSAGGIO CONSEGNE**, rimosso nello Sprint 10 e
+> **riscritto da zero nello Sprint 12** (§6.1-quaterdecies) con un'architettura che le rende impossibili
+> per costruzione: PDF vettoriale generato da uno snapshot immutabile invece della cattura della vista,
+> e nessuna sottoscrizione a eventi statici. **Sono chiuse tutte e quattro** — il testo sotto resta come
+> registro di cosa furono e di perché la nuova architettura le elimina.
+> **Non resta aperta alcuna criticità di questo elenco.**
 
 **C. `ScrollViewer.CanContentScroll="False"`** su HomeView e sui 3 DataGrid di PassaggioConsegne —
 **risolta per HomeView, esclusa per PassaggioConsegneView con motivo tecnico concreto (Sprint 2)**.
@@ -2140,7 +2298,7 @@ viewport dal PDF esportato. Vedi §6.1-bis, scoperta #3, per il dettaglio. **Voc
 (§6.1-duodecies): la scelta tecnica va rivalutata da capo se la riscrittura userà ancora un export a
 bitmap.**
 
-**D. `PassaggioConsegneViewModel` — sottoscrizione statica mai rilasciata (modulo rimosso, §6.1-duodecies)**
+**D. `PassaggioConsegneViewModel` — sottoscrizione statica mai rilasciata — ✅ CHIUSA (§6.1-quaterdecies): il modulo riscritto non si sottoscrive affatto**
 ```csharp
 VerificheViewModel.OnVerificheDataUpdated += () => { … };   // lambda anonima, nessun -=
 ```
@@ -2150,7 +2308,7 @@ prevista una `-=` corrispondente fin dall'inizio. Stesso schema tuttora presente
 (`AppWatcher.OnLogDumpFolderChanged`, mai rimosso; `DispatcherTimer` mai fermato).
 `ExcelViewModel` implementa `IDisposable` ma **nessuno chiama `Dispose()`**: è codice morto.
 
-**E. `PassaggioConsegnePdfExporter` — `RenderTargetBitmap` non vincolata — risolta (Sprint 4), modulo poi rimosso (§6.1-duodecies).**
+**E. `PassaggioConsegnePdfExporter` — `RenderTargetBitmap` — ✅ CHIUSA definitivamente (§6.1-quaterdecies): il PDF è vettoriale, nessuna bitmap viene più allocata.**
 Era: `RenderTargetBitmap` Pbgra32 della dimensione piena del rapportino, 4 byte per pixel in un blocco
 contiguo (quindi Large Object Heap) — ~48 MB per un rapportino 3000×4000, con rischio di fallimento su
 macchine a poca RAM. Ora un tetto di 8 milioni di pixel riduce i DPI di render in modo proporzionale
@@ -2229,8 +2387,12 @@ all'interfaccia, rivalutare a quel punto.
       deterministico dell'handle SQLite), 11 Tier 1 (`HomeViewModelTests`, prefisso "SR" in Aggiorna
       Ticket), 21 Tier 1 (`ExcelViewModelMatchesTrainTests`, §6.1-terdecies: match dei **nomi di file
       report** per flotta, con la separazione ETR1000 ↔ ETR1000 I-F di §5.3-bis in entrambe le
-      direzioni) — **202 in tutto** (erano 212, poi 181 dopo la rimozione dei 31 test del modulo
-      PASSAGGIO DI CONSEGNE nello Sprint 10 §6.1-duodecies, poi 202 con i 21 nuovi dello Sprint 11).
+      direzioni), **84 per il modulo PASSAGGIO CONSEGNE riscritto** (§6.1-quaterdecies: 26
+      `PassaggioConsegneModelsTests`, 24 `PassaggioConsegneViewModelTests` — incluso il flusso
+      "Genera Mail" completo con Outlook e disco finti —, 12 `PassaggioConsegnePdfExporterTests` che
+      generano e riaprono un PDF vero, 7 `ComponiCorpoConFirmaTests` sull'invariante §5.5, più le
+      asserzioni sullo snapshot, 6 `AzioneDestinatariTests`) — **286 in tutto** (212 → 181 dopo la rimozione del vecchio modulo,
+      → 202 con la copertura di `MatchesTrain`, → 286 con il modulo riscritto).
       Restano
       da coprire: `ExtractLocosFromFolder`, `BuildSubject`, `AreTrainTypesCompatible` (Tier 1, non
       dipendono da `LogDumpFolderName`, possono procedere in parallelo a §6.3) — **`MatchesTrain` è
@@ -2308,8 +2470,9 @@ non può proteggerle. Ogni modifica al parsing va verificata su casi reali presi
 4. EMAIL → chiusura ticket su una flotta I-F: verificare oggetto, destinatari, firma **sotto** il corpo.
 5. EXCEL → Sposta Report, verifica autocompilazione, Scrivi report, e **controllare in Gestione
    attività che non resti un processo EXCEL.EXE** (regressione §4.6).
-6. ~~PASSAGGIO CONSEGNE → esportare il PDF e verificare che la bozza Outlook si apra con l'allegato.~~
-   **Non applicabile:** modulo rimosso nello Sprint 10 (§6.1-duodecies), in attesa di riscrittura.
+6. PASSAGGIO CONSEGNE → premere "Genera Mail" e verificare che il PDF venga prodotto e che la bozza
+   Outlook si apra con l'allegato e i destinatari giusti (modulo riscritto, §6.1-quaterdecies:
+   dettagli al punto 29).
 7. **Rotellina** (regressione §4.16) → verificare che: lo scorrimento abbia la stessa velocità in
    HOME, in EXCEL e dentro il dialog Chiusura Ticket (prima dipendeva dalla profondità della UI);
    arrivati a fondo di un elenco interno, il contenitore esterno riprenda a scorrere; nel dialog
@@ -2434,3 +2597,20 @@ non può proteggerle. Ogni modifica al parsing va verificata su casi reali presi
     righe con Treno/Loco compilati (es. dall'autocompilazione da VERIFICHE) mostrino "No" nelle
     colonne Data/Ora Ingresso e Data/Ora Uscita finché non vengono compilate a mano, mentre le righe
     ancora del tutto vuote restino vuote anche in quelle colonne.
+29. **PASSAGGIO CONSEGNE — modulo riscritto** (§6.1-quaterdecies) ⭐ *le due verifiche che questo
+    ambiente non ha potuto fare*. Coperto invece da test automatici, e quindi **da non ri-verificare a
+    mano**: struttura delle tre schede, orari dei turni, regola Si/No/vuoto, raggruppamento da
+    VERIFICHE, ingombro del PDF nella pagina, oggetto ed destinatari passati a Outlook.
+    **(a) Aspetto del PDF** → premere "Genera Mail" su una scheda con qualche riga compilata e aprire
+    il PDF: deve stare su **una sola pagina A4 orizzontale**, riprodurre le tre tabelle del template
+    Excel con le stesse etichette, mostrare il logo in alto a sinistra, e nella tabella "Dettaglio
+    interventi" **non deve comparire alcun quadratino di checkbox** — solo "Si"/"No" sulle righe
+    compilate e **celle del tutto vuote** su quelle non compilate. Stessa regola nella tabella
+    "Interventi non svolti".
+    **(b) Bozza Outlook** → verificare che la bozza si apra **senza inviarsi**, con oggetto
+    "Passaggio Consegne IMC AV Milano {flotta}", il PDF allegato, e **la firma in fondo al messaggio,
+    non in testa**. I destinatari devono essere quelli della voce **"Passaggio di consegne"** già
+    presente in DESTINATARI MAIL: verificare che siano esattamente quelli, e che in quella schermata
+    **non sia comparsa una seconda voce** con nome simile.
+    **(c) Nota su ETR 500** → i destinatari di quella scheda si leggono sotto la voce **`E404P`**, non
+    "ETR500" (§5.3).

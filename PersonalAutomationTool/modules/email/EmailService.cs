@@ -578,33 +578,35 @@ namespace PersonalAutomationTool.Modules.Email
             }
         }
 
-        private static void MergeBodyWithSignature(dynamic mailItem, string bodyContent, string signatureHtml)
+        private static void MergeBodyWithSignature(dynamic mailItem, string bodyContent, string signatureHtml) =>
+            mailItem.HTMLBody = ComponiCorpoConFirma(bodyContent, signatureHtml);
+
+        /// <summary>
+        /// Inserisce il corpo del messaggio <b>dentro</b> l'HTML della firma generata da Outlook,
+        /// subito dopo il tag <c>&lt;body&gt;</c>, così che la firma resti in fondo all'email
+        /// (invariante §5.5 di PROJECT_MEMORY.md). Concatenare corpo e firma manderebbe la firma in
+        /// testa al messaggio.
+        ///
+        /// <para>
+        /// Estratta da <c>MergeBodyWithSignature</c> come funzione pura per due motivi: renderla
+        /// verificabile da xUnit senza Outlook, e poterla riusare da
+        /// <c>PassaggioConsegneEmailService</c> invece di riscriverla. La prima versione del modulo
+        /// PASSAGGIO CONSEGNE aveva infatti la propria copia della logica, e sbagliava proprio qui —
+        /// faceva <c>HTMLBody = corpo + firma</c>, cioè l'anti-pattern che §5.5 mette in guardia.
+        /// </para>
+        /// </summary>
+        internal static string ComponiCorpoConFirma(string bodyContent, string signatureHtml)
         {
-            if (!string.IsNullOrEmpty(signatureHtml))
-            {
-                int bodyIdx = signatureHtml.IndexOf("<body", StringComparison.OrdinalIgnoreCase);
-                if (bodyIdx != -1)
-                {
-                    int closingIdx = signatureHtml.IndexOf('>', bodyIdx);
-                    if (closingIdx != -1)
-                    {
-                        signatureHtml = signatureHtml.Insert(closingIdx + 1, bodyContent);
-                    }
-                    else
-                    {
-                        signatureHtml = bodyContent + signatureHtml;
-                    }
-                }
-                else
-                {
-                    signatureHtml = bodyContent + signatureHtml;
-                }
-                mailItem.HTMLBody = signatureHtml;
-            }
-            else
-            {
-                mailItem.HTMLBody = "<html><body>" + bodyContent + "</body></html>";
-            }
+            if (string.IsNullOrEmpty(signatureHtml))
+                return "<html><body>" + bodyContent + "</body></html>";
+
+            int bodyIdx = signatureHtml.IndexOf("<body", StringComparison.OrdinalIgnoreCase);
+            if (bodyIdx == -1) return bodyContent + signatureHtml;
+
+            int closingIdx = signatureHtml.IndexOf('>', bodyIdx);
+            if (closingIdx == -1) return bodyContent + signatureHtml;
+
+            return signatureHtml.Insert(closingIdx + 1, bodyContent);
         }
 
         private static void AttachPdfFiles(dynamic mailItem, string folderPath, string actionType)

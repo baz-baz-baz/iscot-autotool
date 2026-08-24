@@ -52,4 +52,17 @@
     </None>
   </ItemGroup>
 
+  <!--
+    Logo dell'intestazione del rapportino di turno, estratto dal template Excel di riferimento.
+    Incorporato nell'assembly (non copiato in output) così che PassaggioConsegnePdfExporter non
+    dipenda da un file su disco che potrebbe mancare. LogicalName esplicito: il nome derivato
+    automaticamente dal percorso cambierebbe se la cartella venisse rinominata, rompendo in silenzio
+    il caricamento della risorsa a runtime.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="modules\passaggio_consegne\Assets\logo-isman.png">
+      <LogicalName>PassaggioConsegne.Logo.png</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>

@@ -11,6 +11,7 @@ using PersonalAutomationTool.Modules.Excel;
 using PersonalAutomationTool.Modules.Database;
 using PersonalAutomationTool.Modules.DestinatariMail;
 using PersonalAutomationTool.Modules.Verifiche;
+using PersonalAutomationTool.Modules.PassaggioConsegne;
 
 namespace PersonalAutomationTool
 {
@@ -54,5 +55,6 @@ namespace PersonalAutomationTool
         private void Nav_DestinatariMail(object sender, RoutedEventArgs e) => NavigateTo<DestinatariMailView>();
         private void Nav_Database(object sender, RoutedEventArgs e) => NavigateTo<DatabaseView>();
         private void Nav_Verifiche(object sender, RoutedEventArgs e) => NavigateTo<VerificheView>();
+        private void Nav_PassaggioConsegne(object sender, RoutedEventArgs e) => NavigateTo<PassaggioConsegneView>();
     }
 }

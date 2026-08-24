@@ -1,0 +1,364 @@
+<UserControl x:Class="PersonalAutomationTool.Modules.PassaggioConsegne.PassaggioConsegneView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:PersonalAutomationTool.Modules.PassaggioConsegne"
+             xmlns:controls="clr-namespace:PersonalAutomationTool.Core.Controls"
+             Background="White">
+
+    <UserControl.DataContext>
+        <local:PassaggioConsegneViewModel/>
+    </UserControl.DataContext>
+
+    <UserControl.Resources>
+
+        <!-- Intestazione di colonna mandata a capo: le etichette del template Excel sono lunghe
+             ("CHIUSURA TICKET MAXIMO+ EMAIL") e su una riga sola verrebbero troncate. -->
+        <Style x:Key="IntestazioneAvvolta" TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#F2F2F2"/>
+            <Setter Property="Foreground" Value="#1F2937"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="ContentTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" TextWrapping="Wrap" TextAlignment="Center"/>
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Le tre griglie condividono aspetto e comportamento.
+             CanContentScroll resta False (nessuna virtualizzazione): le tabelle hanno 5-10 righe, e
+             a differenza di HomeView non c'è nulla da guadagnare virtualizzandole. -->
+        <Style x:Key="GrigliaRapportino" TargetType="DataGrid">
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="CanUserDeleteRows" Value="False"/>
+            <Setter Property="CanUserResizeRows" Value="False"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="GridLinesVisibility" Value="All"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#E5E7EB"/>
+            <Setter Property="VerticalGridLinesBrush" Value="#E5E7EB"/>
+            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="RowBackground" Value="White"/>
+            <Setter Property="AlternatingRowBackground" Value="#FAFAFA"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="RowHeaderWidth" Value="0"/>
+            <Setter Property="ColumnHeaderStyle" Value="{StaticResource IntestazioneAvvolta}"/>
+        </Style>
+
+        <!-- Titolo grigio a tutta larghezza delle tre sezioni, come le righe 3/16/23 del foglio. -->
+        <Style x:Key="TitoloSezione" TargetType="Border">
+            <Setter Property="Background" Value="#D9D9D9"/>
+            <Setter Property="BorderBrush" Value="#B8B8B8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Margin" Value="0,16,0,0"/>
+        </Style>
+
+        <Style x:Key="TestoTitoloSezione" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="#1F2937"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style x:Key="EtichettaCampo" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="#374151"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+        </Style>
+
+        <Style x:Key="CampoTesto" TargetType="TextBox">
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Setter Property="Margin" Value="0,0,18,0"/>
+        </Style>
+
+        <Style x:Key="PulsanteAzione" TargetType="Button">
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+            <Setter Property="Background" Value="#F0F0F0"/>
+            <Setter Property="BorderBrush" Value="#CCCCCC"/>
+            <Setter Property="Foreground" Value="#333333"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style x:Key="PulsantePrimario" TargetType="Button" BasedOn="{StaticResource PulsanteAzione}">
+            <Setter Property="Background" Value="#E8F5E9"/>
+            <Setter Property="BorderBrush" Value="#A5D6A7"/>
+            <Setter Property="Foreground" Value="#1B5E20"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <!-- Checkbox centrata: DataGridCheckBoxColumn richiederebbe due clic (il primo seleziona la
+             cella, il secondo spunta). Con un template la spunta avviene al primo clic. -->
+        <Style x:Key="CheckBoxCella" TargetType="CheckBox">
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- ============================================================
+             Contenuto di una scheda: un RapportinoTurno.
+             Le tre schede condividono questo template, esattamente come i tre fogli del
+             template Excel condividono la stessa struttura e differiscono per il sottotitolo.
+             ============================================================ -->
+        <DataTemplate x:Key="TemplateRapportino" DataType="{x:Type local:RapportinoTurno}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16,12,16,16">
+                <StackPanel>
+
+                    <!-- ===== Intestazione: operatore, data, turno ===== -->
+                    <Border Background="#F9FAFB" BorderBrush="#E5E7EB" BorderThickness="1" Padding="14,12" CornerRadius="4">
+                        <StackPanel>
+                            <TextBlock Text="RAPPORTINO TURNO" FontSize="20" FontWeight="Bold"
+                                       Foreground="#111827" Margin="0,0,0,12"/>
+
+                            <WrapPanel>
+                                <TextBlock Text="NOME" Style="{StaticResource EtichettaCampo}"/>
+                                <TextBox Width="150" Style="{StaticResource CampoTesto}"
+                                         Text="{Binding Nome, UpdateSourceTrigger=PropertyChanged}"/>
+
+                                <TextBlock Text="COGNOME" Style="{StaticResource EtichettaCampo}"/>
+                                <TextBox Width="150" Style="{StaticResource CampoTesto}"
+                                         Text="{Binding Cognome, UpdateSourceTrigger=PropertyChanged}"/>
+
+                                <TextBlock Text="DATA" Style="{StaticResource EtichettaCampo}"/>
+                                <DatePicker Width="130" Margin="0,0,18,0" VerticalContentAlignment="Center"
+                                            SelectedDate="{Binding Data, Mode=TwoWay}"/>
+
+                                <TextBlock Text="TURNO" Style="{StaticResource EtichettaCampo}"/>
+                                <ComboBox Width="140" Margin="0,0,18,0" VerticalContentAlignment="Center"
+                                          DisplayMemberPath="Nome"
+                                          ItemsSource="{Binding DataContext.Turni, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                          SelectedItem="{Binding TurnoSelezionato, Mode=TwoWay}"/>
+
+                                <TextBlock Text="ORA INIZIO/FINE" Style="{StaticResource EtichettaCampo}"/>
+                                <TextBox Width="70" Style="{StaticResource CampoTesto}" Margin="0,0,6,0"
+                                         Text="{Binding OraInizio, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBlock Text="-" Style="{StaticResource EtichettaCampo}"/>
+                                <TextBox Width="70" Style="{StaticResource CampoTesto}"
+                                         Text="{Binding OraFine, UpdateSourceTrigger=PropertyChanged}"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ===== Tabella 1: attività richieste da ingegneria ===== -->
+                    <Border Style="{StaticResource TitoloSezione}">
+                        <TextBlock Text="ATTIVITA' RICHIESTE DA INGEGNERIA HR STS" Style="{StaticResource TestoTitoloSezione}"/>
+                    </Border>
+                    <Border Background="#FFFDF5" BorderBrush="#B8B8B8" BorderThickness="1,0,1,1" Padding="10,6">
+                        <TextBlock Text="{Binding Sottotitolo}" FontStyle="Italic" FontWeight="SemiBold"
+                                   FontSize="12" Foreground="#4B5563" TextWrapping="Wrap" TextAlignment="Center"/>
+                    </Border>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,6">
+                        <Button Content="Aggiorna da VERIFICHE" Style="{StaticResource PulsanteAzione}"
+                                Command="{Binding DataContext.AggiornaDaVerificheCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                ToolTip="Ricarica TRENO e LOCO dai file VERIFICHE. Le date/ore inserite a mano andranno perse."/>
+                    </StackPanel>
+
+                    <DataGrid ItemsSource="{Binding Movimenti}" Style="{StaticResource GrigliaRapportino}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="N°" Binding="{Binding Numero}" Width="46" IsReadOnly="True">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="HorizontalAlignment" Value="Center"/>
+                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                        <Setter Property="Foreground" Value="#6B7280"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="TRENO" Binding="{Binding Treno, UpdateSourceTrigger=PropertyChanged}" Width="2*"/>
+                            <DataGridTextColumn Header="LOCO" Binding="{Binding Loco, UpdateSourceTrigger=PropertyChanged}" Width="2*"/>
+                            <DataGridTextColumn Header="DATA INGRESSO" Binding="{Binding DataIngresso, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                            <DataGridTextColumn Header="ORA INGRESSO" Binding="{Binding OraIngresso, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                            <DataGridTextColumn Header="DATA USCITA" Binding="{Binding DataUscita, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                            <DataGridTextColumn Header="ORA USCITA" Binding="{Binding OraUscita, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- ===== Tabella 2: dettaglio interventi ===== -->
+                    <Border Style="{StaticResource TitoloSezione}">
+                        <TextBlock Text="DETTAGLIO INTERVENTI (CORRETIVA, PREVENTIVA, RICHIESTE INGEGNERIA)"
+                                   Style="{StaticResource TestoTitoloSezione}"/>
+                    </Border>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,6">
+                        <Button Content="+ Aggiungi riga" Style="{StaticResource PulsanteAzione}"
+                                Command="{Binding DataContext.AggiungiInterventoCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                        <Button Content="- Rimuovi ultima" Style="{StaticResource PulsanteAzione}"
+                                Command="{Binding DataContext.RimuoviInterventoCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                    </StackPanel>
+
+                    <DataGrid ItemsSource="{Binding Interventi}" Style="{StaticResource GrigliaRapportino}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="TRENO-LOCO" Binding="{Binding TrenoLoco, UpdateSourceTrigger=PropertyChanged}" Width="1.4*"/>
+                            <DataGridTextColumn Header="DESCRIZIONE" Binding="{Binding Descrizione, UpdateSourceTrigger=PropertyChanged}" Width="3*">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextWrapping" Value="Wrap"/>
+                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                                <DataGridTextColumn.EditingElementStyle>
+                                    <Style TargetType="TextBox">
+                                        <Setter Property="TextWrapping" Value="Wrap"/>
+                                        <Setter Property="AcceptsReturn" Value="True"/>
+                                    </Style>
+                                </DataGridTextColumn.EditingElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTemplateColumn Header="COMPILAZIONE ODL" Width="*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox Style="{StaticResource CheckBoxCella}"
+                                                  IsChecked="{Binding CompilazioneOdl, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="CHIUSURA TICKET MAXIMO+ EMAIL" Width="*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox Style="{StaticResource CheckBoxCella}"
+                                                  IsChecked="{Binding ChiusuraTicket, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="COMP.REPORT INTERVENTI" Width="*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox Style="{StaticResource CheckBoxCella}"
+                                                  IsChecked="{Binding CompReport, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="EMAIL AD INGEGNERIA" Width="*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox Style="{StaticResource CheckBoxCella}"
+                                                  IsChecked="{Binding EmailIngegneria, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="AGGIORNARE FILE VERIFICHE" Width="*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox Style="{StaticResource CheckBoxCella}"
+                                                  IsChecked="{Binding AggiornareVerifiche, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- ===== Tabella 3: interventi non svolti ===== -->
+                    <Border Style="{StaticResource TitoloSezione}">
+                        <TextBlock Text="INTERVENTI RICHIESTI DA INGEGNERIA NON SVOLTI SU TRENI IN CANTIERE"
+                                   Style="{StaticResource TestoTitoloSezione}"/>
+                    </Border>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,6">
+                        <Button Content="+ Aggiungi riga" Style="{StaticResource PulsanteAzione}"
+                                Command="{Binding DataContext.AggiungiInterventoNonSvoltoCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                        <Button Content="- Rimuovi ultima" Style="{StaticResource PulsanteAzione}"
+                                Command="{Binding DataContext.RimuoviInterventoNonSvoltoCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                    </StackPanel>
+
+                    <DataGrid ItemsSource="{Binding InterventiNonSvolti}" Style="{StaticResource GrigliaRapportino}"
+                              Margin="0,0,0,20">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="N°" Binding="{Binding Numero}" Width="46" IsReadOnly="True">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="HorizontalAlignment" Value="Center"/>
+                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                        <Setter Property="Foreground" Value="#6B7280"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="TRENO-LOCO" Binding="{Binding TrenoLoco, UpdateSourceTrigger=PropertyChanged}" Width="1.3*"/>
+                            <DataGridTextColumn Header="MOTIVAZIONE" Binding="{Binding Motivazione, UpdateSourceTrigger=PropertyChanged}" Width="3*">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextWrapping" Value="Wrap"/>
+                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="ORA RICHIESTA" Binding="{Binding OraRichiesta, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                            <DataGridTextColumn Header="REFERENTE TRENITALIA o HR" Binding="{Binding Referente, UpdateSourceTrigger=PropertyChanged}" Width="1.3*"/>
+                            <DataGridTemplateColumn Header="INVIATA EMAIL AD INGEGNERIA" Width="*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox Style="{StaticResource CheckBoxCella}"
+                                                  IsChecked="{Binding InviataEmailIngegneria, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="PASSAGGIO DI CONSEGNA" Width="*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox Style="{StaticResource CheckBoxCella}"
+                                                  IsChecked="{Binding PassaggioConsegna, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                </StackPanel>
+            </ScrollViewer>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Barra comandi comune alle tre schede -->
+        <Border Grid.Row="0" Background="White" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1" Padding="16,10">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="Genera Mail" Style="{StaticResource PulsantePrimario}"
+                        Command="{Binding GeneraMailCommand}"
+                        ToolTip="Esporta il PDF del rapportino selezionato e apre la bozza Outlook con l'allegato."/>
+                <Button Content="Reset scheda" Style="{StaticResource PulsanteAzione}"
+                        Command="{Binding ResetCommand}"/>
+
+                <TextBlock Text="{Binding RapportinoSelezionato.TipoTreno, StringFormat='Scheda attiva: {0}'}"
+                           VerticalAlignment="Center" Margin="16,0,0,0"
+                           FontSize="12" Foreground="#6B7280"/>
+            </StackPanel>
+        </Border>
+
+        <TabControl Grid.Row="1" Margin="10"
+                    ItemsSource="{Binding Rapportini}"
+                    SelectedItem="{Binding RapportinoSelezionato, Mode=TwoWay}"
+                    ContentTemplate="{StaticResource TemplateRapportino}">
+            <TabControl.ItemContainerStyle>
+                <Style TargetType="TabItem">
+                    <Setter Property="Header" Value="{Binding TipoTreno}"/>
+                    <Setter Property="Padding" Value="18,8"/>
+                    <Setter Property="FontSize" Value="13"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </Style>
+            </TabControl.ItemContainerStyle>
+        </TabControl>
+
+        <controls:ProgressOverlay Grid.RowSpan="2"
+                                  IsBusy="{Binding IsBusy}"
+                                  Message="{Binding StatoOperazione}"/>
+    </Grid>
+</UserControl>
