@@ -34,6 +34,7 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
         private readonly IRapportinoPdfExporter _pdfExporter;
         private readonly IRapportinoMailService _mailService;
         private readonly INotificaUtente _notifica;
+        private readonly IStatoTurnoDialogService _statoTurnoDialog;
         private readonly Func<string, IReadOnlyList<VerificheModel>?> _leggiVerifiche;
 
         public ObservableCollection<RapportinoTurno> Rapportini { get; }
@@ -76,6 +77,7 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
             : this(new RapportinoPdfExporter(),
                    new OutlookRapportinoMailService(),
                    new MessageBoxNotificaUtente(),
+                   new WpfStatoTurnoDialogService(),
                    VerificheViewModel.GetVerificheForFleetStatic,
                    caricaVerificheAllAvvio: true)
         {
@@ -85,12 +87,14 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
             IRapportinoPdfExporter pdfExporter,
             IRapportinoMailService mailService,
             INotificaUtente notifica,
+            IStatoTurnoDialogService statoTurnoDialog,
             Func<string, IReadOnlyList<VerificheModel>?> leggiVerifiche,
             bool caricaVerificheAllAvvio)
         {
             _pdfExporter = pdfExporter;
             _mailService = mailService;
             _notifica = notifica;
+            _statoTurnoDialog = statoTurnoDialog;
             _leggiVerifiche = leggiVerifiche;
 
             Rapportini =
@@ -308,17 +312,28 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
         /// Esporta il PDF del rapportino selezionato e apre la bozza Outlook con l'allegato.
         ///
         /// <para>
-        /// L'ordine dei passi non è casuale: lo <see cref="RapportinoSnapshot"/> è catturato sul thread
-        /// UI, il PDF è disegnato su thread pool a partire da quella copia immutabile, e solo la
-        /// chiamata a Outlook torna sul dispatcher (COM verso un server STA). Così la UI resta
-        /// reattiva, il disegno non legge collezioni che l'utente potrebbe stare modificando, e
-        /// nessuna proprietà del ViewModel viene alterata per il solo scopo di "preparare" la stampa —
-        /// che era l'origine dello sfarfallio del vecchio modulo (§6.1-undecies).
+        /// Prima di tutto chiede lo stato del turno con il pop-up modale a tre pulsanti: se l'utente
+        /// lo chiude o preme "Annulla" l'operazione si interrompe subito, senza generare né PDF né
+        /// bozza. Lo stato scelto determina colore ed testo del corpo dell'email (vedi
+        /// <see cref="OutlookRapportinoMailService.BuildHtmlBody"/>).
+        /// </para>
+        ///
+        /// <para>
+        /// L'ordine dei passi successivi non è casuale: lo <see cref="RapportinoSnapshot"/> è
+        /// catturato sul thread UI, il PDF è disegnato su thread pool a partire da quella copia
+        /// immutabile, e solo la chiamata a Outlook torna sul dispatcher (COM verso un server STA).
+        /// Così la UI resta reattiva, il disegno non legge collezioni che l'utente potrebbe stare
+        /// modificando, e nessuna proprietà del ViewModel viene alterata per il solo scopo di
+        /// "preparare" la stampa — che era l'origine dello sfarfallio del vecchio modulo
+        /// (§6.1-undecies).
         /// </para>
         /// </summary>
         internal async Task GeneraMailAsync()
         {
             if (IsBusy) return;
+
+            StatoTurno? stato = _statoTurnoDialog.ChiediStato();
+            if (stato == null) return;
 
             var rapportino = RapportinoSelezionato;
             RapportinoSnapshot snapshot = RapportinoSnapshot.Cattura(rapportino);
@@ -344,7 +359,7 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
 
             try
             {
-                _mailService.ApriBozza(snapshot, percorsoPdf, rapportino.DestinatariKey, rapportino.OggettoEmail);
+                _mailService.ApriBozza(snapshot, percorsoPdf, rapportino.DestinatariKey, rapportino.OggettoEmail, stato.Value);
             }
             catch (Exception ex)
             {

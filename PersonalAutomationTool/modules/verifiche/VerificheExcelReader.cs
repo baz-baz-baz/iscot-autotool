@@ -44,8 +44,20 @@ namespace PersonalAutomationTool.Modules.Verifiche
     /// </summary>
     internal static class VerificheExcelReader
     {
-        /// <summary>Una riga grezza del foglio: i valori delle tre colonne di interesse, già ripuliti con <c>Trim</c>.</summary>
-        internal sealed record VerificaRow(string Treno, string Loco, string Avaria);
+        /// <summary>
+        /// Una riga grezza del foglio: i valori delle tre colonne di interesse, già ripuliti con
+        /// <c>Trim</c>, più il <b>numero di riga Excel</b> da cui provengono.
+        ///
+        /// <para>
+        /// <b><see cref="RowNumber"/> serve all'archiviazione, non alla lettura.</b> Treno, Loco e
+        /// Avaria non identificano una riga in modo univoco — nei file reali capitano righe con lo
+        /// stesso treno e la stessa loco (es. ETR1000 31/831, due richieste distinte sulla stessa
+        /// macchina). Senza il numero di riga, "Verifica Eseguita" potrebbe archiviare e cancellare
+        /// la riga sbagliata. Vale 0 quando la riga non proviene da un foglio (percorso di ripiego
+        /// ClosedXML su file di formato imprevisto).
+        /// </para>
+        /// </summary>
+        internal sealed record VerificaRow(string Treno, string Loco, string Avaria, int RowNumber = 0);
 
         /// <summary>
         /// Legge il primo foglio di <paramref name="filePath"/> restituendo le righe dati.
@@ -72,7 +84,7 @@ namespace PersonalAutomationTool.Modules.Verifiche
             // solo perché gli indici possono essere referenziati in qualsiasi ordine.
             var sharedStrings = ReadSharedStrings(workbookPart);
 
-            var usedRows = new List<Dictionary<int, string>>();
+            var usedRows = new List<RigaGrezza>();
             using (var reader = OpenXmlReader.Create(worksheetPart))
             {
                 while (reader.Read())
@@ -80,6 +92,7 @@ namespace PersonalAutomationTool.Modules.Verifiche
                     if (reader.ElementType != typeof(Row)) continue;
 
                     var row = (Row)reader.LoadCurrentElement()!;
+                    int rowNumber = row.RowIndex?.Value is uint ri ? (int)ri : 0;
                     var cells = new Dictionary<int, string>();
 
                     foreach (var cell in row.Elements<Cell>())
@@ -94,18 +107,21 @@ namespace PersonalAutomationTool.Modules.Verifiche
                     }
 
                     // Riga interamente vuota: RowsUsed() la salterebbe, quindi la saltiamo anche noi.
-                    if (cells.Count > 0) usedRows.Add(cells);
+                    if (cells.Count > 0) usedRows.Add(new RigaGrezza(rowNumber, cells));
                 }
             }
 
             return ExtractRows(usedRows);
         }
 
+        /// <summary>Una riga non vuota del foglio, con il suo numero di riga Excel.</summary>
+        internal sealed record RigaGrezza(int RowNumber, Dictionary<int, string> Cells);
+
         /// <summary>
         /// Individua l'intestazione e proietta le righe dati. Separata da <see cref="Read"/> e
         /// <c>internal</c> per poter essere verificata anche senza un file su disco.
         /// </summary>
-        internal static List<VerificaRow> ExtractRows(List<Dictionary<int, string>> usedRows)
+        internal static List<VerificaRow> ExtractRows(List<RigaGrezza> usedRows)
         {
             var result = new List<VerificaRow>();
             if (usedRows.Count < 2) return result;
@@ -114,7 +130,7 @@ namespace PersonalAutomationTool.Modules.Verifiche
             int headerIndex = -1;
             for (int i = 0; i < usedRows.Count; i++)
             {
-                if (usedRows[i].Values.Any(v => v.Trim().Contains("TRENO", StringComparison.OrdinalIgnoreCase)))
+                if (usedRows[i].Cells.Values.Any(v => v.Trim().Contains("TRENO", StringComparison.OrdinalIgnoreCase)))
                 {
                     headerIndex = i;
                     break;
@@ -125,7 +141,7 @@ namespace PersonalAutomationTool.Modules.Verifiche
             if (headerIndex == -1) headerIndex = 0;
 
             int trenoIdx = -1, locoIdx = -1, avariaIdx = -1;
-            foreach (var (columnNumber, rawValue) in usedRows[headerIndex])
+            foreach (var (columnNumber, rawValue) in usedRows[headerIndex].Cells)
             {
                 string headerText = rawValue.Trim();
                 if (headerText.Contains("TRENO", StringComparison.OrdinalIgnoreCase)) trenoIdx = columnNumber;
@@ -139,14 +155,14 @@ namespace PersonalAutomationTool.Modules.Verifiche
 
             for (int i = headerIndex + 1; i < usedRows.Count; i++)
             {
-                var row = usedRows[i];
+                var row = usedRows[i].Cells;
                 string treno = GetTrimmed(row, trenoIdx);
                 string loco = GetTrimmed(row, locoIdx);
                 string avaria = GetTrimmed(row, avariaIdx);
 
                 if (!string.IsNullOrWhiteSpace(treno) || !string.IsNullOrWhiteSpace(loco) || !string.IsNullOrWhiteSpace(avaria))
                 {
-                    result.Add(new VerificaRow(treno, loco, avaria));
+                    result.Add(new VerificaRow(treno, loco, avaria, usedRows[i].RowNumber));
                 }
             }
 

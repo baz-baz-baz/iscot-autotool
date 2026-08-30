@@ -43,9 +43,34 @@ namespace PersonalAutomationTool.Modules.Verifiche
         public ObservableCollection<VerificheModel> VerificheList700 { get; } = [];
         public ObservableCollection<VerificheModel> VerificheList1000 { get; } = [];
 
+        private bool _isBusy;
+        /// <summary>Vero durante l'archiviazione di una verifica: la vista mostra l'overlay di attesa.</summary>
+        public bool IsBusy
+        {
+            get => _isBusy;
+            set => SetProperty(ref _isBusy, value);
+        }
+
+        private string _statoOperazione = string.Empty;
+        public string StatoOperazione
+        {
+            get => _statoOperazione;
+            set => SetProperty(ref _statoOperazione, value);
+        }
+
+        /// <summary>
+        /// "Verifica Eseguita": archivia la riga nel foglio storico, la toglie dal foglio principale
+        /// e rinomina il file. Il parametro è la <see cref="VerificheModel"/> della riga.
+        /// </summary>
+        public System.Windows.Input.ICommand VerificaEseguitaCommand { get; }
+
         public VerificheViewModel()
         {
             Instance = this;
+            VerificaEseguitaCommand = new RelayCommand(
+                async param => await EseguiVerificaEseguitaAsync(param as VerificheModel),
+                _ => !IsBusy);
+
             _ = ReloadAllDataAsync();
 
             SetupWatchers();
@@ -81,6 +106,84 @@ namespace PersonalAutomationTool.Modules.Verifiche
                 LoadDataForFleet(@"Hitachi Group\SSB_SST - Interventi ETR1000", "1000", list);
 
             return list;
+        }
+
+        /// <summary>
+        /// Flusso completo di "Verifica Eseguita": chiede il cognome, esegue l'archiviazione fuori
+        /// dal thread UI e ricarica le tabelle.
+        ///
+        /// <para>
+        /// <b>Il dialog è aperto qui e non nel servizio</b>, così tutta la parte che tocca il disco
+        /// resta senza dipendenze dalla UI e verificabile. L'annullamento o un campo vuoto
+        /// interrompono prima di qualunque accesso al file: non viene creato nemmeno il backup.
+        /// </para>
+        /// </summary>
+        private async Task EseguiVerificaEseguitaAsync(VerificheModel? riga)
+        {
+            if (riga == null || IsBusy) return;
+
+            if (!riga.PuoEssereArchiviata)
+            {
+                MessageBox.Show(
+                    "Non è stato possibile risalire alla riga di origine nel file Excel, quindi " +
+                    "l'archiviazione è stata annullata per non rischiare di modificare la riga sbagliata.\n\n" +
+                    "Attendere il prossimo aggiornamento automatico dell'elenco e riprovare.",
+                    "Verifica Eseguita", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var percorsi = VerifichePathsManager.Risolvi(userProfile, riga.FleetIdentifier);
+            if (percorsi == null)
+            {
+                MessageBox.Show(
+                    $"Nessun percorso configurato per la flotta '{riga.FleetIdentifier}' in verifiche_paths.json.",
+                    "Verifica Eseguita", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            var dialog = new CognomeDialog($"Treno {riga.Treno} — Loco {riga.Loco}")
+            {
+                Owner = Application.Current?.MainWindow
+            };
+
+            if (dialog.ShowDialog() != true) return;   // annullato o campo vuoto: nessuna modifica
+
+            string cognome = dialog.Cognome;
+            var momento = DateTime.Now;
+
+            ArchiviazioneEsito esito;
+            try
+            {
+                IsBusy = true;
+                StatoOperazione = "Archiviazione della verifica in corso...";
+
+                // Copia backup, riscrittura del pacchetto OpenXML e rinomina: tutta roba che tocca
+                // cartelle OneDrive, quindi mai sul dispatcher (§3, vincolo 1).
+                esito = await Task.Run(() =>
+                    VerificheArchivioService.Archivia(riga, percorsi, cognome, momento))
+                    .ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                esito = new ArchiviazioneEsito(false, $"Errore imprevisto:\n{ex.Message}");
+            }
+            finally
+            {
+                IsBusy = false;
+                StatoOperazione = string.Empty;
+            }
+
+            if (esito.Riuscita)
+            {
+                // Ricarica: la riga archiviata sparisce dall'elenco a video.
+                await ReloadAllDataAsync().ConfigureAwait(true);
+                MessageBox.Show(esito.Messaggio, "Verifica Eseguita", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show(esito.Messaggio, "Verifica Eseguita", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         public async Task ReloadAllDataAsync()
@@ -396,7 +499,18 @@ namespace PersonalAutomationTool.Modules.Verifiche
                 var rows = VerificheExcelReader.Read(filePath);
                 foreach (var row in rows)
                 {
-                    collection.Add(BuildModel(row.Treno, row.Loco, row.Avaria, fleetIdentifier));
+                    var model = BuildModel(row.Treno, row.Loco, row.Avaria, fleetIdentifier);
+                    // Provenienza della riga: senza file e numero di riga "Verifica Eseguita" non
+                    // saprebbe quale workbook aprire né quale riga togliere (vedi VerificheModel).
+                    model.SourceFilePath = filePath;
+                    model.SourceRowNumber = row.RowNumber;
+                    // Valori grezzi del foglio: la guardia anti-riga-sbagliata li confronta con quelli
+                    // riletti dal file al momento della scrittura. Treno/Loco del modello non servono
+                    // allo scopo, perche per la flotta 1000 Treno viene sostituito dal numero risolto
+                    // tramite il database (vedi VerificheModel.SourceTreno).
+                    model.SourceTreno = row.Treno;
+                    model.SourceLoco = row.Loco;
+                    collection.Add(model);
                 }
                 return;
             }
@@ -419,7 +533,8 @@ namespace PersonalAutomationTool.Modules.Verifiche
             {
                 Treno = treno,
                 Loco = loco,
-                Avaria = avaria
+                Avaria = avaria,
+                FleetIdentifier = fleetIdentifier
             };
 
             if (fleetIdentifier == "1000" && !string.IsNullOrWhiteSpace(model.Loco))

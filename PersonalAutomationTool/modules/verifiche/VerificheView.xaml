@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:PersonalAutomationTool.Modules.Verifiche"
+             xmlns:controls="clr-namespace:PersonalAutomationTool.Core.Controls"
              mc:Ignorable="d"
              d:DesignHeight="450" d:DesignWidth="800">
     <UserControl.DataContext>
@@ -60,12 +61,30 @@
                 <TextBlock Text="{Binding Treno}" HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold"/>
             </Border>
         </DataTemplate>
+
+        <!-- Colonna "Verifica Eseguita", identica nelle tre tabelle di flotta.
+             Il comando sta sul ViewModel mentre il DataContext della cella è la riga: da qui il
+             percorso RelativeSource verso lo UserControl, con la riga passata come parametro.
+             Il pulsante si disabilita se la riga non porta con sé la propria origine nel file
+             (SourceFilePath + SourceRowNumber): meglio un pulsante spento che un'archiviazione
+             applicata alla riga sbagliata. -->
+        <DataTemplate x:Key="VerificaEseguitaCellTemplate">
+            <Button Content="Verifica Eseguita"
+                    Margin="4" Padding="10,5"
+                    Background="#E8F5E9" BorderBrush="#A5D6A7" Foreground="#1B5E20"
+                    FontWeight="SemiBold" FontSize="12" Cursor="Hand"
+                    IsEnabled="{Binding PuoEssereArchiviata}"
+                    Command="{Binding DataContext.VerificaEseguitaCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                    CommandParameter="{Binding}"
+                    ToolTip="Archivia la riga nel foglio storico, la rimuove dall'elenco e rinomina il file."/>
+        </DataTemplate>
     </UserControl.Resources>
 
     <!-- Torna a ScrollViewer > StackPanel su richiesta esplicita del committente (§6.1-quinquies):
          uno StackPanel concede ai figli altezza infinita, quindi nessuna sezione riceve una
          viewport vincolata — ogni tabella si dimensiona sul proprio contenuto per intero, senza
          una barra di scorrimento propria, e a scorrere è la pagina nel suo complesso. -->
+    <Grid>
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="20">
 
@@ -117,6 +136,7 @@
                     <DataGridTextColumn Header="TRENO" Binding="{Binding Treno}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
                     <DataGridTextColumn Header="LOCO" Binding="{Binding Loco}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
                     <DataGridTextColumn Header="Avaria segnalata da ING/SVI" Binding="{Binding Avaria}" Width="*" ElementStyle="{StaticResource CenteredBoldTextWrapStyle}"/>
+                    <DataGridTemplateColumn Header="AZIONE" Width="170" CellTemplate="{StaticResource VerificaEseguitaCellTemplate}"/>
                 </DataGrid.Columns>
             </DataGrid>
 
@@ -129,6 +149,7 @@
                     <DataGridTextColumn Header="TRENO" Binding="{Binding Treno}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
                     <DataGridTextColumn Header="LOCO" Binding="{Binding Loco}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
                     <DataGridTextColumn Header="Avaria segnalata da ING/SVI" Binding="{Binding Avaria}" Width="*" ElementStyle="{StaticResource CenteredBoldTextWrapStyle}"/>
+                    <DataGridTemplateColumn Header="AZIONE" Width="170" CellTemplate="{StaticResource VerificaEseguitaCellTemplate}"/>
                 </DataGrid.Columns>
             </DataGrid>
 
@@ -141,8 +162,14 @@
                     <DataGridTextColumn Header="TRENO" Binding="{Binding Treno}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
                     <DataGridTextColumn Header="LOCO" Binding="{Binding Loco}" Width="150" ElementStyle="{StaticResource CenteredBoldTextStyle}"/>
                     <DataGridTextColumn Header="Avaria segnalata da ING/SVI" Binding="{Binding Avaria}" Width="*" ElementStyle="{StaticResource CenteredBoldTextWrapStyle}"/>
+                    <DataGridTemplateColumn Header="AZIONE" Width="170" CellTemplate="{StaticResource VerificaEseguitaCellTemplate}"/>
                 </DataGrid.Columns>
             </DataGrid>
         </StackPanel>
     </ScrollViewer>
+
+        <!-- Overlay di attesa durante l'archiviazione: copia di backup, riscrittura del pacchetto
+             OpenXML e rinomina avvengono su cartelle OneDrive e possono richiedere qualche secondo. -->
+        <controls:ProgressOverlay IsBusy="{Binding IsBusy}" Message="{Binding StatoOperazione}"/>
+    </Grid>
 </UserControl>

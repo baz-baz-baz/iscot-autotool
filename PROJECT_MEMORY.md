@@ -67,14 +67,27 @@
 > vedi il riquadro in §6.1-quaterdecies.
 > **Stato build alla chiusura sessione:** `dotnet clean` + `dotnet build` sull'intera `.sln` → **0 errori
 > e 0 warning assoluti** (non più "0 salvo i 2 preesistenti in `TestClosedXML`": quel progetto non
-> esiste più, e con esso i 2 NU1510 — vedi §6.1-terdecies). `dotnet test` → **286/286 superati**.
+> esiste più, e con esso i 2 NU1510 — vedi §6.1-terdecies). `dotnet test` → **336/336 superati**.
 > Vista verificata a runtime con un harness WPF usa-e-getta (fuori dal repository): le tre schede si
 > rendono senza eccezioni e **senza alcun errore di binding**. **Non verificati in questo ambiente:**
 > l'aspetto del PDF a schermo (manca un rasterizzatore) e la bozza Outlook (manca Office) — vedi la
 > checklist al punto 29 di §7.1.
+> Chiude lo **Sprint 13** (§6.1-quindecies): **"Verifica Eseguita"**, la prima funzionalità dell'app
+> che **scrive** nei file Excel di Hitachi. Riga archiviata nel foglio storico dell'anno, rimossa dal
+> foglio principale e file rinominato, con copia di sicurezza preventiva nella cartella OLD. Sbloccata
+> dai tre file reali forniti dal committente, che hanno **smentito quattro assunzioni della specifica**
+> (struttura uniforme, storico grigio, 5 colonne, data `AAMMGG`) — vedi §6.1-quindecies prima di
+> toccare quel codice.
 > **Da leggere prima di toccare il modulo EXCEL: §5.3-bis**
 > (ETR1000 / ETR1000FH / ETR1000IF sono tre treni distinti; solo in EXCEL i primi due condividono il
 > report).
+> Chiude lo **Sprint 14** (§6.1-sedecies): nel modulo PASSAGGIO CONSEGNE, nome fisso del PDF allegato
+> (`Rapportino di Turno.pdf`), pop-up modale `StatoTurnoDialog` a tre stati prima di "Genera Mail" (con
+> "Annulla" che interrompe tutto), e corpo HTML dell'email interamente ridisegnato — saluto per fascia
+> oraria, etichetta di flotta colorata dallo stato, testo centrale condizionato, chiusura "Saluti". La
+> fascia oraria del saluto usa una funzione **apposta separata** da `EmailService.DetermineSaluto` (che
+> resta invariata, golden-test compreso) — vedi il riquadro dedicato in §6.1-sedecies prima di provare a
+> unificarle.
 
 ---
 
@@ -98,7 +111,7 @@ generazione di email Outlook precompilate e produzione del rapportino di turno.
 | Compilare e archiviare il "Report Interventi" Excel aziendale | **EXCEL** |
 | Gestire l'anagrafica destinatari per treno/azione, con rubrica | **DESTINATARI MAIL** |
 | Consultare/editare i database SQLite locali | **DATABASE** |
-| Vedere le verifiche aperte estratte dai file Excel di flotta | **VERIFICHE** |
+| Vedere le verifiche aperte estratte dai file Excel di flotta, e archiviarle a lavoro concluso | **VERIFICHE** (archiviazione: §6.1-quindecies) |
 | Compilare ed esportare in PDF il rapportino di turno + email | **PASSAGGIO CONSEGNE** (riscritto da zero nello Sprint 12, §6.1-quaterdecies) |
 
 ### Flotte gestite
@@ -2139,6 +2152,244 @@ motore di binding**. Esito: nessuna eccezione, **nessun errore di binding**.
 manca un rasterizzatore, `convert` su questa macchina è l'utility Windows, non ImageMagick — e la
 bozza Outlook, perché Office non è installato qui.
 
+### 6.1-quindecies Sprint 13 — "Verifica Eseguita": archiviazione delle verifiche nei file Hitachi
+
+**È la prima funzionalità dell'applicazione che *scrive* nei file Excel di Hitachi.** Fino a qui
+VERIFICHE era di sola lettura ed EXCEL scriveva solo nel Report Interventi via Interop. Qui si
+modifica un workbook condiviso su OneDrive con dieci anni di storico dentro: il rischio non è il
+crash, è il danno silenzioso al lavoro del reparto.
+
+#### Cosa fa
+
+Un pulsante "Verifica Eseguita" su ogni riga delle tre tabelle di flotta (non nel riepilogo). Al
+click: dialog "Cognome?" → copia di sicurezza del file nella cartella OLD → riga copiata nel foglio
+storico dell'anno corrente con la data di chiusura odierna → riga rimossa dal foglio principale con
+shift verso l'alto → file rinominato `{prefisso} {ddMMyy} {HH_mm} {Cognome}.xlsx` → ricarica delle
+tabelle. Annullare, o confermare con il campo vuoto, interrompe **prima** di qualsiasi accesso al
+file: non viene creato nemmeno il backup.
+
+#### Le quattro assunzioni della specifica smentite dai file reali
+
+Il committente ha fornito i tre workbook veri. Erano indispensabili: **quattro punti della richiesta
+si sono rivelati diversi dalla realtà**, e ciascuno avrebbe prodotto un danno silenzioso.
+
+| Specifica | Realtà nei file | Conseguenza se non verificato |
+|---|---|---|
+| Struttura uniforme fra flotte | ETR500 ha 5 colonne e uno storico **senza intestazioni**; ETR700 e ETR1000 ne hanno 8 | Colonne scritte a caso sullo storico ETR500 |
+| Foglio storico "dell'anno corrente" | Tre convenzioni: `STORICO 2026`, `STORICO 22-24-25-26`, `STORICO '22-'23-'24-'25-'26` | Nessun foglio trovato su 2 file su 3 |
+| Righe storiche su sfondo grigio `#A6A6A6` | ETR1000 archivia in **giallo**; ETR500/700 usano colori di **tema**, non un RGB | Righe archiviate di un colore estraneo al foglio |
+| Data `AAMMGG` | I nomi reali (`…240826 14_31 Franzese.xlsx`, del 24 agosto 2026) sono **`ddMMyy`**, come l'invariante §5.1 | File datati `260824`, letti dai tecnici come 26 agosto 2024 |
+
+**Come sono state risolte, senza sostituire un'assunzione con un'altra:**
+- **Foglio storico**: `VerificheArchivioNaming.EstraiAnni` estrae *tutti* gli anni citati nel nome
+  (4 cifre → anno pieno, 2 cifre → `2000+n`) e si sceglie il foglio che copre l'anno corrente; a pari
+  copertura vince il più specifico. Funzione pura, 12 test sui nomi reali di tutti e tre i file.
+- **Stile**: **non** si scrive alcun colore. La riga archiviata eredita lo stile dalle righe già
+  presenti nel foglio di destinazione. Riproduce l'aspetto corretto in tutti e tre i casi e continuerà
+  a farlo se un domani cambierà.
+- **Colonne**: A-D copiate **per posizione** — verificato che TRENO, LOCO, descrizione e data
+  comunicazione occupano A-D in tutti e sei i fogli, nonostante le intestazioni non coincidano (nello
+  storico ETR700 la C si chiama "note da tenere presente", nel principale "Avaria segnalata da
+  ING/SVI"). Un abbinamento per testo dell'intestazione fallirebbe proprio lì.
+- **Colonna della data di chiusura**: cercata per intestazione, perché il nome cambia ("Data verifica"
+  su ETR700, "Data chiusura Verifica" su ETR1000); sullo storico ETR500, che non ha intestazioni, si
+  ricade sulla colonna successiva a quella della data comunicazione — la E, che è quella realmente usata.
+
+#### Decisioni chieste al committente, non dedotte
+
+- **Dove appendere nello storico.** Nel file ETR700 le righe 3-14 sono **vuote ma già formattate** e i
+  record veri partono dalla 15: "prima riga libera" era ambiguo. Deciso: **dopo l'ultima riga con
+  dati**, così lo storico resta in ordine cronologico.
+- **Colonna Tecnico: non va compilata in nessun file.** Lo storico ETR500 non ce l'ha affatto; sugli
+  altri due esiste ma resta vuota per scelta esplicita. Il cognome vive **solo** nel nome del file.
+
+#### Sicurezza dell'operazione
+
+- **Modifica chirurgica in OpenXML, non riscrittura.** Verificato che i fogli principali non hanno
+  formule, formattazione condizionale, convalide dati né tabelle, e che merge e autofiltro coprono
+  solo le righe 1-2: cancellare una riga dati e rinumerare le successive non invalida alcun
+  intervallo. ClosedXML in scrittura riscriverebbe l'intero pacchetto (§6.1-septies) su file che
+  contengono fogli nascosti e dieci anni di storico.
+- **Validazione in sola lettura, poi scrittura.** Aprire un `SpreadsheetDocument` con
+  `isEditable: true` tocca il file **anche senza scrivere nulla** — scoperto da un test che
+  confrontava la data di ultima modifica dopo un rifiuto, e che falliva. Le due fasi sono ora separate:
+  quando un messaggio dice "nessuna modifica è stata apportata", è vero.
+- **Guardia di identità della riga.** `VerificheModel` porta ora `SourceFilePath` e `SourceRowNumber`
+  (aggiunti a `VerificheExcelReader`): Treno e Loco **non** identificano una riga — nei file reali
+  ETR1000 31/831 compare due volte con richieste diverse. Prima di scrivere si rilegge la riga nel file
+  e la si confronta con quella selezionata: se un collega ha modificato il workbook nel frattempo,
+  l'operazione si ferma. Il pulsante è disabilitato sulle righe prive di origine tracciata.
+- **Backup prima di tutto**, con suffisso progressivo invece di sovrascrivere un backup esistente.
+- I/O e OpenXML sempre fuori dal dispatcher, con overlay; `IOException` gestita con messaggio che
+  distingue Excel aperto da sincronizzazione OneDrive in corso.
+
+#### Difetto trovato provando sui file reali, non dalle fixture
+
+Sul workbook ETR1000 la data di chiusura compariva come **`46258`** invece di `24/08/2026`: la riga
+vuota pre-formattata aveva su quella colonna un formato "generale", e conservarne lo stile perdeva il
+formato data. Corretto prendendo lo stile della cella data dall'**ultima riga con dati**, non da quella
+vuota. È il tipo di difetto che una fixture sintetica non riproduce, e la ragione per cui la prova sui
+file veri valeva più di qualunque altro test.
+
+
+> ⚠️ **Difetto corretto subito dopo il rilascio, segnalato dal committente: falso "la riga non
+> corrisponde più" su tutta la flotta 1000.**
+> La guardia di identità confrontava i valori **mostrati a video** con quelli letti dalla cella. Ma per
+> la flotta 1000 `BuildModel` sostituisce il generico `"ETR1000"` scritto nel foglio con il numero di
+> treno reale risolto da `FlotteCache` tramite la loco: a video compare `31`, nella cella c'è
+> `ETR1000`. Non potevano che risultare diversi, quindi **ogni** archiviazione ETR1000 veniva
+> rifiutata.
+>
+> **Correzione:** `VerificheModel` conserva anche i valori **grezzi** del foglio (`SourceTreno`,
+> `SourceLoco`), popolati alla lettura, e la guardia confronta grezzo con grezzo. Contestualmente il
+> confronto è stato **irrigidito**: accettava una corrispondenza per suffisso — tolleranza nata proprio
+> per compensare la normalizzazione — che ora sarebbe solo un pericolo, perché farebbe combaciare il
+> treno `1` con `31` lasciando archiviare la riga sbagliata.
+>
+> **Lezione:** un valore mostrato nella UI non è il dato. In questo modulo `Treno` è una *proiezione*
+> (risolta dal database), non ciò che sta nel file: qualunque controllo che debba dire "questa è ancora
+> la stessa riga" deve confrontare la sorgente con sé stessa. Coperto ora da due test
+> (`Archivia_Etr1000_TrenoNormalizzatoAVideo_NonBloccaLArchiviazione` e
+> `Archivia_LaGuardiaNonAccettaUnaCorrispondenzaParziale`).
+>
+> La lettura dei file reali ha inoltre **confermato il rischio che aveva motivato il numero di riga**:
+> nel file ETR1000 le righe 3 e 4 sono `31`/`831` entrambe, con richieste diverse. Sono
+> indistinguibili per treno e loco: senza `SourceRowNumber` l'archiviazione avrebbe potuto colpire
+> l'una al posto dell'altra.
+
+> ⚠️ **Secondo difetto corretto dopo il rilascio: la riga archiviata non ereditava l'aspetto del
+> foglio.** Segnalato con uno screenshot dello storico ETR1000 — riga nuova **bianca e senza bordi**
+> sotto una riga grigia e bordata, con la data comunicazione mostrata come seriale grezzo.
+>
+> Erano due cause sovrapposte:
+> 1. lo stile veniva preso dalla riga **preesistente vuota** all'indice di destinazione, che nei file
+>    reali può essere priva di formattazione, invece che dall'**ultima riga archiviata**;
+> 2. soprattutto, lo stile veniva applicato alle sole colonne che il servizio *scrive* (A-D più la
+>    data): le colonne intermedie — "Data richiesta", "Tecnico", "NOTE" — non venivano nemmeno
+>    create, quindi da E in poi la riga restava senza sfondo né bordi.
+>
+> **Correzione:** prima si veste l'**intera** riga sul modello di quella precedente — scorrendo
+> *tutte* le sue celle, comprese quelle vuote, e riportandone anche altezza e stile di riga — poi si
+> scrivono i valori. Verificato sui tre file reali confrontando cella per cella sfondo, bordi e font
+> fra la riga nuova e quella sopra: **identici su tutte e 8 le colonne**, in tutte e tre le flotte.
+>
+> **Lezione:** "ereditare lo stile" non significa copiarlo dove si scrive. In una tabella l'aspetto è
+> una proprietà della **riga intera**: le celle vuote fanno parte del disegno tanto quanto quelle
+> piene, e sono proprio quelle che si notano quando mancano. Coperto da
+> `Archivia_LaRigaArchiviataHaLoStessoAspettoDiQuellaSopra_SuTutteLeColonne`.
+#### Verifica
+
+`dotnet build` → **0 errori, 0 warning**. `dotnet test` → **336/336** (+56: 21
+`VerificheArchivioNamingTests` sui nomi reali dei fogli e sul pattern del file, 32
+`VerificheArchivioServiceTests` che generano workbook con la struttura reale ed eseguono
+l'archiviazione end-to-end). Vista provata a runtime con harness WPF usa-e-getta fuori dal repository:
+resa senza eccezioni e **senza errori di binding**.
+
+**Provato sui tre file reali** (su copie in cartella temporanea, poi cancellate — gli originali in
+`Hitachi Group\` non sono mai stati toccati): tutte e tre le flotte archiviano correttamente —
+ETR500 riga 3330 dopo la 3329, ETR700 riga 18 dopo la 17, ETR1000 riga 961 dopo la 960; foglio
+principale che scala di una riga; colonna Tecnico vuota; data di chiusura formattata.
+
+> ⚠️ **Non verificato in questo ambiente**: l'aspetto dei file aggiornati aperti in Excel (colori,
+> bordi, filtri) — vedi il punto 30 di §7.1. La prova è stata fatta rileggendo i workbook da codice,
+> non aprendoli in Excel.
+
+### 6.1-sedecies Sprint 14 — pop-up di stato turno e corpo email dinamico nel modulo PASSAGGIO CONSEGNE
+
+**Contesto.** Richiesta del committente su tre punti del flusso "Genera Mail" del modulo PASSAGGIO
+CONSEGNE (riscritto nello Sprint 12, §6.1-quaterdecies): nome fisso del PDF allegato, un pop-up di
+scelta dello stato del turno prima di aprire la bozza, e un corpo HTML del tutto nuovo — colorato e
+condizionato dallo stato scelto — al posto del breve riepilogo testuale precedente.
+
+#### Cosa cambia
+
+| Prima (§6.1-quaterdecies) | Ora |
+|---|---|
+| PDF allegato: `Passaggio Consegne IMC AV Milano {flotta} {data}.pdf` | **Nome fisso**: `Rapportino di Turno.pdf`, sempre uguale — `PassaggioConsegnePdfExporter.NomeFilePdf` |
+| "Genera Mail" apriva subito la bozza | Prima si apre un **pop-up modale** (`StatoTurnoDialog`, 3 pulsanti); chiuderlo o annullarlo **interrompe tutto**, PDF compreso — nessuna scrittura su disco |
+| Corpo: saluto + "in allegato il rapportino… Operatore/Turno" (dettaglio nel corpo, oltre che nel PDF) | Corpo a **4 blocchi fissi**: saluto per fascia oraria, etichetta di flotta **colorata dallo stato**, testo centrale condizionato, chiusura "Saluti" — il dettaglio del turno resta **solo** nel PDF |
+
+**I tre stati e i colori** (`OutlookRapportinoMailService.ColoreStato`):
+
+| Pulsante nel pop-up | `StatoTurno` | Colore etichetta flotta | Testo centrale |
+|---|---|---|---|
+| "Non ci sono attività da svolgere" | `NessunaAttivita` | verde `#28A745` | "Nessuna attività in sospeso." |
+| "Ci sono attività previste" | `AttivitaPreviste` | ambra scuro `#D39E00` | `<br/><br/>` — due righe vuote da compilare a mano in Outlook |
+| "Ci sono attività imminenti o in corso" | `AttivitaImminentiOInCorso` | rosso `#DC3545` | idem |
+
+L'etichetta di flotta usa il nome **senza spazio** (`ETR700`, non `ETR 700`): ricavata da
+`RapportinoSnapshot.TipoTreno.Replace(" ", string.Empty)` dentro `ApriBozza`, non un nuovo campo dello
+snapshot — la scheda in UI resta "ETR 700" com'è sempre stata (§5.3), cambia solo cosa finisce nel
+corpo dell'email.
+
+> ⚠️ **Il saluto per fascia oraria (`DetermineSaluto`) NON è condiviso con `EmailService.DetermineSaluto`
+> del modulo EMAIL**, pur avendo lo stesso principio (ora corrente → frase fissa). Qui servono **quattro**
+> fasce (Buongiorno/Buon pomeriggio/**Buonasera**/Buonanotte); `EmailService.DetermineSaluto` ne ha
+> **tre** (manca "Buonasera,": l'intervallo 18-4 è tutto "Buonanotte,") ed è **congelata** dal golden-file
+> test `EmailServiceHtmlGoldenTests` sulle email di chiusura ticket. Estendere quella funzione a quattro
+> fasce avrebbe cambiato il testo di email già in uso senza che fosse stato richiesto, e avrebbe reso
+> quel golden test instabile (fallisce se eseguito fra le 18 e le 22, perché il suo regex normalizzatore
+> non conosce "Buonasera,"). Per questo `OutlookRapportinoMailService.DetermineSaluto` è una copia
+> **deliberatamente separata**, con le sue fasce (4-14 / 14-18 / 18-22 / 22-4 — le prime due invariate
+> rispetto a `EmailService`, l'intervallo serale semplicemente diviso in due). Parametrizzata su
+> `DateTime adesso` (non legge `DateTime.Now` internamente) apposta per essere testabile in modo
+> deterministico.
+
+#### File nuovi/modificati
+
+- **`StatoTurnoDialog.xaml` / `.xaml.cs`** (nuovi) — `Window` modale con tre pulsanti colorati (stesso
+  stile dei tre stati) più "Annulla"; `StatoSelezionato` resta `null` se non confermato.
+- **`PassaggioConsegneServices.cs`** — aggiunti l'enum `StatoTurno`, l'interfaccia
+  `IStatoTurnoDialogService` (`ChiediStato() : StatoTurno?`) e l'implementazione di produzione
+  `WpfStatoTurnoDialogService`; `IRapportinoMailService.ApriBozza` ha un nuovo parametro `StatoTurno stato`.
+- **`PassaggioConsegneEmailService.cs`** — `ComponiCorpo` sostituito da `BuildHtmlBody(flotta, stato,
+  adesso)` + `DetermineSaluto(adesso)` + `ColoreStato(stato)`, tutti `internal static` (testabili via
+  `InternalsVisibleTo`, come già `EmailService.BuildHtmlBody`).
+- **`PassaggioConsegnePdfExporter.cs`** — `ComponiNomeFile` rimosso, sostituito dalla costante
+  `NomeFilePdf = "Rapportino di Turno.pdf"`.
+- **`PassaggioConsegneViewModel.cs`** — nuova dipendenza `IStatoTurnoDialogService` (quarto parametro
+  del costruttore `internal`, fra `notifica` e `leggiVerifiche`); `GeneraMailAsync` chiede lo stato
+  **prima** di catturare lo snapshot e ritorna subito se `null`.
+
+#### Verifica
+
+`dotnet build` sull'intera `.sln` → **0 errori, 0 warning**. `dotnet test` → **364/364** (336 → 364,
++28: **26** `PassaggioConsegneEmailServiceTests` nuovi — le quattro fasce orarie di `DetermineSaluto`,
+il colore per ciascuno dei 3 stati, la dicitura fissa contro le due righe vuote, l'ordine
+saluto→flotta→centro→chiusura — più **2** nuovi in `PassaggioConsegneViewModelTests` sul pop-up
+("chiede lo stato e lo passa alla mail", "annullare il pop-up non genera né PDF né email"); il test sul
+nome del file PDF in `PassaggioConsegnePdfExporterTests` è stato **riscritto**, non aggiunto, per
+verificare il nome fisso invece del pattern con flotta e data).
+
+> ⚠️ **Non verificato in questo ambiente** (manca Office, come già annotato per lo Sprint 12): l'aspetto
+> reale del pop-up e della bozza Outlook aperta con i colori a schermo. Vedi il punto aggiunto in §7.1.
+
+#### Correzione dopo screenshot del committente: testo dei pulsanti del pop-up tagliato ⭐
+
+**Problema.** Nello screenshot il testo dei tre pulsanti (es. "Non ci sono attività da svolgere")
+compariva **tagliato a metà altezza**, illeggibile. Causa: i `Button` di `StatoTurnoDialog` non avevano
+uno `Style` esplicito, quindi ereditavano **implicitamente** lo stile globale `TargetType="Button"` di
+MaterialDesignThemes caricato in `App.xaml` (§2.8) — il suo chrome (pensato per etichette brevi in
+maiuscolo, con ripple e area di contenuto ritagliata) tronca un testo su più righe più lungo del
+previsto.
+
+**Correzione.** `Style="{x:Null}"` su tutti e quattro i pulsanti del dialog: torna al `Button` di
+sistema, che rispetta `Background`/`Foreground`/`Padding` locali senza ritagliare nulla — lo stesso
+principio per cui `PulsanteAzione`/`PulsantePrimario` in `PassaggioConsegneView.xaml` usano uno `Style`
+con nome invece di lasciare applicare quello implicito.
+
+> ⚠️ **Trappola generale per l'app, non solo per questo dialog.** In `App.xaml` è caricato
+> `MaterialDesignTheme.Defaults.xaml`, che applica il suo stile a **ogni** `Button` privo di uno `Style`
+> esplicito, ovunque nell'applicazione. Un `Button` "semplice" con solo `Background`/`Foreground`/
+> `Padding` locali (il pattern già in uso in `CognomeDialog.xaml`, VERIFICHE) **eredita comunque quel
+> chrome** e rischia lo stesso ritaglio se il testo è più lungo di un'etichetta breve. Qualunque nuovo
+> `Button` fuori da uno `Style` con nome va verificato con testo realisticamente lungo, non solo con
+> etichette brevi come "OK"/"Annulla".
+
+**Dimensioni dei caratteri nel corpo email** (richiesta esplicita dopo lo screenshot): etichetta di
+flotta portata da 20px a **28px**, testo del corpo (saluto, testo centrale, chiusura) da 15px a **14px**
+— `OutlookRapportinoMailService.BuildHtmlBody`.
+
 ### 6.2 Le 4 macro-aree della roadmap strategica
 
 Elaborata come risposta alla domanda "se fossi il Lead Architect, cosa faresti dopo l'audit
@@ -2387,12 +2638,16 @@ all'interfaccia, rivalutare a quel punto.
       deterministico dell'handle SQLite), 11 Tier 1 (`HomeViewModelTests`, prefisso "SR" in Aggiorna
       Ticket), 21 Tier 1 (`ExcelViewModelMatchesTrainTests`, §6.1-terdecies: match dei **nomi di file
       report** per flotta, con la separazione ETR1000 ↔ ETR1000 I-F di §5.3-bis in entrambe le
-      direzioni), **84 per il modulo PASSAGGIO CONSEGNE riscritto** (§6.1-quaterdecies: 26
-      `PassaggioConsegneModelsTests`, 24 `PassaggioConsegneViewModelTests` — incluso il flusso
-      "Genera Mail" completo con Outlook e disco finti —, 12 `PassaggioConsegnePdfExporterTests` che
-      generano e riaprono un PDF vero, 7 `ComponiCorpoConFirmaTests` sull'invariante §5.5, più le
-      asserzioni sullo snapshot, 6 `AzioneDestinatariTests`) — **286 in tutto** (212 → 181 dopo la rimozione del vecchio modulo,
-      → 202 con la copertura di `MatchesTrain`, → 286 con il modulo riscritto).
+      direzioni), **112 per il modulo PASSAGGIO CONSEGNE riscritto** (§6.1-quaterdecies + §6.1-sedecies: 26
+      `PassaggioConsegneModelsTests`, 26 `PassaggioConsegneViewModelTests` — incluso il flusso
+      "Genera Mail" completo con Outlook e disco finti, e da §6.1-sedecies il pop-up di stato che lo
+      precede —, 12 `PassaggioConsegnePdfExporterTests` che generano e riaprono un PDF vero (incluso il
+      nome fisso `Rapportino di Turno.pdf`, §6.1-sedecies), 7 `ComponiCorpoConFirmaTests`
+      sull'invariante §5.5, **26 `PassaggioConsegneEmailServiceTests`** nuovi (§6.1-sedecies: le quattro
+      fasce orarie del saluto, il colore per ciascuno dei 3 stati, la struttura del corpo HTML), più le
+      asserzioni sullo snapshot, 6 `AzioneDestinatariTests`), **56 per l'archiviazione VERIFICHE** (§6.1-quindecies: 21 `VerificheArchivioNamingTests` sui nomi reali dei fogli storici e sul pattern del file, 35 `VerificheArchivioServiceTests` end-to-end su workbook con la struttura reale) — **364 in tutto** (212 → 181 dopo la rimozione del vecchio modulo,
+      → 202 con la copertura di `MatchesTrain`, → 286 con il modulo riscritto, → 364 con il pop-up di
+      stato e il corpo email dinamico di §6.1-sedecies).
       Restano
       da coprire: `ExtractLocosFromFolder`, `BuildSubject`, `AreTrainTypesCompatible` (Tier 1, non
       dipendono da `LogDumpFolderName`, possono procedere in parallelo a §6.3) — **`MatchesTrain` è
@@ -2608,9 +2863,47 @@ non può proteggerle. Ogni modifica al parsing va verificata su casi reali presi
     compilate e **celle del tutto vuote** su quelle non compilate. Stessa regola nella tabella
     "Interventi non svolti".
     **(b) Bozza Outlook** → verificare che la bozza si apra **senza inviarsi**, con oggetto
-    "Passaggio Consegne IMC AV Milano {flotta}", il PDF allegato, e **la firma in fondo al messaggio,
-    non in testa**. I destinatari devono essere quelli della voce **"Passaggio di consegne"** già
-    presente in DESTINATARI MAIL: verificare che siano esattamente quelli, e che in quella schermata
-    **non sia comparsa una seconda voce** con nome simile.
+    "Passaggio Consegne IMC AV Milano {flotta}", il PDF allegato (dal §6.1-sedecies con nome fisso
+    **"Rapportino di Turno.pdf"**, punto 31), e **la firma in fondo al messaggio, non in testa**. I
+    destinatari devono essere quelli della voce **"Passaggio di consegne"** già presente in DESTINATARI
+    MAIL: verificare che siano esattamente quelli, e che in quella schermata **non sia comparsa una
+    seconda voce** con nome simile.
     **(c) Nota su ETR 500** → i destinatari di quella scheda si leggono sotto la voce **`E404P`**, non
     "ETR500" (§5.3).
+30. **VERIFICHE / "Verifica Eseguita"** (§6.1-quindecies) ⭐ *la funzionalità che scrive nei file
+    Hitachi: da provare la prima volta con calma, non a fine turno*.
+    Già coperto da test automatici e **provato sui tre file reali**: scelta del foglio storico,
+    posizione della riga archiviata, data di chiusura, colonna Tecnico lasciata vuota, riga rimossa
+    dal principale, nome del file. **Da verificare a mano è solo ciò che si vede aprendo Excel.**
+    **(a)** Su una flotta qualsiasi, premere "Verifica Eseguita" su una riga, inserire il cognome e
+    confermare. Aprire poi il file **in Excel** e controllare: la riga è in fondo allo storico
+    dell'anno con lo stesso aspetto delle altre (sfondo, bordi, allineamento), la data di chiusura si
+    legge come data e non come numero, la colonna Tecnico è vuota, e nel foglio principale la riga è
+    sparita senza lasciare un buco. Verificare che filtri e larghezze di colonna siano intatti.
+    **(b)** Controllare che nella cartella OLD della flotta sia comparsa la copia di sicurezza con il
+    nome **precedente** del file.
+    **(c)** Ripetere su tutte e tre le flotte: hanno strutture diverse (§6.1-quindecies) ed è l'unico
+    modo per confermarle tutte sul campo.
+    **(d)** Provare l'annullamento: premere il pulsante e chiudere il dialog con "Annulla". Il file
+    non deve essere né rinominato né modificato, e nella cartella OLD non deve comparire nulla.
+    **(e)** Provare con il file aperto in Excel su un'altra finestra: deve comparire il messaggio che
+    indica il file bloccato, non un errore generico.
+31. **PASSAGGIO CONSEGNE / pop-up di stato e corpo email dinamico** (§6.1-sedecies) ⭐ *le due
+    verifiche che questo ambiente non ha potuto fare, manca Office*. Colori, testo condizionale e
+    fasce orarie sono coperti da `PassaggioConsegneEmailServiceTests` — **da non ri-verificare a
+    mano** — qui si controlla solo l'aspetto a schermo.
+    **(a) Pop-up di stato** → premere "Genera Mail": deve comparire subito il dialog con i tre
+    pulsanti ("Non ci sono attività da svolgere" / "Ci sono attività previste" / "Ci sono attività
+    imminenti o in corso") più "Annulla". Chiudere il dialog con la X **e**, separatamente, con
+    "Annulla": in **entrambi** i casi non deve aprirsi alcuna bozza né comparire alcun PDF nella
+    cartella temporanea. Ripetere scegliendo ciascuno dei tre pulsanti: la bozza deve aprirsi ogni
+    volta.
+    **(b) Corpo dell'email** → per ciascuno dei tre stati, verificare a schermo in Outlook: il saluto
+    coerente con l'ora del computer, l'etichetta di flotta **senza spazio** (`ETR700`, non `ETR 700`)
+    nel colore atteso (verde/ambra/rosso, leggibili su sfondo bianco), il testo centrale — la dicitura
+    fissa "Nessuna attività in sospeso." solo per il primo stato, due righe vuote su cui digitare per
+    gli altri due — e la chiusura "Saluti". Controllare che la firma di Outlook resti **in fondo**,
+    dopo "Saluti" (invariante §5.5, non toccata da questo intervento).
+    **(c) Nome dell'allegato** → il PDF allegato deve chiamarsi **esattamente** "Rapportino di
+    Turno.pdf" per tutte e tre le flotte: generarne uno per ciascuna scheda e controllare che il nome
+    non cambi (cambia solo il contenuto).

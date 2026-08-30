@@ -130,15 +130,14 @@ namespace PersonalAutomationTool.Tests.Modules.PassaggioConsegne
         }
 
         [Fact]
-        public void IlNomeDelFileContieneFlottaEData()
+        public void IlNomeDelFileEFissoIndipendentementeDaFlottaEData()
         {
+            // Requisito esplicito: il PDF allegato all'email deve chiamarsi sempre "Rapportino di
+            // Turno.pdf", non variare per flotta o data come nella versione precedente.
             string percorso = PassaggioConsegnePdfExporter.ExportToPdf(SnapshotDiProva(), _cartella);
             string nome = Path.GetFileName(percorso);
 
-            Assert.Contains("ETR 700", nome);
-            Assert.Contains("24-08-2026", nome);          // la data non deve introdurre '/' nel nome
-            Assert.EndsWith(".pdf", nome);
-            Assert.DoesNotContain(Path.GetInvalidFileNameChars(), nome.Contains);
+            Assert.Equal("Rapportino di Turno.pdf", nome);
         }
 
         [Fact]

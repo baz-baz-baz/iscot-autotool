@@ -252,6 +252,34 @@ namespace PersonalAutomationTool.Tests.Modules.PassaggioConsegne
         }
 
         [Fact]
+        public async Task GeneraMail_ChiedeLoStatoEDoLoPassaAllaMail()
+        {
+            var posta = new MailServiceFinto();
+            var statoDialog = new StatoTurnoDialogServiceFinto { Risposta = StatoTurno.AttivitaImminentiOInCorso };
+            var vm = CreaViewModel(mailService: posta, statoTurnoDialog: statoDialog);
+
+            await vm.GeneraMailAsync();
+
+            Assert.Equal(1, statoDialog.Chiamate);
+            Assert.Equal(StatoTurno.AttivitaImminentiOInCorso, posta.UltimoStato);
+        }
+
+        [Fact]
+        public async Task GeneraMail_SeIlDialogDiStatoVieneAnnullato_NonGeneraNePdfNeEmail()
+        {
+            var pdf = new PdfExporterFinto();
+            var posta = new MailServiceFinto();
+            var statoDialog = new StatoTurnoDialogServiceFinto { Risposta = null };
+            var vm = CreaViewModel(pdf, posta, statoTurnoDialog: statoDialog);
+
+            await vm.GeneraMailAsync();
+
+            Assert.Equal(1, statoDialog.Chiamate);
+            Assert.Equal(0, pdf.Chiamate);
+            Assert.Equal(0, posta.Chiamate);
+        }
+
+        [Fact]
         public async Task GeneraMail_SeIlPdfFallisce_NonSiApreAlcunaBozzaEVieneSegnalato()
         {
             var posta = new MailServiceFinto();
@@ -398,10 +426,12 @@ namespace PersonalAutomationTool.Tests.Modules.PassaggioConsegne
             IRapportinoPdfExporter? pdfExporter = null,
             IRapportinoMailService? mailService = null,
             INotificaUtente? notifica = null,
+            IStatoTurnoDialogService? statoTurnoDialog = null,
             Func<string, IReadOnlyList<VerificheModel>?>? leggiVerifiche = null) =>
             new(pdfExporter ?? new PdfExporterFinto(),
                 mailService ?? new MailServiceFinto(),
                 notifica ?? new NotificaFinta(),
+                statoTurnoDialog ?? new StatoTurnoDialogServiceFinto(),
                 leggiVerifiche ?? (_ => null),
                 caricaVerificheAllAvvio: false);
 
@@ -427,15 +457,30 @@ namespace PersonalAutomationTool.Tests.Modules.PassaggioConsegne
             public string? UltimoPercorsoPdf { get; private set; }
             public string? UltimaChiaveDestinatari { get; private set; }
             public string? UltimoOggetto { get; private set; }
+            public StatoTurno? UltimoStato { get; private set; }
 
-            public void ApriBozza(RapportinoSnapshot rapportino, string percorsoPdf, string destinatariKey, string oggetto)
+            public void ApriBozza(RapportinoSnapshot rapportino, string percorsoPdf, string destinatariKey, string oggetto, StatoTurno stato)
             {
                 Chiamate++;
                 UltimoSnapshot = rapportino;
                 UltimoPercorsoPdf = percorsoPdf;
                 UltimaChiaveDestinatari = destinatariKey;
                 UltimoOggetto = oggetto;
+                UltimoStato = stato;
                 if (Eccezione != null) throw Eccezione;
+            }
+        }
+
+        private sealed class StatoTurnoDialogServiceFinto : IStatoTurnoDialogService
+        {
+            /// <summary>Risposta simulata; <c>null</c> riproduce "Annulla" o la chiusura del dialog.</summary>
+            public StatoTurno? Risposta { get; init; } = StatoTurno.NessunaAttivita;
+            public int Chiamate { get; private set; }
+
+            public StatoTurno? ChiediStato()
+            {
+                Chiamate++;
+                return Risposta;
             }
         }
 

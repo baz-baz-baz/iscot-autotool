@@ -68,6 +68,14 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
         private const string NomeFont = "Arial";
         private const string LogoResourceName = "PassaggioConsegne.Logo.png";
 
+        /// <summary>
+        /// Nome fisso del PDF esportato e allegato alla mail. Non dipende più da flotta o data: due
+        /// esportazioni consecutive sovrascrivono lo stesso file (comportamento già garantito prima,
+        /// vedi <see cref="ExportToPdf"/>), ma ora anche il nome visto dal destinatario è sempre lo
+        /// stesso, come richiesto.
+        /// </summary>
+        private const string NomeFilePdf = "Rapportino di Turno.pdf";
+
         private static readonly XSolidBrush BrushTesto = new(XColors.Black);
         private static readonly XSolidBrush BrushSfondoSezione = new(XColor.FromArgb(0xD9, 0xD9, 0xD9));
         private static readonly XSolidBrush BrushSfondoIntestazione = new(XColor.FromArgb(0xF2, 0xF2, 0xF2));
@@ -97,7 +105,7 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
                 ?? Path.Combine(Path.GetTempPath(), "PersonalAutomationTool", "PassaggioConsegne");
             Directory.CreateDirectory(cartella);
 
-            string percorso = Path.Combine(cartella, ComponiNomeFile(rapportino));
+            string percorso = Path.Combine(cartella, NomeFilePdf);
 
             // Il logo è letto in memoria e tenuto aperto fino a document.Save(): PdfSharp legge i byte
             // dell'immagine al momento del salvataggio, non a quello di DrawImage (stessa ragione per
@@ -149,12 +157,6 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
             if (_fontInizializzati) return;
             GlobalFontSettings.UseWindowsFontsUnderWindows = true;
             _fontInizializzati = true;
-        }
-
-        private static string ComponiNomeFile(RapportinoSnapshot r)
-        {
-            string grezzo = $"Passaggio Consegne IMC AV Milano {r.TipoTreno} {r.Data.Replace('/', '-')}.pdf";
-            return string.Concat(grezzo.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
         }
 
         /// <summary>

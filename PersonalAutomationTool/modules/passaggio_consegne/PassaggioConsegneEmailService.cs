@@ -42,7 +42,7 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
         /// </summary>
         private const string AzioneRipiego = "Chiusura Ticket";
 
-        public void ApriBozza(RapportinoSnapshot rapportino, string percorsoPdf, string destinatariKey, string oggetto)
+        public void ApriBozza(RapportinoSnapshot rapportino, string percorsoPdf, string destinatariKey, string oggetto, StatoTurno stato)
         {
             ArgumentNullException.ThrowIfNull(rapportino);
 
@@ -79,7 +79,8 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
                     if (!string.IsNullOrWhiteSpace(destinatari.CcRecipients)) mailItem.CC = destinatari.CcRecipients;
                 }
 
-                mailItem.HTMLBody = EmailService.ComponiCorpoConFirma(ComponiCorpo(rapportino), firmaHtml);
+                string flotta = (rapportino.TipoTreno ?? string.Empty).Replace(" ", string.Empty);
+                mailItem.HTMLBody = EmailService.ComponiCorpoConFirma(BuildHtmlBody(flotta, stato, DateTime.Now), firmaHtml);
 
                 if (File.Exists(percorsoPdf)) mailItem.Attachments.Add(percorsoPdf);
 
@@ -94,29 +95,57 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
         }
 
         /// <summary>
-        /// Corpo del messaggio. Volutamente breve: il contenuto del turno sta nel PDF allegato, qui
-        /// serve solo il minimo per capire di quale turno e di quale operatore si tratta senza aprire
-        /// l'allegato.
+        /// Saluto in base alla fascia oraria corrente, sullo stesso principio già consolidato in
+        /// <c>EmailService.DetermineSaluto</c> (§4.5 di PROJECT_MEMORY.md) ma con le quattro fasce
+        /// richieste dal corpo del passaggio di consegne invece delle tre del modulo EMAIL. Non è la
+        /// stessa funzione — e non lo diventa modificando quella — perché estendere
+        /// <c>EmailService.DetermineSaluto</c> a quattro fasce cambierebbe il testo delle email di
+        /// chiusura ticket già in uso, cosa non richiesta qui.
+        /// <para>
+        /// <c>internal</c> e parametrizzata su <paramref name="adesso"/> (non <c>DateTime.Now</c>
+        /// letto internamente) apposta per essere testabile in modo deterministico, senza dipendere
+        /// dall'ora in cui gira la suite.
+        /// </para>
         /// </summary>
-        internal static string ComponiCorpo(RapportinoSnapshot r)
+        internal static string DetermineSaluto(DateTime adesso)
         {
-            string operatore = $"{r.Nome} {r.Cognome}".Trim();
-            string orario = string.IsNullOrWhiteSpace(r.OraInizio) && string.IsNullOrWhiteSpace(r.OraFine)
-                ? string.Empty
-                : $"{r.OraInizio} - {r.OraFine}".Trim(' ', '-');
+            int ora = adesso.Hour;
+            if (ora >= 4 && ora < 14) return "Buongiorno,";
+            if (ora >= 14 && ora < 18) return "Buon pomeriggio,";
+            if (ora >= 18 && ora < 22) return "Buonasera,";
+            return "Buonanotte,";
+        }
+
+        /// <summary>Colore HTML dell'etichetta di flotta, condizionato dallo stato scelto nel pop-up.</summary>
+        internal static string ColoreStato(StatoTurno stato) => stato switch
+        {
+            StatoTurno.NessunaAttivita => "#28A745",           // verde
+            StatoTurno.AttivitaPreviste => "#D39E00",           // ambra scuro, leggibile su bianco
+            StatoTurno.AttivitaImminentiOInCorso => "#DC3545",  // rosso
+            _ => "#000000"
+        };
+
+        /// <summary>
+        /// Corpo del messaggio, secondo la struttura fissa richiesta: saluto per fascia oraria,
+        /// etichetta di flotta colorata in base allo stato del turno, testo centrale (dicitura fissa
+        /// se non ci sono attività, due righe vuote da compilare a mano altrimenti) e chiusura
+        /// "Saluti". Il dettaglio del turno resta nel PDF allegato, non nel corpo.
+        /// </summary>
+        internal static string BuildHtmlBody(string flotta, StatoTurno stato, DateTime adesso)
+        {
+            string saluto = DetermineSaluto(adesso);
+            string colore = ColoreStato(stato);
+            string centro = stato == StatoTurno.NessunaAttivita
+                ? "<p style=\"margin: 0 0 12px 0;\">Nessuna attività in sospeso.</p>"
+                : "<br/><br/>";
 
             var corpo = new System.Text.StringBuilder();
-            corpo.Append("<p style=\"font-family: Calibri, Arial, sans-serif; font-size: 15px;\">");
-            corpo.Append("Buongiorno,<br><br>");
-            corpo.Append($"in allegato il rapportino di turno <b>{Escape(r.TipoTreno)}</b> ");
-            corpo.Append($"relativo al <b>{Escape(r.Data)}</b>.<br><br>");
-
-            if (!string.IsNullOrWhiteSpace(operatore))
-                corpo.Append($"<b>Operatore:</b> {Escape(operatore)}<br>");
-            if (!string.IsNullOrWhiteSpace(orario))
-                corpo.Append($"<b>Turno:</b> {Escape(orario)}<br>");
-
-            corpo.Append("<br>Cordiali saluti.</p><br>");
+            corpo.Append("<div style=\"font-family: Calibri, Arial, sans-serif; font-size: 14px; color: #000000;\">");
+            corpo.Append($"<p style=\"margin: 0 0 12px 0;\">{Escape(saluto)}</p>");
+            corpo.Append($"<p style=\"margin: 0 0 12px 0; font-size: 28px; font-weight: bold; color: {colore};\">{Escape(flotta)}</p>");
+            corpo.Append(centro);
+            corpo.Append("<p style=\"margin: 12px 0 0 0;\">Saluti</p>");
+            corpo.Append("</div>");
             return corpo.ToString();
         }
 
