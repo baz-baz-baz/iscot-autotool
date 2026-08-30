@@ -46,7 +46,7 @@ namespace PersonalAutomationTool.Core
     /// </summary>
     public static class RenamerLog
     {
-        private static string DefaultDbPath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "modules", "database", "train_software.db");
+        private static string DefaultDbPath => AppPaths.DatabaseFile("train_software.db");
 
         /// <summary>Registra un batch. Le operazioni "no-op" (percorso invariato) vanno filtrate dal chiamante prima di invocare questo metodo.</summary>
         public static void RecordBatch(RenameBatchKind kind, IReadOnlyList<(string OldPath, string NewPath)> operations, string? dbPath = null)

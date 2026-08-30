@@ -24,7 +24,7 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
         private static DateTime _cachedWriteTimeUtc;
         private static long _cachedLength = -1;
 
-        private static string ConfigFilePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "shortcuts.json");
+        private static string ConfigFilePath => PersonalAutomationTool.Core.AppPaths.DataFile("shortcuts.json");
 
         private static string? ReadConfigJson(string path)
         {

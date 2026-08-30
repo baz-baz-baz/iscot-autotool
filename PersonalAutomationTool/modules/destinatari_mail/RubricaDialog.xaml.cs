@@ -38,8 +38,7 @@ namespace PersonalAutomationTool.Modules.DestinatariMail
         {
             try
             {
-                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                string dbPath = Path.Combine(baseDir, "modules", "database", "emails.db");
+                string dbPath = PersonalAutomationTool.Core.AppPaths.DatabaseFile("emails.db");
                 if (File.Exists(dbPath))
                 {
                     using var dbManager = new DatabaseManager(dbPath);

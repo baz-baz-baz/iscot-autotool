@@ -21,11 +21,16 @@
         <TextBlock x:Name="TxtErrore" Margin="0,6,0,0" FontSize="12" Foreground="#D32F2F"
                    Visibility="Collapsed" Text="Inserire un cognome per proseguire."/>
 
+        <!-- Style="{x:Null}": senza, i Button ereditano implicitamente lo stile globale di
+             MaterialDesignThemes (caricato in App.xaml), il cui chrome ritaglia il contenuto pensando
+             a etichette brevi in maiuscolo — lo stesso bug corretto in StatoTurnoDialog.xaml
+             (PASSAGGIO CONSEGNE, §6.1-sedecies di PROJECT_MEMORY.md). Con Style="{x:Null}" si torna al
+             Button di sistema, che rispetta Background/Foreground/Padding locali senza ritagliare. -->
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
-            <Button Content="Annulla" Width="100" Padding="10,6" Margin="0,0,10,0"
+            <Button Content="Annulla" Style="{x:Null}" Width="100" Padding="10,6" Margin="0,0,10,0"
                     Background="#F0F0F0" BorderBrush="#CCCCCC" Foreground="#333333"
                     IsCancel="True" Click="Annulla_Click"/>
-            <Button Content="Conferma" Width="100" Padding="10,6"
+            <Button Content="Conferma" Style="{x:Null}" Width="100" Padding="10,6"
                     Background="#E8F5E9" BorderBrush="#A5D6A7" Foreground="#1B5E20"
                     FontWeight="SemiBold" IsDefault="True" Click="Conferma_Click"/>
         </StackPanel>

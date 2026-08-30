@@ -36,7 +36,7 @@ namespace PersonalAutomationTool.Core
         private static DateTime _cachedWriteTimeUtc;
         private static long _cachedLength = -1;
 
-        private static string DbPath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "modules", "database", "train_software.db");
+        private static string DbPath => AppPaths.DatabaseFile("train_software.db");
 
         /// <summary>
         /// Legge la colonna <paramref name="index"/> come stringa senza assumerne il tipo di storage

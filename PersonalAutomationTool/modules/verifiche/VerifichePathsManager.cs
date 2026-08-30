@@ -54,7 +54,7 @@ namespace PersonalAutomationTool.Modules.Verifiche
         private static long _cachedLength = -1;
 
         private static string ConfigFilePath =>
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "verifiche_paths.json");
+            PersonalAutomationTool.Core.AppPaths.DataFile("verifiche_paths.json");
 
         public static List<VerifichePathConfig> LoadConfig()
         {

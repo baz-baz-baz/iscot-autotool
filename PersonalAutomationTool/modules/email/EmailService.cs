@@ -151,7 +151,10 @@ namespace PersonalAutomationTool.Modules.Email
             return (logFolders, dumpFolders);
         }
 
-        private static string BuildSubject(string cartella, string trainType, string actionType, bool isNdPrefix, List<string> logFolders, string folderPath)
+        // internal (non più private) solo per essere testabile da PersonalAutomationTool.Tests
+        // (InternalsVisibleTo in AssemblyInfo.cs), stesso trattamento di BuildHtmlBody: nessun altro
+        // cambiamento di comportamento o di superficie pubblica dell'assembly.
+        internal static string BuildSubject(string cartella, string trainType, string actionType, bool isNdPrefix, List<string> logFolders, string folderPath)
         {
             string subject = $"CHIUSURA TICKET {cartella}"; // fallback
 
@@ -256,6 +259,7 @@ namespace PersonalAutomationTool.Modules.Email
                 var locos = new List<string>();
                 string extractedDate = "";
                 string extractedUser = "";
+                string extractedSw = "";
 
                 var dirs = Directory.GetDirectories(folderPath);
                 foreach (var dir in dirs)
@@ -265,7 +269,7 @@ namespace PersonalAutomationTool.Modules.Email
                     if (parts.Length >= 4 && parts[0].StartsWith("SR", StringComparison.OrdinalIgnoreCase))
                     {
                         tickets.Add(parts[0].ToUpper());
-                        
+
                         var dateMatch = SixDigitsRegex().Match(dirName);
                         if (dateMatch.Success)
                         {
@@ -274,18 +278,32 @@ namespace PersonalAutomationTool.Modules.Email
                             if (dateIndex > 0)
                             {
                                 extractedUser = string.Join(" ", parts.Skip(dateIndex + 1));
-                                
+
                                 int locoStartIndex = 3;
                                 if (parts.Length > 3 && (parts[3].Equals("I-F", StringComparison.OrdinalIgnoreCase) || parts[3].Equals("FH", StringComparison.OrdinalIgnoreCase)))
                                 {
                                     locoStartIndex = 4;
                                 }
-                                
+
+                                // Grammatica di cartella (§5.1): fra tipo e data ci sono esattamente
+                                // due campi, loco e software — non uno solo. Prima venivano presi
+                                // insieme come un unico "campo loco" (es. "650 04.02HR"): con due
+                                // ticket il software finiva ripetuto una volta per loco nell'oggetto
+                                // ("650 04.02HR - 651 04.02HR" invece di "650 - 651 04.02HR").
+                                // Separati: il loco resta per-cartella (una voce per ticket, split su
+                                // '-' per il caso raro di un singolo token già composito tipo
+                                // "650-651"), il software è lo stesso intervento quindi va preso
+                                // *una sola volta* invece che ripetuto per ogni cartella.
                                 if (dateIndex > locoStartIndex)
                                 {
-                                    string locoString = string.Join(" ", parts.Skip(locoStartIndex).Take(dateIndex - locoStartIndex));
-                                    var splittedLocos = locoString.Split('-', StringSplitOptions.RemoveEmptyEntries);
+                                    string locoToken = parts[locoStartIndex];
+                                    var splittedLocos = locoToken.Split('-', StringSplitOptions.RemoveEmptyEntries);
                                     foreach (var s in splittedLocos) locos.Add(s.Trim());
+                                }
+
+                                if (dateIndex > locoStartIndex + 1 && string.IsNullOrEmpty(extractedSw))
+                                {
+                                    extractedSw = parts[locoStartIndex + 1];
                                 }
                             }
                         }
@@ -302,11 +320,11 @@ namespace PersonalAutomationTool.Modules.Email
 
                     if (actionType == "Log Dump" && trainType == "E404P")
                     {
-                        subject = $"{ticketsStr} LOG E DUMP in rete {trainType} {locosStr} IMC AV Milano {extractedDate} {extractedUser}".Trim();
+                        subject = $"{ticketsStr} LOG E DUMP in rete {trainType} {locosStr} {extractedSw} IMC AV Milano {extractedDate} {extractedUser}".Trim();
                     }
                     else
                     {
-                        subject = $"CHIUSURA TICKET {ticketsStr} {trainType} {locosStr} IMC AV Milano {extractedDate} {extractedUser}".Trim();
+                        subject = $"CHIUSURA TICKET {ticketsStr} {trainType} {locosStr} {extractedSw} IMC AV Milano {extractedDate} {extractedUser}".Trim();
                     }
                 }
                 else

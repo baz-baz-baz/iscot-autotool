@@ -1,3 +1,6 @@
+using System;
+using System.IO;
+using PersonalAutomationTool.Core;
 using PersonalAutomationTool.Modules.DestinatariMail;
 using PersonalAutomationTool.Modules.PassaggioConsegne;
 using Xunit;
@@ -19,13 +22,46 @@ namespace PersonalAutomationTool.Tests.Modules.PassaggioConsegne
     /// </para>
     ///
     /// <para>
-    /// Nota: <c>GetRecipients</c> passa da <c>LoadConfig</c>, che se non trova
-    /// <c>destinatari.json</c> nella cartella di output genera e salva la configurazione di default —
-    /// che è proprio ciò che si vuole verificare qui.
+    /// <b>Backup/restore, non solo lettura.</b> <c>GetRecipients</c> passa da <c>LoadConfig</c>, che
+    /// se non trova <c>destinatari.json</c> genera e salva la configurazione di default — proprio ciò
+    /// che questa suite vuole verificare. Dallo Sprint 16 (§6.1-duodevicies) quel file vive sotto
+    /// <c>%APPDATA%\PersonalAutomationTool</c>, lo stesso percorso letto dall'applicazione installata:
+    /// senza backup/restore, una macchina con un <c>destinatari.json</c> già personalizzato a mano
+    /// (l'indirizzario reale che questo stesso modulo esiste per non perdere, §6.1-quaterdecies)
+    /// verrebbe letto al posto dei valori di default attesi dalle asserzioni, con risultati che
+    /// dipendono da quella macchina invece che dal codice. Il costruttore mette da parte il file
+    /// reale se presente, <c>Dispose</c> lo ripristina — stesso schema di
+    /// <see cref="PersonalAutomationTool.Tests.Core.HitachiPathsManagerTests"/>.
     /// </para>
     /// </summary>
-    public sealed class AzioneDestinatariTests
+    [Collection("SharedAppDataState")]
+    public sealed class AzioneDestinatariTests : IDisposable
     {
+        private readonly string _configPath;
+        private readonly string? _preexistingContent;
+
+        public AzioneDestinatariTests()
+        {
+            AppPaths.Initialize();
+            _configPath = AppPaths.DataFile("destinatari.json");
+
+            if (File.Exists(_configPath))
+            {
+                _preexistingContent = File.ReadAllText(_configPath);
+                File.Delete(_configPath);
+            }
+        }
+
+        public void Dispose()
+        {
+            try
+            {
+                if (_preexistingContent != null) File.WriteAllText(_configPath, _preexistingContent);
+                else if (File.Exists(_configPath)) File.Delete(_configPath);
+            }
+            catch { /* pulizia best-effort */ }
+        }
+
         [Fact]
         public void IlNomeDellAzioneEQuelloStoricoDelFileDestinatari()
         {

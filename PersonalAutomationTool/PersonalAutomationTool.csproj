@@ -6,30 +6,64 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <!--
+      Icona incorporata nell'eseguibile come risorsa Win32: e' quella che Explorer, la taskbar e
+      il menu Start mostrano per il .exe. E' distinta dall'Icon="..." di MainWindow.xaml, che
+      riguarda la finestra a runtime (barra del titolo e anteprima Alt-Tab): servono entrambe,
+      e per questo il file e' dichiarato anche come <Resource> piu' sotto.
+    -->
+    <ApplicationIcon>Resources\app_icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <!--
-    ReadyToRun: velocizza l'avvio a freddo su dischi lenti pre-compilando il codice nativo per la
-    piattaforma target, invece di affidarsi solo alla JIT al primo avvio. Attivo SOLO quando si
-    pubblica specificando un RuntimeIdentifier esplicito (es. dotnet publish -c Release -r win-x64):
-    dotnet build, dotnet run e dotnet test non passano mai un RID, quindi questo blocco è inerte
-    per il lavoro quotidiano e non cambia in alcun modo l'esperienza di sviluppo.
-    SelfContained resta a false (framework-dependent, richiede il runtime .NET installato sulla
-    macchina): passare a true (pacchetto circa 150 MB più pesante, nessuna dipendenza da runtime
-    installato) è una scelta operativa, su come vengono aggiornate le macchine dei tecnici, non
-    tecnica, quindi lasciata esplicita a chi pubblica (proprietà SelfContained a true sulla riga
-    di comando), non decisa qui.
+    ============================ PROFILO DI DISTRIBUZIONE ============================
+    Pubblicazione stand-alone per le macchine d'officina, che NON hanno il runtime .NET
+    installato e non possono riceverlo (§3 "Requisiti di Sistema"). Comando di release:
+
+        dotnet publish PersonalAutomationTool/PersonalAutomationTool.csproj -c Release -r win-x64
+
+    Tutto questo blocco è attivo SOLO quando si passa un RuntimeIdentifier esplicito: dotnet
+    build, dotnet run e dotnet test non ne passano mai uno, quindi il lavoro quotidiano di
+    sviluppo resta identico a prima (framework-dependent, build rapida).
+
+    - SelfContained: il runtime .NET viaggia dentro il pacchetto. È ciò che rende l'eseguibile
+      distribuibile per copia, senza installare nulla sui PC dei tecnici.
+    - PublishSingleFile + IncludeAllContentForSelfExtract: un solo .exe invece di centinaia di
+      file. IncludeAllContentForSelfExtract estrae TUTTO il contenuto (non solo gli assembly
+      gestiti) in una cartella temporanea prima dell'avvio: serve alle dipendenze native —
+      e_sqlite3.dll di SQLitePCLRaw su tutte — che altrimenti non verrebbero trovate.
+    - PublishReadyToRun: pre-compila in codice nativo. Sui dischi lenti delle macchine legacy
+      è la differenza fra un avvio a freddo immediato e diversi secondi di JIT (§3, vincolo 4).
+    - EnableCompressionInSingleFile: comprime il pacchetto (~150 MB → ~70 MB). Costa qualche
+      decimo di secondo al primo avvio, ma rende molto più sopportabile la copia via rete.
+
     NON abilitato il trimming: XAML e le chiamate dynamic verso Excel/Outlook si basano su
     riflessione, e il trimmer romperebbe cose in modo difficile da diagnosticare.
   -->
   <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <PublishReadyToRun>true</PublishReadyToRun>
-    <SelfContained>false</SelfContained>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <PublishTrimmed>false</PublishTrimmed>
+    <SatelliteResourceLanguages>it;en</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <ItemGroup>
     <ApplicationDefinition Remove="App.xaml" />
     <ApplicationDefinition Include="main\App.xaml" />
+  </ItemGroup>
+
+  <!--
+    Stesso file dell'ApplicationIcon, qui come risorsa WPF: serve a MainWindow.xaml per
+    Icon="Resources/app_icon.ico". Essendo incorporata nell'assembly, continua a funzionare
+    anche pubblicando in single-file self-contained, dove accanto all'eseguibile non c'e'
+    alcuna cartella Resources su disco.
+  -->
+  <ItemGroup>
+    <Resource Include="Resources\app_icon.ico" />
   </ItemGroup>
 
   <ItemGroup>

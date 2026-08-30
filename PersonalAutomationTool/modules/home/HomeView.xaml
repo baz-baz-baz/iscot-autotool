@@ -20,13 +20,21 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Sezione Orologio -->
-        <Border Grid.Row="0" BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="8" Padding="20" HorizontalAlignment="Left" MinWidth="250" Margin="0,0,0,20">
-            <StackPanel HorizontalAlignment="Center">
-                <TextBlock Text="{Binding CurrentTime}" FontSize="48" FontWeight="Bold" Foreground="#333333" HorizontalAlignment="Center"/>
-                <TextBlock Text="{Binding CurrentDate}" FontSize="16" Foreground="#666666" HorizontalAlignment="Center" Margin="0,5,0,0"/>
-            </StackPanel>
-        </Border>
+        <!-- Sezione Orologio + Verifica Percorsi -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,20">
+            <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="8" Padding="20" HorizontalAlignment="Left" MinWidth="250">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock Text="{Binding CurrentTime}" FontSize="48" FontWeight="Bold" Foreground="#333333" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding CurrentDate}" FontSize="16" Foreground="#666666" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <Button Content="Verifica Percorsi Hitachi" Command="{Binding VerificaPercorsiCommand}"
+                    Style="{x:Null}" Cursor="Hand" VerticalAlignment="Center" Margin="16,0,0,0"
+                    Padding="16,10" Background="#EFF6FF" Foreground="#1D4ED8" BorderBrush="#BFDBFE" BorderThickness="1"
+                    FontWeight="SemiBold" FontSize="14"
+                    ToolTip="Controlla in sola lettura lo stato delle cartelle Hitachi/SharePoint/OneDrive e di LOG &amp; DUMP: nessuna cartella o file viene creato."/>
+        </StackPanel>
 
         <!-- Sezione Manutenzioni in sospeso -->
         <Border Grid.Row="1" BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="8" Padding="15">

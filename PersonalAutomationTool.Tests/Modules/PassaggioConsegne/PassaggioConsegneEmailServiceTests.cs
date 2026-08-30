@@ -51,7 +51,7 @@ namespace PersonalAutomationTool.Tests.Modules.PassaggioConsegne
         [Theory]
         [InlineData(StatoTurno.NessunaAttivita, "#28A745")]
         [InlineData(StatoTurno.AttivitaPreviste, "#D39E00")]
-        [InlineData(StatoTurno.AttivitaImminentiOInCorso, "#DC3545")]
+        [InlineData(StatoTurno.AttivitaImminentiOInCorso, "#C00000")]
         public void ColoreStato_UnColoreDistintoPerStato(StatoTurno stato, string coloreAtteso) =>
             Assert.Equal(coloreAtteso, OutlookRapportinoMailService.ColoreStato(stato));
 
@@ -88,7 +88,7 @@ namespace PersonalAutomationTool.Tests.Modules.PassaggioConsegne
         [Theory]
         [InlineData(StatoTurno.NessunaAttivita, "#28A745")]
         [InlineData(StatoTurno.AttivitaPreviste, "#D39E00")]
-        [InlineData(StatoTurno.AttivitaImminentiOInCorso, "#DC3545")]
+        [InlineData(StatoTurno.AttivitaImminentiOInCorso, "#C00000")]
         public void BuildHtmlBody_ColoraLetichettaDiFlottaSecondoLoStato(StatoTurno stato, string coloreAtteso)
         {
             string html = OutlookRapportinoMailService.BuildHtmlBody("ETR1000", stato, Mattina);

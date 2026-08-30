@@ -83,6 +83,7 @@ namespace PersonalAutomationTool.Modules.Home
         public ICommand EliminaCommand { get; }
         public ICommand AggiornaDataCommand { get; }
         public ICommand AnnullaRinominaCommand { get; }
+        public ICommand VerificaPercorsiCommand { get; }
 
         public HomeViewModel()
         {
@@ -100,6 +101,7 @@ namespace PersonalAutomationTool.Modules.Home
             EliminaCommand = new RelayCommand(OnElimina);
             AggiornaDataCommand = new RelayCommand(OnAggiornaData);
             AnnullaRinominaCommand = new RelayCommand(OnAnnullaRinomina);
+            VerificaPercorsiCommand = new RelayCommand(OnVerificaPercorsi);
 
             _ = LoadPendingItemsAsync();
 
@@ -625,6 +627,21 @@ namespace PersonalAutomationTool.Modules.Home
             }
         }
 
+        /// <summary>
+        /// Apre il dialog di verifica percorsi (Interventi 1.6/4.4 di PROJECT_MEMORY.md §6). La
+        /// scansione vera e propria gira dentro <see cref="HealthCheckPathsDialog"/> stesso (thread
+        /// pool, con il proprio overlay di attesa): qui il comando si limita a mostrare la finestra
+        /// modale, senza duplicare la logica di caricamento.
+        /// </summary>
+        private void OnVerificaPercorsi(object? parameter)
+        {
+            var dialog = new HealthCheckPathsDialog
+            {
+                Owner = System.Windows.Application.Current?.MainWindow
+            };
+            dialog.ShowDialog();
+        }
+
         private static string? FindExistingLocoFolder(string trainTypePath, string loco, string rawTrainType, string fileTrainType)
         {
             if (!Directory.Exists(trainTypePath))
@@ -692,7 +709,13 @@ namespace PersonalAutomationTool.Modules.Home
             return null;
         }
 
-        private static string GetLogDumpReteBasePath()
+        /// <summary>
+        /// <c>internal</c> (era <c>private</c>) solo perché <see cref="PathHealthCheckService"/> la
+        /// riusa per verificare la stessa cartella di rete invece di duplicarne la logica di
+        /// risoluzione multi-radice (variabili d'ambiente OneDrive, cartelle <c>OneDrive*</c>): nessun
+        /// altro cambiamento di comportamento o di superficie pubblica.
+        /// </summary>
+        internal static string GetLogDumpReteBasePath()
         {
             string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             string[] subPaths = [

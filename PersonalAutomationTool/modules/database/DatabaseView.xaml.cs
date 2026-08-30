@@ -23,8 +23,7 @@ namespace PersonalAutomationTool.Modules.Database
         {
             try
             {
-                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                _dbDirectory = Path.Combine(baseDir, "modules", "database");
+                _dbDirectory = PersonalAutomationTool.Core.AppPaths.DatabaseFolder;
                 if (!Directory.Exists(_dbDirectory))
                 {
                     Directory.CreateDirectory(_dbDirectory);

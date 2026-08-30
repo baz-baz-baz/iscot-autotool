@@ -7,31 +7,41 @@ namespace PersonalAutomationTool.Tests.Core
 {
     /// <summary>
     /// Tier 2: <c>HitachiPathsManager</c> legge/scrive <c>hitachi_paths.json</c> in
-    /// <c>AppDomain.CurrentDomain.BaseDirectory</c> (nessun parametro per un percorso alternativo,
-    /// a differenza di <c>RenamerLog</c>), quindi questi test operano sul file reale nella cartella
-    /// di output di <c>PersonalAutomationTool.Tests</c> — mai sull'installazione dell'applicazione.
-    /// Ogni test elimina un eventuale file preesistente prima di partire: <c>!File.Exists</c> fa sì
-    /// che <c>LoadConfig()</c> generi la configurazione di default senza passare dalla cache interna
-    /// (invalidata comunque da <c>SaveConfig</c>), quindi il risultato non dipende dall'ordine di
-    /// esecuzione degli altri test.
+    /// <c>Core.AppPaths.DataFolder</c> (<c>%APPDATA%\PersonalAutomationTool</c> dallo Sprint 16,
+    /// §6.1-duodevicies di PROJECT_MEMORY.md — prima era <c>AppDomain.CurrentDomain.BaseDirectory</c>,
+    /// e questi test operavano su un file isolato nella cartella di output di
+    /// <c>PersonalAutomationTool.Tests</c>, mai sull'installazione reale). Da quel percorso in poi
+    /// **non esiste più un "posto sicuro per i test"** distinto dalla configurazione reale del
+    /// tecnico: il file che questi test toccano è lo stesso che legge/scrive l'applicazione
+    /// installata. Il test resta comunque non distruttivo perché fa esattamente ciò che faceva già
+    /// prima — backup del contenuto preesistente prima di ogni test, ripristino dopo — solo ora sul
+    /// percorso vero invece che su una copia isolata. <c>AppPaths.Initialize()</c> in ogni test è
+    /// necessario perché il percorso dipenda in modo deterministico da <c>%APPDATA%</c> e non
+    /// dall'ordine casuale con cui gira il resto della suite (vedi il <c>remarks</c> sotto).
     /// </summary>
     /// <remarks>
     /// <b>Perché una collection dedicata.</b> xUnit esegue in parallelo classi di test appartenenti a
-    /// collection diverse. Questa classe è l'unica che manipola uno stato **globale**: il file
-    /// <c>hitachi_paths.json</c> nella cartella di output condivisa, più la cache statica interna di
+    /// collection diverse. Questa classe manipola uno stato **globale**: il file reale
+    /// <c>hitachi_paths.json</c> sotto <c>%APPDATA%</c>, più la cache statica interna di
     /// <see cref="HitachiPathsManager"/>. Cancellarlo e ricrearlo mentre un altro test in parallelo
     /// legge la stessa configurazione produrrebbe fallimenti sporadici e non riproducibili — la
     /// classe di instabilità più fastidiosa da diagnosticare a posteriori. Isolarla in una collection
     /// propria la serializza rispetto a chiunque altro dichiari la stessa collection.
     /// </remarks>
-    [Collection("SharedBaseDirectoryState")]
+    [Collection("SharedAppDataState")]
     public sealed class HitachiPathsManagerTests : IDisposable
     {
-        private readonly string _configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "hitachi_paths.json");
+        private readonly string _configPath;
         private readonly string? _preexistingContent;
 
         public HitachiPathsManagerTests()
         {
+            // Idempotente: se un altro test lo ha già chiamato in questo processo, non fa nulla di
+            // nuovo. Chiamarlo comunque qui rende _configPath deterministico indipendentemente
+            // dall'ordine con cui xUnit esegue le altre classi.
+            AppPaths.Initialize();
+            _configPath = AppPaths.DataFile("hitachi_paths.json");
+
             if (File.Exists(_configPath))
             {
                 _preexistingContent = File.ReadAllText(_configPath);
@@ -93,6 +103,69 @@ namespace PersonalAutomationTool.Tests.Core
             Assert.Contains(config, c => c.Train == "E404P");
             Assert.Contains(config, c => c.Train == "ETR1000 / 1000FH");
             Assert.Contains(config, c => c.Train == "ETR1000 I-F");
+        }
+
+        // ------------------------------------------------------------------
+        // GetReportOldFolder — estratta dall'inline di ExecuteSpostaReport (Sprint 17,
+        // §6.1-undevicies) perché anche PathHealthCheckService deve conoscere questi stessi percorsi.
+        // ------------------------------------------------------------------
+
+        [Fact]
+        public void GetReportOldFolder_Etr700_IncludeLAnnoESottocartellaDedicata()
+        {
+            string? path = HitachiPathsManager.GetReportOldFolder(@"C:\Users\utente", "ETR700", 2026);
+
+            Assert.NotNull(path);
+            Assert.EndsWith(Path.Combine("REPORT INTERVENTI ETR700 OLD", "REPORT OLD ETR700 ANNO 2026"), path);
+        }
+
+        [Fact]
+        public void GetReportOldFolder_E404P_IncludeLAnnoNelNomeDellaCartella()
+        {
+            string? path = HitachiPathsManager.GetReportOldFolder(@"C:\Users\utente", "E404P", 2026);
+
+            Assert.NotNull(path);
+            Assert.EndsWith("REPORT INTERVENTI OLD_ModifyYear2026", path);
+        }
+
+        [Fact]
+        public void GetReportOldFolder_Etr1000EFh_NonDipendeDallAnno()
+        {
+            string? conAnnoCorrente = HitachiPathsManager.GetReportOldFolder(@"C:\Users\utente", "ETR1000 / 1000FH", 2026);
+            string? conAltroAnno = HitachiPathsManager.GetReportOldFolder(@"C:\Users\utente", "ETR1000 / 1000FH", 2030);
+
+            Assert.NotNull(conAnnoCorrente);
+            Assert.EndsWith("OLD REPORT", conAnnoCorrente);
+            Assert.Equal(conAnnoCorrente, conAltroAnno);
+        }
+
+        [Fact]
+        public void GetReportOldFolder_Etr1000IF_UsaLaGraficaMaiuscolaDistintaDaEtr1000EFh()
+        {
+            // "OLD Report" (I-F) contro "OLD REPORT" (ETR1000/1000FH): differiscono solo per
+            // maiuscole/minuscole, esattamente come nel codice sorgente originale — un dettaglio
+            // facile da appiattire per errore in un refactor.
+            string? path = HitachiPathsManager.GetReportOldFolder(@"C:\Users\utente", "ETR1000 I-F", 2026);
+
+            Assert.NotNull(path);
+            Assert.EndsWith("OLD Report", path);
+        }
+
+        [Fact]
+        public void GetReportOldFolder_TrenoNonConfigurato_RestituisceNull()
+        {
+            Assert.Null(HitachiPathsManager.GetReportOldFolder(@"C:\Users\utente", "Treno Inesistente", 2026));
+        }
+
+        [Fact]
+        public void GetReportOldFolder_StaSottoLaStessaCartellaHitachiDiGetHitachiDir()
+        {
+            // Le due funzioni devono restare coerenti fra loro: GetReportOldFolder aggiunge solo la
+            // sottocartella "vecchi report" sopra la stessa base che EXCEL usa per il report corrente.
+            string hitachiDir = HitachiPathsManager.GetHitachiDir(@"C:\Users\utente", "ETR700")!;
+            string oldFolder = HitachiPathsManager.GetReportOldFolder(@"C:\Users\utente", "ETR700", 2026)!;
+
+            Assert.StartsWith(hitachiDir, oldFolder);
         }
     }
 }

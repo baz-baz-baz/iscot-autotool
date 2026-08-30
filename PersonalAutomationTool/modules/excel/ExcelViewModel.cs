@@ -133,38 +133,22 @@ namespace PersonalAutomationTool.Modules.Excel
             try
             {
                 string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                string currentYear = DateTime.Now.Year.ToString();
 
                 // Cartella base letta da hitachi_paths.json invece che duplicata qui e in
                 // ExecuteRiportaReport: se SharePoint rinomina una cartella, basta modificare il
-                // JSON, non ricompilare l'app. La struttura di targetFolder (con/senza anno,
-                // profondità diversa da treno a treno) resta qui: non è uniforme abbastanza da
-                // meritare la stessa estrazione senza rischiare di introdurre differenze.
+                // JSON, non ricompilare l'app.
                 string? hitachiDir = Core.HitachiPathsManager.GetHitachiDir(userProfile, SelectedTrain);
                 if (hitachiDir == null)
                 {
                     return;
                 }
 
-                string targetFolder;
-                if (SelectedTrain == "ETR700")
-                {
-                    string reportOldBaseDir = Path.Combine(hitachiDir, "REPORT INTERVENTI ETR700 OLD");
-                    targetFolder = Path.Combine(reportOldBaseDir, $"REPORT OLD ETR700 ANNO {currentYear}");
-                }
-                else if (SelectedTrain == "E404P")
-                {
-                    targetFolder = Path.Combine(hitachiDir, $"REPORT INTERVENTI OLD_ModifyYear{currentYear}");
-                }
-                else if (SelectedTrain == "ETR1000 / 1000FH")
-                {
-                    targetFolder = Path.Combine(hitachiDir, "OLD REPORT");
-                }
-                else if (SelectedTrain == "ETR1000 I-F")
-                {
-                    targetFolder = Path.Combine(hitachiDir, "OLD Report");
-                }
-                else
+                // La struttura di targetFolder (con/senza anno, profondità diversa da treno a treno)
+                // vive in HitachiPathsManager.GetReportOldFolder, non più qui: da quando anche
+                // PathHealthCheckService deve conoscere questi stessi percorsi (§6.1-undevicies di
+                // PROJECT_MEMORY.md), duplicarla rischiava di farla divergere in silenzio.
+                string? targetFolder = Core.HitachiPathsManager.GetReportOldFolder(userProfile, SelectedTrain, DateTime.Now.Year);
+                if (targetFolder == null)
                 {
                     return;
                 }

@@ -90,6 +90,8 @@
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Grid.Column="0" Margin="0,0,20,0" VerticalAlignment="Bottom">
@@ -106,7 +108,27 @@
                                     <TextBlock Text="Auto da Database" FontWeight="SemiBold" Foreground="#34495E" VerticalAlignment="Center"/>
                                 </StackPanel>
 
-                                <Button Grid.Column="2" x:Name="BtnPulisci" Content="Pulisci spazi" FontSize="14" Background="#ECF0F1" Foreground="#2C3E50" Padding="15,8" Margin="0,0,10,0" BorderThickness="1" BorderBrush="#BDC3C7" Cursor="Hand" VerticalAlignment="Bottom" Click="BtnPulisci_Click">
+                                <!-- Le due esclusioni sono mutuamente esclusive (§ ChkNoLog_Checked / ChkNoDump_Checked
+                                     nel code-behind): selezionarne una deseleziona automaticamente l'altra. -->
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Bottom" Margin="0,0,20,4">
+                                    <CheckBox x:Name="ChkNoLog" Checked="ChkNoLog_Checked" Unchecked="ChkEsclusione_Unchecked" Margin="0,0,10,0" VerticalAlignment="Center">
+                                        <CheckBox.LayoutTransform>
+                                            <ScaleTransform ScaleX="1.3" ScaleY="1.3"/>
+                                        </CheckBox.LayoutTransform>
+                                    </CheckBox>
+                                    <TextBlock Text="Non creare LOG" FontWeight="SemiBold" Foreground="#34495E" VerticalAlignment="Center"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Bottom" Margin="0,0,20,4">
+                                    <CheckBox x:Name="ChkNoDump" Checked="ChkNoDump_Checked" Unchecked="ChkEsclusione_Unchecked" Margin="0,0,10,0" VerticalAlignment="Center">
+                                        <CheckBox.LayoutTransform>
+                                            <ScaleTransform ScaleX="1.3" ScaleY="1.3"/>
+                                        </CheckBox.LayoutTransform>
+                                    </CheckBox>
+                                    <TextBlock Text="Non creare DUMP" FontWeight="SemiBold" Foreground="#34495E" VerticalAlignment="Center"/>
+                                </StackPanel>
+
+                                <Button Grid.Column="4" x:Name="BtnPulisci" Content="Pulisci spazi" FontSize="14" Background="#ECF0F1" Foreground="#2C3E50" Padding="15,8" Margin="0,0,10,0" BorderThickness="1" BorderBrush="#BDC3C7" Cursor="Hand" VerticalAlignment="Bottom" Click="BtnPulisci_Click">
                                     <Button.Resources>
                                         <Style TargetType="Border">
                                             <Setter Property="CornerRadius" Value="6"/>
@@ -114,7 +136,7 @@
                                     </Button.Resources>
                                 </Button>
 
-                                <Button Grid.Column="3" x:Name="BtnCrea" Content="Crea" FontSize="14" FontWeight="Bold" Background="#2ECC71" Foreground="White" Padding="25,8" BorderThickness="0" Cursor="Hand" VerticalAlignment="Bottom" Click="BtnCrea_Click">
+                                <Button Grid.Column="5" x:Name="BtnCrea" Content="Crea" FontSize="14" FontWeight="Bold" Background="#2ECC71" Foreground="White" Padding="25,8" BorderThickness="0" Cursor="Hand" VerticalAlignment="Bottom" Click="BtnCrea_Click">
                                     <Button.Resources>
                                         <Style TargetType="Border">
                                             <Setter Property="CornerRadius" Value="6"/>
@@ -139,7 +161,7 @@
                             </Grid.ColumnDefinitions>
                             
                             <!-- Colonna LOG -->
-                            <StackPanel Grid.Column="0">
+                            <StackPanel x:Name="PanelPreviewLogColumn" Grid.Column="0">
                                 <!-- Anteprima LOG 1 -->
                                 <TextBlock Text="Anteprima LOG:" FontWeight="Bold" Foreground="#34495E" Margin="0,0,0,5" FontSize="12"/>
                                 <Border Background="#F8F9FA" BorderBrush="#E0E6ED" BorderThickness="1" CornerRadius="4" Padding="15" Margin="0,0,0,15" MinHeight="50">
@@ -156,7 +178,7 @@
                             </StackPanel>
 
                             <!-- Colonna DUMP -->
-                            <StackPanel Grid.Column="2">
+                            <StackPanel x:Name="PanelPreviewDumpColumn" Grid.Column="2">
                                 <!-- Anteprima DUMP 1 -->
                                 <TextBlock Text="Anteprima DUMP:" FontWeight="Bold" Foreground="#34495E" Margin="0,0,0,5" FontSize="12"/>
                                 <Border Background="#F8F9FA" BorderBrush="#E0E6ED" BorderThickness="1" CornerRadius="4" Padding="15" Margin="0,0,0,15" MinHeight="50">

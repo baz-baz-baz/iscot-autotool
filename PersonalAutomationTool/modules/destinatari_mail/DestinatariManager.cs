@@ -63,11 +63,7 @@ namespace PersonalAutomationTool.Modules.DestinatariMail
         private static DateTime _cachedWriteTimeUtc;
         private static long _cachedLength = -1;
 
-        private static string GetConfigPath()
-        {
-            string folder = AppDomain.CurrentDomain.BaseDirectory;
-            return Path.Combine(folder, "destinatari.json");
-        }
+        private static string GetConfigPath() => PersonalAutomationTool.Core.AppPaths.DataFile("destinatari.json");
 
         private static string? ReadConfigJson(string path)
         {

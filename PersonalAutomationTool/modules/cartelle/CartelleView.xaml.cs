@@ -124,6 +124,25 @@ namespace PersonalAutomationTool.Modules.Cartelle
             }
         }
 
+        /// <summary>
+        /// "Non creare LOG" e "Non creare DUMP" sono mutuamente esclusive: selezionarne una deve
+        /// deselezionare automaticamente l'altra, così non è mai possibile escludere entrambe (il
+        /// pulsante "Crea" finirebbe per non creare nulla).
+        /// </summary>
+        private void ChkNoLog_Checked(object sender, RoutedEventArgs e)
+        {
+            if (ChkNoDump != null && ChkNoDump.IsChecked == true) ChkNoDump.IsChecked = false;
+            UpdatePreviews();
+        }
+
+        private void ChkNoDump_Checked(object sender, RoutedEventArgs e)
+        {
+            if (ChkNoLog != null && ChkNoLog.IsChecked == true) ChkNoLog.IsChecked = false;
+            UpdatePreviews();
+        }
+
+        private void ChkEsclusione_Unchecked(object sender, RoutedEventArgs e) => UpdatePreviews();
+
         private async System.Threading.Tasks.Task<string> GetTrenoFromDbAsync(string tipo, string loco)
         {
             if (string.IsNullOrWhiteSpace(tipo) || string.IsNullOrWhiteSpace(loco)) return "";
@@ -142,6 +161,9 @@ namespace PersonalAutomationTool.Modules.Cartelle
         {
             if (TxtPreviewLog1 == null || TxtTicket1 == null) return; // Se l'interfaccia non è ancora inizializzata
 
+            bool noLog = ChkNoLog?.IsChecked == true;
+            bool noDump = ChkNoDump?.IsChecked == true;
+
             string ticket1 = TxtTicket1.Text?.Trim() ?? "";
             string ticket2 = TxtTicket2?.Text?.Trim() ?? "";
             string tipo = CmbTipo?.SelectedItem?.ToString() ?? "";
@@ -153,8 +175,8 @@ namespace PersonalAutomationTool.Modules.Cartelle
 
             if (!string.IsNullOrWhiteSpace(ticket1))
             {
-                TxtPreviewLog1.Text = $"SR{ticket1} LOG {tipo} {loco1} {software} {data} {utente}".Trim();
-                TxtPreviewDump1.Text = $"SR{ticket1} DUMP {tipo} {loco1} {software} {data} {utente}".Trim();
+                TxtPreviewLog1.Text = noLog ? string.Empty : $"SR{ticket1} LOG {tipo} {loco1} {software} {data} {utente}".Trim();
+                TxtPreviewDump1.Text = noDump ? string.Empty : $"SR{ticket1} DUMP {tipo} {loco1} {software} {data} {utente}".Trim();
             }
             else
             {
@@ -166,8 +188,8 @@ namespace PersonalAutomationTool.Modules.Cartelle
             {
                 string l2 = string.IsNullOrWhiteSpace(loco2) ? loco1 : loco2;
 
-                TxtPreviewLog2.Text = $"SR{ticket2} LOG {tipo} {l2} {software} {data} {utente}".Trim();
-                TxtPreviewDump2.Text = $"SR{ticket2} DUMP {tipo} {l2} {software} {data} {utente}".Trim();
+                TxtPreviewLog2.Text = noLog ? string.Empty : $"SR{ticket2} LOG {tipo} {l2} {software} {data} {utente}".Trim();
+                TxtPreviewDump2.Text = noDump ? string.Empty : $"SR{ticket2} DUMP {tipo} {l2} {software} {data} {utente}".Trim();
                 if (SectionPreviewLog2 != null) SectionPreviewLog2.Visibility = Visibility.Visible;
                 if (SectionPreviewDump2 != null) SectionPreviewDump2.Visibility = Visibility.Visible;
             }
@@ -178,6 +200,10 @@ namespace PersonalAutomationTool.Modules.Cartelle
                 if (SectionPreviewLog2 != null) SectionPreviewLog2.Visibility = Visibility.Collapsed;
                 if (SectionPreviewDump2 != null) SectionPreviewDump2.Visibility = Visibility.Collapsed;
             }
+
+            // Riscontro visivo immediato: la colonna esclusa si attenua, oltre a restare svuotata.
+            if (PanelPreviewLogColumn != null) PanelPreviewLogColumn.Opacity = noLog ? 0.4 : 1.0;
+            if (PanelPreviewDumpColumn != null) PanelPreviewDumpColumn.Opacity = noDump ? 0.4 : 1.0;
         }
 
         private void BtnPulisci_Click(object sender, RoutedEventArgs e)
@@ -241,6 +267,11 @@ namespace PersonalAutomationTool.Modules.Cartelle
                 return;
             }
 
+            // Le due checkbox sono mutuamente esclusive (ChkNoLog_Checked/ChkNoDump_Checked): non
+            // possono risultare entrambe vere, quindi non c'è il caso "non si crea nulla".
+            bool creaLog = ChkNoLog?.IsChecked != true;
+            bool creaDump = ChkNoDump?.IsChecked != true;
+
             try
             {
                 string baseLogDump = PersonalAutomationTool.Core.AppConfig.LogAndDumpFolder;
@@ -260,8 +291,8 @@ namespace PersonalAutomationTool.Modules.Cartelle
 
                     string folderLog1 = Path.Combine(parentFolder1, $"SR{ticket1} LOG {tipo} {loco1} {software} {data} {utente}".Trim());
                     string folderDump1 = Path.Combine(parentFolder1, $"SR{ticket1} DUMP {tipo} {loco1} {software} {data} {utente}".Trim());
-                    Directory.CreateDirectory(folderLog1);
-                    Directory.CreateDirectory(folderDump1);
+                    if (creaLog) Directory.CreateDirectory(folderLog1);
+                    if (creaDump) Directory.CreateDirectory(folderDump1);
 
                     if (!string.IsNullOrWhiteSpace(scadenzaFrancia))
                     {
@@ -277,8 +308,8 @@ namespace PersonalAutomationTool.Modules.Cartelle
 
                         string folderLog2 = Path.Combine(parentFolder2, $"SR{ticket2} LOG {tipo} {l2} {software} {data} {utente}".Trim());
                         string folderDump2 = Path.Combine(parentFolder2, $"SR{ticket2} DUMP {tipo} {l2} {software} {data} {utente}".Trim());
-                        Directory.CreateDirectory(folderLog2);
-                        Directory.CreateDirectory(folderDump2);
+                        if (creaLog) Directory.CreateDirectory(folderLog2);
+                        if (creaDump) Directory.CreateDirectory(folderDump2);
 
                         if (!string.IsNullOrWhiteSpace(scadenzaFrancia))
                         {
@@ -293,6 +324,14 @@ namespace PersonalAutomationTool.Modules.Cartelle
             catch (Exception ex)
             {
                 MessageBox.Show($"Errore durante la creazione delle cartelle: {ex.Message}", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                // Le esclusioni valgono solo per la singola creazione: si azzerano sempre, andata a
+                // buon fine o no, così la prossima pressione di "Crea" riparte dal comportamento
+                // standard (entrambe le cartelle) invece di ripetere un'esclusione dimenticata.
+                if (ChkNoLog != null) ChkNoLog.IsChecked = false;
+                if (ChkNoDump != null) ChkNoDump.IsChecked = false;
             }
         }
     }

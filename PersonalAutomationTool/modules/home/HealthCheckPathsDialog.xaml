@@ -1,0 +1,90 @@
+<Window x:Class="PersonalAutomationTool.Modules.Home.HealthCheckPathsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:PersonalAutomationTool.Core.Controls"
+        Title="Verifica Percorsi Hitachi" Height="540" Width="960"
+        WindowStartupLocation="CenterOwner" Background="#F8FAFC">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,15">
+            <TextBlock Text="Verifica Percorsi Hitachi" FontSize="20" FontWeight="Bold" Foreground="#1E293B"/>
+            <TextBlock Text="Controllo in sola lettura: nessuna cartella o file viene creato o modificato."
+                       FontSize="13" Foreground="#64748B" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="2">
+            <DataGrid x:Name="ItemsGrid" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                      HeadersVisibility="Column" Background="Transparent" BorderThickness="0"
+                      GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#F1F5F9"
+                      RowHeight="42" FontSize="13">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Funzione / Flotta" Binding="{Binding Funzione}" Width="1.3*"/>
+
+                    <DataGridTextColumn Header="Percorso Configurato" Binding="{Binding Percorso}" Width="2.2*">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                <Setter Property="ToolTip" Value="{Binding Percorso}"/>
+                                <Setter Property="Foreground" Value="#475569"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <!-- Badge colorato: la colorazione vive interamente qui in XAML (trigger su
+                         StatoTesto), cosi' PathHealthCheckItem resta un dato puro senza alcuna
+                         dipendenza da WPF (vedi PathHealthCheckService.cs). -->
+                    <DataGridTemplateColumn Header="Stato" Width="140">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border CornerRadius="4" Padding="8,4" HorizontalAlignment="Left">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="#DC3545"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding StatoTesto}" Value="OK">
+                                                    <Setter Property="Background" Value="#28A745"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding StatoTesto}" Value="ACCESSO NEGATO">
+                                                    <Setter Property="Background" Value="#E69500"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock Text="{Binding StatoTesto}" Foreground="White"
+                                               FontWeight="SemiBold" FontSize="11"/>
+                                </Border>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <DataGridTextColumn Header="Dettaglio / Diagnostica" Binding="{Binding Dettaglio}" Width="2*">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextWrapping" Value="Wrap"/>
+                                <Setter Property="Foreground" Value="#475569"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+            <Button Content="Ricontrolla" Click="BtnRicontrolla_Click" Width="120" Height="35" Margin="0,0,10,0"
+                    Background="White" Foreground="#1E293B" BorderBrush="#E2E8F0" BorderThickness="1"
+                    Style="{x:Null}" Cursor="Hand"/>
+            <Button Content="Chiudi" Click="BtnChiudi_Click" Width="100" Height="35"
+                    Background="#3B82F6" Foreground="White" BorderThickness="0" Style="{x:Null}" Cursor="Hand"/>
+        </StackPanel>
+
+        <!-- Copre l'intera finestra (comprese le due righe di pulsanti) mentre la scansione e' in
+             corso: evita che "Ricontrolla" venga premuto una seconda volta a meta' di una scansione
+             gia' avviata. Stesso pattern gia' in uso altrove nell'app (§4.2 di PROJECT_MEMORY.md). -->
+        <controls:ProgressOverlay x:Name="Overlay" Grid.RowSpan="3" Message="Verifica percorsi in corso..."/>
+    </Grid>
+</Window>

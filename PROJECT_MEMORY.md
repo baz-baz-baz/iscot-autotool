@@ -87,7 +87,36 @@
 > oraria, etichetta di flotta colorata dallo stato, testo centrale condizionato, chiusura "Saluti". La
 > fascia oraria del saluto usa una funzione **apposta separata** da `EmailService.DetermineSaluto` (che
 > resta invariata, golden-test compreso) — vedi il riquadro dedicato in §6.1-sedecies prima di provare a
-> unificarle.
+> unificarle. Lo stesso Sprint 14 include una correzione su segnalazione screenshot: i pulsanti di
+> `StatoTurnoDialog` (e, trovato per lo stesso motivo, di `CognomeDialog` in VERIFICHE) mostravano il
+> testo tagliato perché privi di `Style` esplicito ereditavano il chrome ritagliante di MaterialDesignThemes
+> — **qualunque nuovo `Button` in questo repo va dichiarato con `Style="{x:Null}"` o uno `Style` con nome,
+> mai senza, altrimenti rischia lo stesso difetto** — più due aumenti successivi delle dimensioni del
+> testo nel corpo email (fino a +50%) su richiesta esplicita.
+> Chiude lo **Sprint 15** (§6.1-septendecies): nel modulo CARTELLE, due checkbox mutuamente esclusive
+> "Non creare LOG"/"Non creare DUMP" che condizionano la creazione delle cartelle dal pulsante "Crea" e
+> si azzerano da sole a operazione conclusa — `CartelleView` resta code-behind puro, nessun test xUnit
+> nuovo o preesistente per questo modulo.
+> Chiude lo **Sprint 16** (§6.1-duodevicies): **distribuzione stand-alone**. Icona applicativa, profilo
+> di pubblicazione single-file self-contained (un solo `.exe` da 81 MB, nessun runtime .NET richiesto
+> sulle macchine dei tecnici) e — soprattutto — **`Core.AppPaths`**: tutto lo stato scrivibile si è
+> spostato in `%APPDATA%\PersonalAutomationTool`, con migrazione automatica al primo avvio.
+> ⚠️ **Da leggere prima di scrivere qualunque percorso di configurazione o database: §2.6 e
+> §6.1-duodevicies.** `AppDomain.CurrentDomain.BaseDirectory` **non** è più un posto valido dove
+> scrivere: in single-file punta alla cartella temporanea di estrazione del bundle, che cambia a ogni
+> release. Il difetto è stato trovato **eseguendo** il pacchetto pubblicato, non compilandolo: build
+> pulita e suite verde non lo mostravano.
+> Chiude lo **Sprint 17** (§6.1-undevicies): **Health-check Percorsi**, un pulsante on-demand in HOME
+> che verifica in **sola lettura** — vincolo esplicito e non negoziabile del committente — lo stato di
+> tutte le cartelle Hitachi/SharePoint/OneDrive già configurate (le stesse lette da EXCEL e VERIFICHE,
+> non una copia) più `LOG & DUMP` locale e di rete. Chiude finalmente gli interventi **1.6/4.4**, in
+> roadmap dallo Sprint 1 come "rimandati" per assenza di specifica UI. Una correzione dopo screenshot
+> del committente ha aggiunto le cartelle "Report Interventi OLD" mancanti, con l'occasione di
+> estrarre `HitachiPathsManager.GetReportOldFolder` invece di lasciarla duplicata — e ha fatto emergere
+> **una scoperta collaterale**: due suite di test scritte prima dello Sprint 16 rischiavano di leggere o
+> sovrascrivere silenziosamente `destinatari.json`/`hitachi_paths.json` **reali** del tecnico, perché
+> calcolavano ancora il vecchio percorso pre-`AppPaths`. Corrette entrambe — vedi il riquadro dedicato
+> in §6.1-undevicies prima di scrivere un nuovo test che tocchi un file sotto `AppPaths.DataFolder`.
 
 ---
 
@@ -230,15 +259,24 @@ Sottoscrittori: `HomeViewModel`, `ExcelViewModel`, `CartelleView` (Loaded/Unload
 
 ### 2.6 Persistenza
 
+> ⚠️ **Dallo Sprint 16 (§6.1-duodevicies) tutti i percorsi scrivibili passano da `Core.AppPaths`, non
+> più da `AppDomain.CurrentDomain.BaseDirectory`.** La cartella dati è
+> **`%APPDATA%\PersonalAutomationTool\`** (`AppPaths.DataFolder`), i database stanno in
+> `AppPaths.DatabaseFolder`. Non ricomporre a mano un percorso di configurazione o di database: in
+> pubblicazione **single-file** `BaseDirectory` è la cartella temporanea di estrazione del bundle, che
+> cambia a ogni release, e usarla significa perdere i dati dei tecnici in silenzio. Il motivo completo,
+> con la verifica a runtime, è in §6.1-duodevicies.
+
 | Store | Percorso | Contenuto |
 |---|---|---|
-| `train_software.db` | `{BaseDirectory}\modules\database\` | tabella `flotte(tipo, treno, loco, software)` — mappa loco → treno e versione SW |
+| `train_software.db` | `AppPaths.DatabaseFolder` (`%APPDATA%\PersonalAutomationTool\modules\database\`) | tabella `flotte(tipo, treno, loco, software)` — mappa loco → treno e versione SW. Contiene anche `renamer_log` |
 | `emails.db` | idem | `indirizzi_email(id, nome, email, categoria)` — rubrica |
-| `destinatari.json` | `{BaseDirectory}\` | destinatari To/Cc per **treno × azione**; auto-generato al primo avvio |
-| `shortcuts.json` | `{BaseDirectory}\` | macro-testi "Nulla Riscontrato", "SIM-GIT", … per treno |
+| `destinatari.json` | `AppPaths.DataFolder` | destinatari To/Cc per **treno × azione**; auto-generato al primo avvio |
+| `shortcuts.json` | `AppPaths.DataFolder` | macro-testi "Nulla Riscontrato", "SIM-GIT", … per treno |
 | ~~`data\passaggio_consegne.json`~~ | `{BaseDirectory}\data\` | **non più usato da alcun codice.** Il modulo riscritto ha stato **volatile** per richiesta esplicita del committente: riparte vuoto a ogni avvio e non salva nulla su disco (§6.1-quaterdecies). Un file residuo da versioni precedenti è inerte e può essere cancellato |
 | `info_ticket.json` | dentro ogni cartella madre di `LOG & DUMP` | avvisi/avarie/interventi per locomotore |
-| `hitachi_paths.json` | `{BaseDirectory}\` | cartella Hitachi base per treno, usata da `ExcelViewModel` (Sposta/Riporta Report); auto-generato al primo avvio — vedi §6.1 |
+| `hitachi_paths.json` | `AppPaths.DataFolder` | cartella Hitachi base per treno, usata da `ExcelViewModel` (Sposta/Riporta Report); auto-generato al primo avvio — vedi §6.1 |
+| `verifiche_paths.json` | `AppPaths.DataFolder` | cartelle principale/OLD per flotta del modulo VERIFICHE (§6.1-quindecies); auto-generato al primo avvio |
 
 `DatabaseManager` incapsula SQLite (`Microsoft.Data.Sqlite`) e serializza gli accessi con un `lock`
 **per istanza** (era statico e condiviso fra tutte le istanze fino al §6.1-bis: si veda lì per il
@@ -819,7 +857,7 @@ che spettano al committente. Vedi il ledger "Fatto / Rimandato" in fondo a quest
 |---|---|
 | **1.1**, restanti 6 chiamanti di `LogDumpFolderName` | Vedi scoperta #1 e la nota su `TrainViewHelper` sotto: alcuni chiamanti hanno logica bespoke che già gestisce I-F/FH correttamente senza DB; altri (Excel) usano un'etichetta UI che non corrisponde a un `tipo` reale. Migrarli alla cieca senza nomi di cartella reali su cui validare è il rischio che questo progetto vuole evitare. |
 | **1.2** — validazione preventiva in CARTELLE | Richiede decisioni di UX (quali controlli bloccano la creazione, che messaggio, dove appare) che spettano al committente, non un'implementazione unilaterale. |
-| **1.6 / 4.4** — health-check percorsi all'avvio | Nuova superficie UI (dove appare, blocca l'avvio o solo avvisa) non specificata: stesso motivo di 1.2. |
+| ~~**1.6 / 4.4** — health-check percorsi all'avvio~~ | **Fatto nello Sprint 17 (§6.1-undevicies)**, ma non "all'avvio": il committente ha specificato un pulsante on-demand in HOME, non un controllo automatico al lancio dell'app. |
 | **1.7** — wrapper tipizzato su Outlook | Impatto già valutato **Basso** in §6.2; tocca `EmailService` **e** `PassaggioConsegneEmailService`; la parte più delicata (forzare Outlook a generare la firma via `Inspector`) è intrinsecamente legata a `dynamic`/COM e si presta male a un'interfaccia pulita senza perdere quel comportamento. Rapporto costo/beneficio sfavorevole rispetto al resto dello sprint. |
 | **3.4** — `OpenXmlReader` SAX per Verifiche | Riscrittura del parsing di un percorso business-critical (alimenta l'autocompilazione di Passaggio di Consegne) senza un file Excel "Verifiche" reale su cui validare la nuova logica contro l'attuale (che gestisce ricerca euristica dell'header, merge di celle, ecc.). Rischio Medio già dichiarato in §6.2: non affrontabile alla cieca. |
 | **Fase 3 per intero** (4.1 anteprima rinomine, 4.2 progress overlay, 4.3 annulla rinomina, 4.5 tastiera, 4.6 ricerca) | Sono **funzionalità nuove**, non ottimizzazioni: richiedono decisioni di prodotto/UX (layout del dialog di anteprima, semantica di annullamento, dove va la barra di ricerca) che questa sessione non ha. In particolare **4.3** ripropone le tabelle `renamer_config`/`renamer_queue`/`renamer_log`, residuo di una funzione mai completata di cui non è noto il progetto originale (§6.6): riusarle per un significato nuovo senza conoscerne l'intento è speculativo. |
@@ -2315,7 +2353,7 @@ condizionato dallo stato scelto — al posto del breve riepilogo testuale preced
 |---|---|---|---|
 | "Non ci sono attività da svolgere" | `NessunaAttivita` | verde `#28A745` | "Nessuna attività in sospeso." |
 | "Ci sono attività previste" | `AttivitaPreviste` | ambra scuro `#D39E00` | `<br/><br/>` — due righe vuote da compilare a mano in Outlook |
-| "Ci sono attività imminenti o in corso" | `AttivitaImminentiOInCorso` | rosso `#DC3545` | idem |
+| "Ci sono attività imminenti o in corso" | `AttivitaImminentiOInCorso` | rosso `#C00000` | idem |
 
 L'etichetta di flotta usa il nome **senza spazio** (`ETR700`, non `ETR 700`): ricavata da
 `RapportinoSnapshot.TipoTreno.Replace(" ", string.Empty)` dentro `ApriBozza`, non un nuovo campo dello
@@ -2381,14 +2419,330 @@ con nome invece di lasciare applicare quello implicito.
 > ⚠️ **Trappola generale per l'app, non solo per questo dialog.** In `App.xaml` è caricato
 > `MaterialDesignTheme.Defaults.xaml`, che applica il suo stile a **ogni** `Button` privo di uno `Style`
 > esplicito, ovunque nell'applicazione. Un `Button` "semplice" con solo `Background`/`Foreground`/
-> `Padding` locali (il pattern già in uso in `CognomeDialog.xaml`, VERIFICHE) **eredita comunque quel
-> chrome** e rischia lo stesso ritaglio se il testo è più lungo di un'etichetta breve. Qualunque nuovo
-> `Button` fuori da uno `Style` con nome va verificato con testo realisticamente lungo, non solo con
-> etichette brevi come "OK"/"Annulla".
+> `Padding` locali **eredita comunque quel chrome** e rischia lo stesso ritaglio se il testo è più lungo
+> di un'etichetta breve. Qualunque nuovo `Button` fuori da uno `Style` con nome va verificato con testo
+> realisticamente lungo, non solo con etichette brevi come "OK"/"Annulla". **`CognomeDialog.xaml`
+> (VERIFICHE, §6.1-quindecies) aveva lo stesso difetto latente** — "Annulla"/"Conferma" sono corti
+> abbastanza da non mostrarlo visibilmente, ma la causa era identica — ed è stato corretto con lo stesso
+> `Style="{x:Null}"` non appena individuato qui.
 
-**Dimensioni dei caratteri nel corpo email** (richiesta esplicita dopo lo screenshot): etichetta di
-flotta portata da 20px a **28px**, testo del corpo (saluto, testo centrale, chiusura) da 15px a **14px**
-— `OutlookRapportinoMailService.BuildHtmlBody`.
+**Dimensioni dei caratteri nel corpo email** (due richieste successive del committente, dopo
+screenshot): prima etichetta di flotta 20px→28px e corpo 15px→14px, poi **+50% su entrambe** — corpo
+**21px**, etichetta di flotta **42px** — `OutlookRapportinoMailService.BuildHtmlBody`.
+
+### 6.1-septendecies Sprint 15 — esclusione LOG/DUMP nel modulo CARTELLE
+
+**Contesto.** Richiesta del committente: poter creare **solo** la cartella LOG o **solo** la cartella
+DUMP invece della coppia standard, per i turni in cui serve una sola delle due. `CartelleView` resta
+**code-behind puro** (§2.2: nessun ViewModel, accesso ai controlli per nome), quindi l'intervento è
+tutto dentro `CartelleView.xaml` / `.xaml.cs`, senza introdurre pattern nuovi nel modulo.
+
+#### Cosa cambia
+
+- **Due nuove `CheckBox`** nella riga di "Software Treno" / "Auto da Database": **"Non creare LOG"**
+  (`ChkNoLog`) e **"Non creare DUMP"** (`ChkNoDump`), fra "Auto da Database" e i pulsanti "Pulisci
+  spazi"/"Crea" (la `Grid` di quella riga è passata da 4 a 6 colonne).
+- **Mutuamente esclusive**: `ChkNoLog_Checked` deseleziona `ChkNoDump` se già spuntata (e viceversa),
+  così non è mai possibile escluderle entrambe — "Crea" non può ridursi a "non creare nulla".
+- **`BtnCrea_Click`** legge lo stato delle due checkbox in `creaLog`/`creaDump` e li usa per condizionare
+  ciascuna delle **quattro** `Directory.CreateDirectory` di cartella LOG/DUMP (Ticket 1 **e**, se
+  presente, Ticket 2 — l'esclusione vale per l'intera operazione, non solo per il primo ticket).
+- **Anteprime aggiornate dal vivo**: `UpdatePreviews()` (già richiamata a ogni digitazione, con debounce
+  300 ms preesistente) svuota la casella di anteprima della cartella esclusa e attenua l'intera colonna
+  (`Opacity 0.4` su `PanelPreviewLogColumn`/`PanelPreviewDumpColumn`, nuovi `x:Name` sulle `StackPanel`
+  già esistenti) — riscontro visivo immediato, prima ancora di premere "Crea".
+- **Reset automatico** di entrambe le checkbox in un blocco `finally` di `BtnCrea_Click`: si azzerano
+  **sempre**, sia che la creazione riesca sia che sollevi un'eccezione, così un'esclusione non resta
+  "dimenticata" spuntata per la prossima creazione. `BtnPulisci_Click` (Pulisci spazi) resta **invariato**
+  — non azzera le due checkbox, comportamento non richiesto e non aggiunto.
+
+#### Verifica
+
+`dotnet build` sull'intera `.sln` → **0 errori, 0 warning**. `dotnet test` → **364/364, invariato**:
+`CartelleView` è code-behind puro senza `ViewModel` iniettabile (§2.2), come gli altri moduli nella
+stessa categoria (PDF, Database, DestinatariMail) — nessun test xUnit esisteva né è stato aggiunto per
+questo modulo, coerente con quanto già vale per il resto del suo codice.
+
+> ⚠️ **Non verificato in questo ambiente** (manca un rasterizzatore WPF): l'aspetto a schermo delle due
+> nuove checkbox e dell'attenuazione delle anteprime. Verifica manuale: spuntare "Non creare LOG",
+> generare con Ticket 1 (e con Ticket 1+2), controllare che **solo** le cartelle DUMP compaiano in
+> `LOG & DUMP` e che le checkbox risultino entrambe deselezionate a operazione conclusa; ripetere con
+> "Non creare DUMP"; verificare che spuntare l'una deselezioni l'altra se già spuntata.
+
+### 6.1-duodevicies Sprint 16 — distribuzione stand-alone: icona, single-file e stato in `%APPDATA%` ⭐
+
+**Contesto.** Preparazione della release aziendale: un eseguibile copiabile sulle macchine d'officina,
+che non hanno il runtime .NET e non possono riceverlo. Tre interventi, di cui il terzo **non era nel
+piano** ed è emerso provando davvero il pacchetto pubblicato.
+
+#### 1. Icona applicativa
+
+`Resources\app_icon.ico` multi-risoluzione (256 PNG + 48/32/16 DIB), dichiarata due volte nel `.csproj`
+perché servono entrambe le cose:
+
+| Dichiarazione | A cosa serve |
+|---|---|
+| `<ApplicationIcon>` | risorsa Win32 nell'eseguibile: l'icona che si vede in Explorer, taskbar, menu Start |
+| `<Resource Include="…">` + `Icon="pack://application:,,,/Resources/app_icon.ico"` in `MainWindow.xaml` | la finestra a runtime: barra del titolo e anteprima Alt-Tab |
+
+> L'icona è stata **ricostruita vettorialmente** (script usa-e-getta con System.Drawing, tenuto **fuori
+> dal repository** come impone §2.1) a partire da un'immagine di riferimento fornita in chat, che non
+> era disponibile come file. Se in futuro arriva il file originale, basta sostituire
+> `Resources\app_icon.ico`: percorso e dichiarazioni restano validi, non serve toccare il `.csproj`.
+
+#### 2. Profilo di distribuzione nel `.csproj`
+
+Tutto dentro `<PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">`, quindi **inerte** per
+`dotnet build` / `run` / `test`, che non passano mai un RID: lo sviluppo quotidiano resta
+framework-dependent e veloce. Comando di release:
+
+```bash
+dotnet publish PersonalAutomationTool/PersonalAutomationTool.csproj -c Release -r win-x64
+```
+
+`SelfContained` + `PublishSingleFile` + `IncludeAllContentForSelfExtract` +
+`IncludeNativeLibrariesForSelfExtract` + `PublishReadyToRun` + `EnableCompressionInSingleFile`.
+**Risultato misurato: un unico `.exe` da 81 MB** (più il `.pdb`, che non va distribuito).
+`PublishTrimmed` resta **false**: XAML e le chiamate `dynamic` verso Excel/Outlook usano riflessione, e
+il trimmer romperebbe cose in modo difficile da diagnosticare.
+
+#### 3. `Core.AppPaths` — lo stato scrivibile in `%APPDATA%` ⭐ *il difetto che il piano non prevedeva*
+
+**Come è emerso.** Il pacchetto single-file è stato **eseguito**, non solo compilato. Nessun file di
+stato compariva accanto all'eseguibile; i due database erano finiti in
+`%LOCALAPPDATA%\Temp\.net\PersonalAutomationTool\<hash>\modules\database\`, con `train_software.db`
+modificato *dopo* l'estrazione — cioè l'applicazione lo stava scrivendo lì.
+
+**Perché.** Otto punti indipendenti componevano il percorso con
+`Path.Combine(AppDomain.CurrentDomain.BaseDirectory, …)`. Da `dotnet run` o da una cartella di output
+`BaseDirectory` è la cartella dell'eseguibile e tutto torna; **in single-file è la cartella temporanea
+di estrazione del bundle, il cui nome dipende dall'hash dell'eseguibile.**
+
+**Cosa sarebbe successo in officina.** L'applicazione funziona, ma perde lo stato in silenzio: Windows
+può ripulire `%TEMP%`, e soprattutto **a ogni aggiornamento dell'eseguibile l'hash cambia**, quindi
+cambia la cartella. I tecnici avrebbero ritrovato l'applicazione azzerata a ogni release —
+`destinatari.json` compreso, il file con gli indirizzi reali compilati a mano su cui §6.1-quaterdecies
+mette già in guardia. È il tipo di guasto che una build pulita e una suite verde non rivelano.
+
+**Correzione.** Nuovo `core/AppPaths.cs`: `DataFolder` = `%APPDATA%\PersonalAutomationTool`,
+`DatabaseFolder` = `{DataFolder}\modules\database` (sottocartella tenuta **speculare** a quella di
+installazione, così la migrazione è una copia diretta). `AppConfig.Initialize()` lo inizializza per
+primo. Gli 8 chiamanti migrati: `HitachiPathsManager`, `VerifichePathsManager`, `FlotteCache`,
+`RenamerLog`, `DestinatariManager`, `ShortcutsManager`, `DatabaseView`, `RubricaDialog`.
+
+`TrasferisciFileMancanti` copia **solo i file che nella destinazione mancano**, ed è questa regola a
+rendere l'operazione sicura da rieseguire a ogni avvio. Con essa una sola logica copre due casi che
+sembrano diversi e non lo sono:
+
+| Caso | Cosa succede |
+|---|---|
+| Aggiornamento da una versione a cartella | le personalizzazioni già accanto all'eseguibile vengono **migrate** in `%APPDATA%` |
+| Primo avvio del pacchetto single-file | i `.db` distribuiti nel bundle vengono **seedati** in `%APPDATA%` |
+
+> ⚠️ **Conseguenza accettata, da conoscere prima di preparare una release.** Un `train_software.db`
+> aggiornato in una nuova versione **non** rimpiazza quello già in uso: il file contiene anche dati
+> dell'utente (`renamer_log`, modifiche fatte da DatabaseView) e non è distinguibile dal seed
+> distribuito. Sovrascriverlo cancellerebbe lavoro reale. Un aggiornamento dell'anagrafica flotte va
+> quindi fatto **dalla schermata DATABASE**, non sostituendo il file.
+
+#### Verifica
+
+`dotnet build` sull'intera `.sln` → **0 errori, 0 warning**. `dotnet test` → **379/379** (364 → 379,
++15 `AppPathsTests`: copia dei soli file mancanti, non sovrascrittura di un `destinatari.json` curato a
+mano, idempotenza su avvii ripetuti, creazione delle sottocartelle, tolleranza al fallimento del
+singolo file, e la cartella dati sotto `%APPDATA%`).
+
+**Verificato sul pacchetto reale, non solo compilato:** con `%APPDATA%\PersonalAutomationTool` azzerata,
+l'eseguibile single-file pubblicato la ricrea e vi seeda `train_software.db` (45 KB) ed `emails.db`
+(12 KB). L'icona è stata riestratta dall'`.exe` compilato per confermare che è davvero incorporata.
+
+> ⚠️ **Non verificato in questo ambiente:** l'aspetto della bozza Outlook (manca Office) e il
+> comportamento su una macchina d'officina reale senza runtime .NET installato — che è poi il caso
+> d'uso per cui esiste tutto questo. Vedi il punto 32 di §7.1.
+
+### 6.1-undevicies Sprint 17 — Health-check percorsi in HOME (Interventi 1.6 / 4.4)
+
+**Contesto.** Chiude finalmente 1.6/4.4, rimandati fin dallo Sprint 1 (§6.2, §6.3) perché la superficie
+UI non era specificata (vedi tabella "Rimandato" più sopra). Il committente l'ha specificata in questa
+sessione: **un pulsante on-demand in HOME**, non un controllo automatico all'avvio. È una scelta di
+scope diversa dalla formulazione originaria del roadmap ("all'avvio") — annotata qui perché chi rilegge
+1.6/4.4 nel roadmap non trovi un'aspettativa disallineata da quanto realmente costruito.
+
+#### Vincolo non negoziabile: sola lettura
+
+Richiesto esplicitamente e rispettato alla lettera: **nessuna riga di `PathHealthCheckService` chiama
+`Directory.CreateDirectory`, `File.Create` o equivalenti.** Un percorso mancante viene segnalato, mai
+corretto. Non è lo stesso principio già scritto per `HomeViewModel.OnLogDumpRete` (§5.6, "non deve mai
+creare cartelle sul percorso di rete condiviso") esteso anche a EXCEL e VERIFICHE — l'unica eccezione
+resta `AppConfig.Initialize()`, che crea `LOG & DUMP` perché quella è una cartella di lavoro **locale**
+dell'app, non un percorso SharePoint su cui non ha alcuna autorità.
+
+#### Cosa viene controllato, e perché proprio quello
+
+`PathHealthCheckService.EseguiControllo()` **legge le configurazioni reali**, non una copia:
+`HitachiPathsManager.LoadConfig()` (le stesse cartelle base che EXCEL usa per Sposta/Riporta Report) e
+`VerifichePathsManager.LoadConfig()` (le stesse cartelle principale/OLD che VERIFICHE usa per "Verifica
+Eseguita"). Se un percorso viene corretto in una di quelle schermate, l'health-check lo vede
+immediatamente senza bisogno di sincronizzare un secondo elenco.
+
+| Riga | Fonte | Quante |
+|---|---|---|
+| `Report Interventi {Treno}` | `HitachiPathsManager.LoadConfig()` | una per treno configurato (4 di default: ETR700, E404P, ETR1000 / 1000FH, ETR1000 I-F) |
+| `{FilePrefix flotta}` (es. "Verifiche ETR500") | `VerifichePathsManager.LoadConfig()`, cartella principale | una per flotta (3 di default) |
+| `{FilePrefix flotta} (OLD)` | idem, cartella di archivio | una per flotta con `OldFolder` configurata |
+| `LOG & DUMP Radice` | `AppConfig.LogAndDumpFolder` | 1 |
+| `LOG & DUMP in rete` | `HomeViewModel.GetLogDumpReteBasePath()`, resa `internal` apposta per essere riusata qui invece di duplicare la risoluzione multi-radice (variabili d'ambiente OneDrive, cartelle `OneDrive*`) | 1 |
+
+#### I tre stati, e come sono classificati
+
+`CheckDirectory`/`CheckFile` fanno esistenza (`Directory.Exists`/`File.Exists`) più una **sonda di
+leggibilità passiva**: per le cartelle, `Directory.EnumerateFileSystemEntries(...).FirstOrDefault()`
+(al più una voce enumerata, mai l'intero contenuto); per i file, un'apertura in sola lettura con
+`FileShare.ReadWrite | FileShare.Delete` (nessun lock, non disturba un altro processo che lo stesse
+scrivendo). Le eccezioni sono mappate da `MappaEccezione` — estratta come **funzione pura separata**
+apposta per essere testabile senza dover negare davvero un permesso NTFS su disco (fragile e
+dipendente dall'ambiente, stesso motivo per cui `FileOperationRetryTests` classifica eccezioni
+costruite invece di provocarle):
+
+| Stato | Badge | Quando |
+|---|---|---|
+| `Ok` | verde | percorso esistente, enumerazione/apertura riuscita |
+| `Errore` | rosso | non trovato, `PathTooLongException`, `IOException`, o qualunque eccezione non prevista |
+| `AccessoNegato` | arancione | `UnauthorizedAccessException` — cartella/file esistente ma senza permessi di lettura |
+
+#### UI
+
+`HealthCheckPathsDialog` (code-behind diretto, stessa categoria di `RenamePreviewDialog` — un guscio
+senza logica di decisione, §2.2) avvia la scansione da solo al `Loaded`, così il tecnico non deve
+premere un secondo pulsante dopo aver già premuto "Verifica Percorsi Hitachi" in HOME. Il `ProgressOverlay`
+copre l'**intera finestra**, pulsanti compresi (`Grid.RowSpan="3"`), apposta per impedire che
+"Ricontrolla" venga premuto a metà di una scansione già avviata. La colorazione del badge vive
+**interamente in XAML** (`DataTrigger` su `StatoTesto`, una stringa): `PathHealthCheckItem` resta un
+`record` puro senza alcuna dipendenza da WPF, verificabile da xUnit senza caricare `PresentationCore`.
+
+> ⚠️ **Stesso avvertimento di §6.1-sedecies, applicato di nuovo qui.** I due pulsanti del dialog
+> dichiarano `Style="{x:Null}"`: senza, erediterebbero implicitamente il chrome ritagliante di
+> MaterialDesignThemes, come già accaduto a `StatoTurnoDialog` e `CognomeDialog`.
+
+#### Verifica
+
+`dotnet build` sull'intera `.sln` → **0 errori, 0 warning**. `dotnet test` → **401/401** (379 → 401,
++22 `PathHealthCheckServiceTests`: le quattro classificazioni di `MappaEccezione`, `CheckDirectory` e
+`CheckFile` su cartella/file reali esistenti, inesistenti, vuoti, non configurati e già aperti da un
+altro handle, la conferma esplicita che un percorso inesistente **non viene creato dalla sola
+verifica**, e le tre diciture di `StatoTesto`). `EseguiControllo()` stesso **non** è testato
+direttamente: legge `%APPDATA%\PersonalAutomationTool` apposta (è il punto di forza del servizio), ma
+questo lo rende dipendente dalla macchina su cui gira la suite — motivo spiegato nella suite stessa.
+
+> ⚠️ **Non verificato in questo ambiente** (manca un rasterizzatore WPF): l'aspetto a schermo del
+> pulsante in HOME e del dialog, e soprattutto il comportamento **su un vero percorso SharePoint/OneDrive
+> non sincronizzato** — il caso reale per cui questa funzionalità esiste. Verifica manuale: rinominare
+> temporaneamente (poi ripristinare) una delle cartelle Hitachi configurate e controllare che la riga
+> corrispondente passi a rosso con il messaggio "Percorso non trovato…", senza che l'app tenti di
+> ricrearla.
+
+#### Correzione dopo screenshot del committente: mancavano le cartelle "Report Interventi OLD" ⭐
+
+**Problema.** L'elenco copriva la cartella Hitachi *corrente* per treno ma non la sottocartella dove
+"Sposta Report" (`ExcelViewModel.ExecuteSpostaReport`) archivia il report **sostituito** prima di
+caricarne uno nuovo — una cartella tanto reale e tanto dipendente dalla sincronizzazione SharePoint
+quanto le altre, ma invisibile all'health-check.
+
+**Perché non era già una funzione condivisa.** La struttura di quella sottocartella non è uniforme fra
+treni (con/senza anno nel nome, profondità diversa, maiuscole diverse: "OLD REPORT" per ETR1000/1000FH
+contro "OLD Report" per ETR1000 I-F) ed era per questo rimasta **inline** dentro
+`ExecuteSpostaReport` fin dalle origini di `HitachiPathsManager` — deliberatamente, con la
+motivazione esplicita "non uniforme abbastanza da meritare l'estrazione". Quella motivazione valeva
+finché un solo chiamante la usava. Da quando l'health-check ne ha bisogno anche lui, tenerla duplicata
+avrebbe significato due copie della stessa logica libere di divergere in silenzio — esattamente il
+rischio per cui `HitachiPathsManager` esiste. Estratta in
+**`HitachiPathsManager.GetReportOldFolder(userProfile, train, anno)`**, con l'anno passato come
+parametro esplicito (non letto da `DateTime.Now` internamente) per restare una funzione pura e
+testabile in modo deterministico. `ExecuteSpostaReport` ora la richiama invece di ripetere lo switch a
+quattro rami.
+
+**In `PathHealthCheckService.EseguiControllo()`**: una riga `Report Interventi {Treno} (OLD)` per
+ciascun treno configurato, subito dopo la riga della cartella corrente. Per ETR700 ed E404P — i due il
+cui nome include l'anno — questa cartella **può legittimamente non esistere ancora** nei primi giorni
+di un anno nuovo, prima del primo "Sposta Report" dell'anno: non è di per sé un sintomo di
+desincronizzazione, annotato nel commento del codice perché chi legge il badge rosso lo sappia.
+
+#### Scoperta collaterale, non richiesta ma trovata per strada: due suite di test rischiavano di toccare la configurazione reale del tecnico ⭐
+
+Aggiungendo i test per `GetReportOldFolder` è emerso che **`HitachiPathsManagerTests` e
+`AzioneDestinatariTests`** — scritti prima dello Sprint 16 — calcolavano ancora il percorso del file da
+testare con `AppDomain.CurrentDomain.BaseDirectory`, l'indirizzo giusto **prima** che quello Sprint
+spostasse `hitachi_paths.json`/`destinatari.json` sotto `%APPDATA%\PersonalAutomationTool` (§2.6,
+§6.1-duodevicies). Da quel momento in poi quei due test non toccavano più un file isolato nella
+cartella di output dei test, ma — **se `AppPaths.DataFolder` fosse già stato inizializzato da un altro
+test eseguito prima nello stesso processo** (xUnit parallelizza classi di collection diverse, quindi
+l'ordine non è garantito) — avrebbero potuto leggere/sovrascrivere silenziosamente il
+`destinatari.json`/`hitachi_paths.json` **reale** di chiunque eseguisse la suite: esattamente il file
+con gli indirizzi compilati a mano che §6.1-quaterdecies esiste apposta per non perdere.
+
+Verificato che il rischio non si fosse ancora materializzato su questa macchina — hash SHA-256 dei
+quattro file sotto `%APPDATA%\PersonalAutomationTool` invariati prima e dopo l'esecuzione della suite
+completa — ma la finestra di rischio era reale e dipendente dall'ordine casuale di esecuzione, la
+stessa classe di instabilità "fastidiosa da diagnosticare" che il commento originale di
+`HitachiPathsManagerTests` metteva già in guardia, qui riapparsa per un motivo diverso. **Corretto**:
+entrambe le classi ora chiamano `AppPaths.Initialize()` nel costruttore (idempotente, rende il percorso
+deterministico indipendentemente dall'ordine) e usano `AppPaths.DataFile(...)`; `AzioneDestinatariTests`
+ha guadagnato lo stesso backup/restore che `HitachiPathsManagerTests` aveva già. Le due classi
+condividono ora la collection `SharedAppDataState` (rinominata da `SharedBaseDirectoryState`, unico
+riferimento nel repository).
+
+#### Verifica
+
+`dotnet build` → **0 errori, 0 warning**. `dotnet test` → **407/407** (401 → 407, +6
+`HitachiPathsManagerTests` su `GetReportOldFolder`: i quattro treni, il caso non configurato, e la
+coerenza con `GetHitachiDir`).
+
+### 6.1-vicies Sprint 18 — bug segnalato dal committente: software duplicato nell'oggetto di CHIUSURA TICKET con due ticket ⭐
+
+**Problema.** Con due ticket nella stessa cartella madre (es. due locomotive dello stesso E404P),
+l'oggetto della bozza Outlook ripeteva il software una volta per locomotiva invece di una sola volta
+in fondo: `SR1234567 - SR1234568 E404P 650 04.02HR - 651 04.02HR IMC AV Milano 300826 Bassetto` invece
+di `SR1234567 - SR1234568 E404P 650 - 651 04.02HR IMC AV Milano 300826 Bassetto`. Segnalato dal
+committente con uno screenshot.
+
+**Causa.** `EmailService.BuildSubject` itera le sottocartelle di `LOG & DUMP` (una per ticket) e per
+ciascuna estrae i campi dal nome secondo la grammatica di §5.1
+(`SR{ticket} {LOG|DUMP} {tipo} {loco} {sw} {ddMMyy} {utente}`). Il codice prendeva **l'intero
+intervallo fra tipo e data** come un unico "campo loco" (`parts.Skip(locoStartIndex).Take(dateIndex -
+locoStartIndex)`, cioè `loco` **e** `sw` uniti in una stringa come `"650 04.02HR"`), poi tentava di
+separare eventuali locomotive multiple con uno `.Split('-')` che — non trovando alcun trattino in
+quella stringa unita da spazi — restituiva l'intera coppia loco+software come **una sola voce**. Con
+un ticket solo il difetto era invisibile (una coppia loco+software unita è comunque quello che compare
+in coda all'oggetto); con due ticket, ogni cartella aggiungeva la propria copia del software alla
+lista, e `string.Join(" - ", locos)` le metteva tutte in fila.
+
+**Correzione.** Loco e software sono ora due estrazioni distinte: `parts[locoStartIndex]` (il loco,
+ancora diviso su `'-'` per il caso raro di un singolo token già composito) e
+`parts[locoStartIndex + 1]` (il software, preso **una sola volta** — `string.IsNullOrEmpty(extractedSw)`
+come guardia — perché è lo stesso intervento indipendentemente da quante locomotive coinvolge).
+L'oggetto si compone ora come `{ticket…} {tipo} {loco…} {software} IMC AV Milano {data} {utente}`,
+software incluso una volta sola in coda alla lista di loco. Corretto in **entrambi** i rami che
+costruiscono `locosStr`: quello standard (`CHIUSURA TICKET …`) e quello di "Log Dump" su E404P
+(`… LOG E DUMP in rete …`), che condividono la stessa lista `locos`.
+
+**Debito di test colmato per l'occasione.** `BuildSubject` non aveva alcuna copertura xUnit — era
+elencata come debito residuo fin dallo Sprint 1 (§6.3, §6.5) proprio perché tocca il disco
+(`Directory.GetDirectories`) e nessuno l'aveva ancora resa `internal` per testarla. Diagnosticare
+questo bug è stata l'occasione naturale per farlo, con lo stesso trattamento già riservato a
+`BuildHtmlBody`/`ComponiCorpoConFirma`/`DetermineSaluto`.
+
+#### Verifica
+
+`dotnet build` → **0 errori, 0 warning**. `dotnet test` → **413/413** (407 → 413, +6
+`EmailServiceBuildSubjectTests`, Tier 2 su cartelle vere: il caso esatto dello screenshot del
+committente con due ticket, il caso a un ticket solo — comportamento confermato invariato — la flotta
+I-F/FH con il token aggiuntivo che sposta `locoStartIndex`, il ramo "Log Dump" E404P, il prefisso "ND"
+e il ripiego sul nome della cartella madre quando non ci sono sottocartelle valide).
+
+> ⚠️ **Non verificato in questo ambiente** (manca Office): l'aspetto reale della bozza Outlook con
+> l'oggetto corretto. Verifica manuale: chiudere un ticket con **due** cartelle SR nella stessa
+> cartella madre e controllare che l'oggetto della bozza mostri il software una sola volta, in coda
+> all'elenco delle locomotive.
 
 ### 6.2 Le 4 macro-aree della roadmap strategica
 
@@ -2407,7 +2761,7 @@ per un motivo esplicito (vedi la tabella "Rimandato" in §6.1-bis); senza segno 
 | 1.3 | **Confidenza di parsing + avviso visibile** invece di `catch {}` | **Alto** | Medio | Basso |
 | 1.4 | ✅ **PID-tracking Excel con terminazione forzata di sicurezza** (Sprint 2 — versione più stretta di "isolamento in processo figlio", vedi §6.1-bis) | **Alto** | Medio | Medio |
 | 1.5 | Sostituzione interop Excel con OpenXML diretto | Alto | Ristrutturazione | **Alto** |
-| 1.6 | **Health-check dei percorsi** all'avvio | Medio | Rapido | Basso |
+| 1.6 | ✅ **Health-check dei percorsi** (Sprint 17, §6.1-undevicies — on-demand da HOME, non all'avvio) | Medio | Rapido | Basso |
 | 1.7 | Wrapper tipizzato sopra Outlook (`dynamic` → interfaccia) | Basso | Medio | Basso |
 
 Il **keystone è 1.1**: oggi l'app scrive quei nomi in un punto (`CartelleView.BtnCrea_Click`) e li
@@ -2479,7 +2833,7 @@ prima del primo rollout reale — non aggiungere il trimming, XAML e `dynamic` u
 | 4.1 | ✅ **Anteprima "cosa cambierà"** prima delle rinomine massive (Sprint 3 — PDF e HOME) | **Alto** | Medio | Basso |
 | 4.2 | ✅ **Feedback di avanzamento** su zip / sposta in rete / elimina (Sprint 3) | **Alto** | Rapido | Basso |
 | 4.3 | ✅ **Annulla rinomina** (Sprint 3 — `renamer_log`, prima presente e inutilizzata, vedi §6.6) | Medio | Medio | Basso |
-| 4.4 | Pannello health-check percorsi (vedi 1.6) | Medio | Rapido | Basso |
+| 4.4 | ✅ Pannello health-check percorsi (vedi 1.6, Sprint 17) | Medio | Rapido | Basso |
 | 4.5 | Flusso da tastiera: acceleratori, tab order, Invio per confermare | Medio | Rapido | Basso |
 | 4.6 | Ricerca globale su `LOG & DUMP` | Medio | Medio | Basso |
 
@@ -2632,8 +2986,10 @@ all'interfaccia, rivalutare a quel punto.
       9 Tier 1 (`VerificheViewModelTests`, deduplicazione radici), 21 Tier 2
       (`VerificheExcelReaderTests`, **equivalenza SAX ↔ ClosedXML** su file .xlsx reali), 30 Tier 2
       (`ReportInterventiWriterTests`, **integrità strutturale** del pacchetto OpenXML su un .xlsm con
-      VBA, convalide, filtri e tabelle), 4 Tier 2 (`HitachiPathsManagerTests`, regressione sul
-      percorso ETR1000 I-F), 12 Tier 2 (`FileOperationRetryTests`, **lock reali del file system** e
+      VBA, convalide, filtri e tabelle), 10 Tier 2 (`HitachiPathsManagerTests`: 4 sulla regressione del
+      percorso ETR1000 I-F, 6 su `GetReportOldFolder` aggiunti nello Sprint 17, §6.1-undevicies — vedi
+      anche il riquadro sulla collection `SharedAppDataState` condivisa con `AzioneDestinatariTests`),
+      12 Tier 2 (`FileOperationRetryTests`, **lock reali del file system** e
       riprova su violazione di condivisione), 5 Tier 2 (`DatabaseManagerLockTests`, rilascio
       deterministico dell'handle SQLite), 11 Tier 1 (`HomeViewModelTests`, prefisso "SR" in Aggiorna
       Ticket), 21 Tier 1 (`ExcelViewModelMatchesTrainTests`, §6.1-terdecies: match dei **nomi di file
@@ -2645,13 +3001,16 @@ all'interfaccia, rivalutare a quel punto.
       nome fisso `Rapportino di Turno.pdf`, §6.1-sedecies), 7 `ComponiCorpoConFirmaTests`
       sull'invariante §5.5, **26 `PassaggioConsegneEmailServiceTests`** nuovi (§6.1-sedecies: le quattro
       fasce orarie del saluto, il colore per ciascuno dei 3 stati, la struttura del corpo HTML), più le
-      asserzioni sullo snapshot, 6 `AzioneDestinatariTests`), **56 per l'archiviazione VERIFICHE** (§6.1-quindecies: 21 `VerificheArchivioNamingTests` sui nomi reali dei fogli storici e sul pattern del file, 35 `VerificheArchivioServiceTests` end-to-end su workbook con la struttura reale) — **364 in tutto** (212 → 181 dopo la rimozione del vecchio modulo,
+      asserzioni sullo snapshot, 6 `AzioneDestinatariTests`), **56 per l'archiviazione VERIFICHE** (§6.1-quindecies: 21 `VerificheArchivioNamingTests` sui nomi reali dei fogli storici e sul pattern del file, 35 `VerificheArchivioServiceTests` end-to-end su workbook con la struttura reale), **15 `AppPathsTests`** (§6.1-duodevicies: migrazione dello stato scrivibile verso `%APPDATA%`, copia dei soli file mancanti senza mai sovrascrivere), **22 `PathHealthCheckServiceTests`** (§6.1-undevicies: le tre classificazioni di stato, `CheckDirectory`/`CheckFile` su percorsi reali, la garanzia che un percorso mancante non venga mai creato dalla sola verifica) — **407 in tutto** (212 → 181 dopo la rimozione del vecchio modulo,
       → 202 con la copertura di `MatchesTrain`, → 286 con il modulo riscritto, → 364 con il pop-up di
-      stato e il corpo email dinamico di §6.1-sedecies).
+      stato e il corpo email dinamico di §6.1-sedecies, → 379 con `Core.AppPaths` e la distribuzione
+      stand-alone di §6.1-duodevicies, → 407 con l'health-check percorsi di §6.1-undevicies e le
+      cartelle "Report Interventi OLD" aggiunte in coda allo stesso sprint).
       Restano
-      da coprire: `ExtractLocosFromFolder`, `BuildSubject`, `AreTrainTypesCompatible` (Tier 1, non
+      da coprire: `ExtractLocosFromFolder`, `AreTrainTypesCompatible` (Tier 1, non
       dipendono da `LogDumpFolderName`, possono procedere in parallelo a §6.3) — **`MatchesTrain` è
-      stata coperta nello Sprint 11** (§6.1-terdecies); Tier 3
+      stata coperta nello Sprint 11** (§6.1-terdecies), **`BuildSubject` nello Sprint 18**
+      (§6.1-vicies, 6 `EmailServiceBuildSubjectTests`, Tier 2 su cartelle vere); Tier 3
       (COM) non affrontato, dipende da 1.7 (wrapper Outlook), rimandato. **Non testata da xUnit** (per costruzione, sono WPF): `RenamePreviewDialog` e
       `ProgressOverlay` — gusci sottili senza logica di decisione, stessa categoria di `PdfView` prima
       dell'estrazione di `PdfRenamePlanner`; verificarli richiede la checklist manuale (§7.1, punti
@@ -2719,7 +3078,9 @@ applicazione non è nei tipi, ma nelle **convenzioni sui nomi di file e cartella
 non può proteggerle. Ogni modifica al parsing va verificata su casi reali presi da `LOG & DUMP`.
 
 **Verifica manuale minima consigliata dopo modifiche strutturali:**
-1. CARTELLE → creare una coppia LOG/DUMP con 2 ticket e verificare i nomi generati.
+1. CARTELLE → creare una coppia LOG/DUMP con 2 ticket e verificare i nomi generati; ripetere con "Non
+   creare LOG" e con "Non creare DUMP" spuntate (§6.1-septendecies) verificando che venga creata solo
+   la cartella attesa e che le due checkbox si deselezionino da sole a operazione conclusa.
 2. HOME → la riga compare, l'espansione mostra le sottocartelle, "Aggiorna Data" riscrive le 6 cifre.
 3. PDF → rinomina con 1 e con 2 PDF non spuntati, più almeno un NC.
 4. EMAIL → chiusura ticket su una flotta I-F: verificare oggetto, destinatari, firma **sotto** il corpo.
@@ -2888,6 +3249,37 @@ non può proteggerle. Ogni modifica al parsing va verificata su casi reali presi
     non deve essere né rinominato né modificato, e nella cartella OLD non deve comparire nulla.
     **(e)** Provare con il file aperto in Excel su un'altra finestra: deve comparire il messaggio che
     indica il file bloccato, non un errore generico.
+32. **DISTRIBUZIONE STAND-ALONE** (§6.1-duodevicies) ⭐ *la verifica che questo ambiente non può fare:
+    serve una macchina d'officina reale, senza runtime .NET installato*.
+    Già verificato qui: publish riuscito (un solo `.exe` da 81 MB), icona incorporata nell'eseguibile,
+    creazione e seed di `%APPDATA%\PersonalAutomationTool` all'avvio del pacchetto pubblicato.
+    **(a)** Copiare il solo `.exe` (non il `.pdb`) su un PC **senza** .NET installato e avviarlo: deve
+    partire senza chiedere alcun runtime. Sui dischi lenti il primo avvio è più lento dei successivi
+    (estrazione del bundle), poi si stabilizza.
+    **(b)** Verificare che l'icona compaia correttamente in Explorer, sulla taskbar e nella barra del
+    titolo della finestra.
+    **(c) La verifica che conta di più:** aprire DESTINATARI MAIL, modificare un destinatario, chiudere
+    l'app, **sostituire l'`.exe` con una versione ricompilata** e riaprire. Il destinatario modificato
+    deve essere ancora lì. Se sparisse, lo stato è tornato a finire nella cartella temporanea del
+    bundle e §6.1-duodevicies va riletto per intero.
+    **(d)** Controllare che in `%APPDATA%\PersonalAutomationTool\` compaiano i `.json` man mano che si
+    aprono i moduli, e i due `.db` sotto `modules\database\`.
+    **(e)** Su una macchina che usava già la versione a cartella: verificare che al primo avvio le
+    personalizzazioni esistenti (`destinatari.json`, `shortcuts.json`, i `.db`) risultino **migrate** in
+    `%APPDATA%` e non azzerate.
+33. **HOME / Health-check Percorsi** (§6.1-undevicies) ⭐ *la verifica che conta di più: sola lettura
+    davvero rispettata*. Classificazione dei tre stati già coperta da test automatici — **da non
+    ri-verificare a mano**.
+    **(a)** Premere "Verifica Percorsi Hitachi": il dialog deve aprirsi e popolarsi da solo, senza un
+    secondo clic. Con tutte le cartelle Hitachi sincronizzate, ogni riga deve mostrare il badge verde
+    "OK".
+    **(b)** Rinominare **temporaneamente** una cartella Hitachi configurata (es. quella di
+    `ETR700`), premere "Ricontrolla": la riga corrispondente deve passare al badge rosso "ERRORE" con
+    il messaggio "Percorso non trovato…". **Subito dopo, ripristinare il nome originale** — non deve
+    comparire alcuna nuova cartella al posto di quella rinominata: è la prova che la verifica non ha
+    ricreato nulla.
+    **(c)** Verificare che chiudere il dialog e riaprirlo (nuovo clic su "Verifica Percorsi Hitachi")
+    riesegua la scansione da capo, senza mostrare risultati della sessione precedente.
 31. **PASSAGGIO CONSEGNE / pop-up di stato e corpo email dinamico** (§6.1-sedecies) ⭐ *le due
     verifiche che questo ambiente non ha potuto fare, manca Office*. Colori, testo condizionale e
     fasce orarie sono coperti da `PassaggioConsegneEmailServiceTests` — **da non ri-verificare a

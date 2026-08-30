@@ -12,6 +12,11 @@ namespace PersonalAutomationTool.Core
 
         public static void Initialize()
         {
+            // Prima di ogni altra cosa: prepara %APPDATA% e vi trasferisce lo stato eventualmente
+            // rimasto accanto all'eseguibile. Deve precedere qualunque lettura di configurazioni o
+            // database, perché da qui in poi tutti i percorsi scrivibili passano da AppPaths.
+            AppPaths.Initialize();
+
             string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
             LogAndDumpFolder = Path.Combine(desktopPath, "LOG & DUMP");
 

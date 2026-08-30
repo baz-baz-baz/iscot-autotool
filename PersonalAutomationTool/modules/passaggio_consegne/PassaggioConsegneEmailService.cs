@@ -121,7 +121,7 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
         {
             StatoTurno.NessunaAttivita => "#28A745",           // verde
             StatoTurno.AttivitaPreviste => "#D39E00",           // ambra scuro, leggibile su bianco
-            StatoTurno.AttivitaImminentiOInCorso => "#DC3545",  // rosso
+            StatoTurno.AttivitaImminentiOInCorso => "#C00000",  // rosso
             _ => "#000000"
         };
 
@@ -140,9 +140,9 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
                 : "<br/><br/>";
 
             var corpo = new System.Text.StringBuilder();
-            corpo.Append("<div style=\"font-family: Calibri, Arial, sans-serif; font-size: 14px; color: #000000;\">");
+            corpo.Append("<div style=\"font-family: Calibri, Arial, sans-serif; font-size: 21px; color: #000000;\">");
             corpo.Append($"<p style=\"margin: 0 0 12px 0;\">{Escape(saluto)}</p>");
-            corpo.Append($"<p style=\"margin: 0 0 12px 0; font-size: 28px; font-weight: bold; color: {colore};\">{Escape(flotta)}</p>");
+            corpo.Append($"<p style=\"margin: 0 0 12px 0; font-size: 42px; font-weight: bold; color: {colore};\">{Escape(flotta)}</p>");
             corpo.Append(centro);
             corpo.Append("<p style=\"margin: 12px 0 0 0;\">Saluti</p>");
             corpo.Append("</div>");

@@ -44,7 +44,7 @@ namespace PersonalAutomationTool.Core
         private static DateTime _cachedWriteTimeUtc;
         private static long _cachedLength = -1;
 
-        private static string ConfigFilePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "hitachi_paths.json");
+        private static string ConfigFilePath => AppPaths.DataFile("hitachi_paths.json");
 
         private static string? ReadConfigJson(string path)
         {
@@ -132,6 +132,44 @@ namespace PersonalAutomationTool.Core
             segments[0] = userProfile;
             match.RelativePath.CopyTo(segments, 1);
             return Path.Combine(segments);
+        }
+
+        /// <summary>
+        /// Sottocartella "vecchi report" dentro la cartella Hitachi base del treno, dove
+        /// <c>ExcelViewModel.ExecuteSpostaReport</c> ("Sposta Report") archivia il report sostituito
+        /// prima di caricarne uno nuovo. <see langword="null"/> se il treno non è configurato o non è
+        /// una delle quattro flotte che EXCEL gestisce.
+        ///
+        /// <para>
+        /// <b>Perché è qui e non più solo inline in <c>ExecuteSpostaReport</c>.</b> La struttura non è
+        /// uniforme da treno a treno (con/senza anno nel nome, profondità diversa, maiuscole diverse) —
+        /// per questo alle origini di <see cref="HitachiPathsManager"/> era rimasta deliberatamente
+        /// inline, "non abbastanza uniforme da meritare l'estrazione". È rimasta tale finché a
+        /// consumarla è stato un solo chiamante. Da quando anche
+        /// <c>PathHealthCheckService.EseguiControllo</c> (Sprint 17, §6.1-undevicies) deve conoscere
+        /// questi stessi quattro percorsi per segnalarne lo stato, il rischio non è più solo estetico:
+        /// due copie della stessa logica possono divergere in silenzio esattamente come questa classe
+        /// esiste per evitare che accada ai percorsi Hitachi base.
+        /// </para>
+        /// </summary>
+        /// <param name="anno">
+        /// Anno da usare nei due nomi che lo includono (ETR700, E404P). Parametro esplicito — invece
+        /// di leggere <c>DateTime.Now.Year</c> internamente — per restare una funzione pura e
+        /// testabile in modo deterministico, senza dipendere da quando gira il chiamante o la suite.
+        /// </param>
+        public static string? GetReportOldFolder(string userProfile, string? train, int anno)
+        {
+            string? hitachiDir = GetHitachiDir(userProfile, train);
+            if (hitachiDir == null) return null;
+
+            return train switch
+            {
+                "ETR700" => Path.Combine(hitachiDir, "REPORT INTERVENTI ETR700 OLD", $"REPORT OLD ETR700 ANNO {anno}"),
+                "E404P" => Path.Combine(hitachiDir, $"REPORT INTERVENTI OLD_ModifyYear{anno}"),
+                "ETR1000 / 1000FH" => Path.Combine(hitachiDir, "OLD REPORT"),
+                "ETR1000 I-F" => Path.Combine(hitachiDir, "OLD Report"),
+                _ => null
+            };
         }
 
         /// <summary>
