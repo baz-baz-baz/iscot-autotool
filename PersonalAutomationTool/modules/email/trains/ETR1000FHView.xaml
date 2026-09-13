@@ -21,7 +21,7 @@
                     Background="Transparent" BorderBrush="#E2E8F0" BorderThickness="1" 
                     Foreground="#34495E" FontSize="14" FontWeight="SemiBold" Cursor="Hand"/>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
-                <TextBlock Text="Generazione Email ETR1000FH" FontSize="24" FontWeight="Bold" Foreground="#2C3E50" VerticalAlignment="Center"/>
+                <TextBlock Text="Generazione Email ETR1001FH" FontSize="24" FontWeight="Bold" Foreground="#2C3E50" VerticalAlignment="Center"/>
                 <TextBlock Text="Cartella selezionata:" FontSize="14" Foreground="#7F8C8D" VerticalAlignment="Center" Margin="40,0,10,0" FontWeight="SemiBold"/>
                 <ComboBox x:Name="CmbCartelle" Width="250" Height="35" FontSize="14" VerticalContentAlignment="Center" Padding="10,0"/>
                 <Border BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="15" Padding="10,5" Background="White" Margin="40,0,0,0" VerticalAlignment="Center">

@@ -100,7 +100,7 @@
                 <Button Grid.Row="0" Grid.Column="3" Content="ETR1000 IF" Style="{StaticResource ModernButtonStyle}" Background="#667EEA" Click="Nav_ETR1000IF"/>
                 
                 <!-- Row 1 -->
-                <Button Grid.Row="1" Grid.Column="0" Content="ETR1000FH" Style="{StaticResource ModernButtonStyle}" Background="#ED8936" Click="Nav_ETR1000FH"/>
+                <Button Grid.Row="1" Grid.Column="0" Content="ETR1001FH" Style="{StaticResource ModernButtonStyle}" Background="#ED8936" Click="Nav_ETR1000FH"/>
                 <Button Grid.Row="1" Grid.Column="1" Content="ETR421" Style="{StaticResource ModernButtonStyle}" Background="#48BB78" Click="Nav_ETR421"/>
                 <Button Grid.Row="1" Grid.Column="2" Content="ETR521" Style="{StaticResource ModernButtonStyle}" Background="#9F7AEA" Click="Nav_ETR521"/>
                 <Button Grid.Row="1" Grid.Column="3" Content="ETR522" Style="{StaticResource ModernButtonStyle}" Background="#ECC94B" Click="Nav_ETR522"/>

@@ -117,8 +117,22 @@
 > sovrascrivere silenziosamente `destinatari.json`/`hitachi_paths.json` **reali** del tecnico, perché
 > calcolavano ancora il vecchio percorso pre-`AppPaths`. Corrette entrambe — vedi il riquadro dedicato
 > in §6.1-undevicies prima di scrivere un nuovo test che tocchi un file sotto `AppPaths.DataFolder`.
-
----
+> Chiude lo **Sprint 18** (§6.1-vicies): bug segnalato dal committente con screenshot — l'oggetto
+> della bozza Outlook di chiusura ticket ripeteva il software una volta per locomotiva invece di
+> comparire una sola volta, quando la cartella madre conteneva **due** ticket. Corretto
+> `EmailService.BuildSubject`, che non aveva copertura xUnit fino a questo sprint (debito residuo dallo
+> Sprint 1).
+> Chiude lo **Sprint 19** (§6.1-vicies-semel): due pulsanti "-4"/"+4" sopra i campi ORA INIZIO/FINE del
+> rapportino (PASSAGGIO CONSEGNE), per correggere in un clic i turni a cavallo di mezzanotte —
+> `RapportinoTurno.SpostaOra`, funzione pura che avvolge oltre le 24 ore in entrambe le direzioni.
+> Chiude lo **Sprint 20** (§6.1-vicies-bis): **pattern istanza singola**. Riavviare l'eseguibile mentre
+> l'app è già aperta non apre più una seconda finestra: `core/SingleInstanceGuard.cs` (`Mutex Local\`
+> con nome fisso, gestione esplicita di `AbandonedMutexException`) rileva la seconda istanza **prima**
+> che WPF crei `MainWindow` (il controllo gira prima di `base.OnStartup`, dove `StartupUri` la
+> istanzia), e `core/NativeMethods.cs` (solo P/Invoke puro verso `user32.dll`, convenzione CA1060)
+> ripristina e attiva la finestra già aperta. **Verificato sul pacchetto pubblicato reale**, non solo
+> sul codice: doppio avvio con chiusura silenziosa della seconda istanza, ripristino da icona +
+> focus in primo piano, e riavvio pulito dopo un'istanza terminata a forza mentre deteneva il mutex.
 
 ## 1. Panoramica & Scopo
 
@@ -647,6 +661,46 @@ calcolate non contengano duplicati. **Non semplificare in una passata sola.**
 - Diversi `catch { }` sono **silenziosi di proposito** (parsing best-effort su nomi di cartella
   imprevedibili). Non convertirli in errori visibili senza motivo.
 - `Nullable` e `ImplicitUsings` sono abilitati. La build deve restare a **0 warning**.
+
+### 5.10 `BuildHtmlBody` — sezione LOG/DUMP nel corpo della Chiusura Ticket, per treno
+
+Nel ramo standard (non "Log Dump" puro) di `EmailService.BuildHtmlBody`, l'array `targetTrains`
+decide quali flotte mostrano, subito dopo "con la presente vi invio la chiusura del ticket in
+oggetto.", il paragrafo "Confermo l'inserimento in rete dei seguenti files:" con l'elenco delle
+cartelle LOG/DUMP lette da `GetLogAndDumpFolders` (`allFolders`, LOG e DUMP unite e ordinate).
+
+**Da una modifica operativa di cantiere (Sprint successivo a §6.1-vicies), E404P (ETR 500) è incluso
+in `targetTrains` esattamente come ETR700/ETR1000/ETR1000FH/ETR1000I-F.** Prima, la conferma
+Log & Dump per l'E404P arrivava **solo** come email separata (`actionType == "Log Dump"`, elenco
+puntato invece che frase + elenco): ora la Chiusura Ticket E404P include la stessa sezione, con lo
+stesso testo e formato di ETR700/ETR1000 — se in `LOG & DUMP` esistono sia la cartella LOG sia la
+DUMP per il treno, compaiono entrambe (`<b>LOG…</b><br><b>DUMP…</b>`); se ne esiste solo una, compare
+solo quella. Coperto da `EmailServiceHtmlGoldenTests` (`BuildHtmlBody_ChiusuraTicket_E404P_*`).
+
+**Bottone "Log Dump" rimosso da `E404PView`** (era l'unico chiamante che passava
+`actionType: "Log Dump"`): il tecnico ora genera una sola email da "Chiusura Ticket", non più due.
+Il ramo `actionType == "Log Dump" && trainType == "E404P"` in `BuildSubject`/`BuildHtmlBody`
+(oggetto "LOG E DUMP in rete…", corpo a elenco puntato, nessun allegato PDF) **resta nel codice**,
+irraggiungibile dalla UI ma ancora testato (`EmailServiceHtmlGoldenTests`/`EmailServiceBuildSubjectTests`,
+casi `"Log Dump"`) perché `EmailService.GenerateChiusuraTicketEmail` accetta `actionType` come
+parametro generico riusato anche da `TrainViewHelper.GenerateScadenzaEmailWithDialog`: non è stato
+rimosso per non essere una rimozione più ampia di quanto richiesto. I destinatari di **"Chiusura Ticket" per E404P** in `DestinatariManager.GenerateDefaultConfig` sono
+stati aggiornati per assorbire l'audience che riceveva la vecchia email "Log Dump" separata:
+A `etr500_analisidiagssb_asts@hitachirail.com`, Cc `Service_ISCOT_IMC_AV_Milano@it.iscot.com;
+team-adv@advservicesrl.it; vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com;
+salvatore.cascegna@hitachirail.com; francesco.montanaro@hitachirail.com` (indirizzi forniti e
+**confermati esplicitamente** dall'utente — l'indirizzo A `etr500_analisidiagssb_asts@…`, con la
+"a" prima di "sts", è **intenzionale** e diverso non per refuso dall'`etr500_analisidiagssb_sts@…`
+della voce "Log Dump" sottostante). La voce `ActionName = "Log Dump"` resta nel default config,
+invariata e ora irraggiungibile dal codice (§ sopra), quindi il suo destinatario non riceve più
+nulla.
+
+> ⚠️ Questo aggiornamento tocca solo il default generato dal codice (`GenerateDefaultConfig`), letto
+> unicamente se **non** esiste già `%APPDATA%\PersonalAutomationTool\destinatari.json` — su questa
+> macchina di sviluppo il file non esiste (verificato). Se l'app è già stata avviata altrove con un
+> `destinatari.json` reale su disco, questa modifica al codice **non** lo tocca (per design, vedi
+> `AppPaths.TrasferisciFileMancanti`): i destinatari di "Chiusura Ticket" per E404P vanno aggiornati
+> lì manualmente o dalla schermata Destinatari Mail dell'app.
 
 ---
 
@@ -2744,6 +2798,540 @@ e il ripiego sul nome della cartella madre quando non ci sono sottocartelle vali
 > cartella madre e controllare che l'oggetto della bozza mostri il software una sola volta, in coda
 > all'elenco delle locomotive.
 
+### 6.1-vicies-semel Sprint 19 — pulsanti "-4"/"+4" su ORA INIZIO/FINE nel rapportino
+
+**Richiesta.** Nell'intestazione del rapportino (modulo PASSAGGIO CONSEGNE), due pulsanti sopra i campi
+`ORA INIZIO`/`ORA FINE`: "-4" toglie 4 ore all'inizio, "+4" ne aggiunge 4 alla fine — scorciatoia per i
+turni a cavallo di mezzanotte, dove i due orari vanno corretti spesso a mano.
+
+**Implementazione.** Logica in `RapportinoTurno` (`PassaggioConsegneModels.cs`), non nella vista:
+- `internal static string SpostaOra(string? orario, int deltaOre)` — funzione pura, avvolge oltre la
+  mezzanotte in entrambe le direzioni (`"02:00" - 4 → "22:00"`, `"22:00" + 4 → "02:00"`) perché sono
+  orari di turno senza data associata, solo il quadrante delle 24 ore. Un orario vuoto o non valido
+  (turno ancora in compilazione) viene restituito **invariato**, non azzerato né un'eccezione.
+- `SottraiQuattroOreInizioCommand` / `AggiungiQuattroOreFineCommand`, due `RelayCommand` che applicano
+  `SpostaOra` rispettivamente a `OraInizio` e `OraFine` — ciascuno tocca **solo** il proprio campo.
+
+In XAML (`PassaggioConsegneView.xaml`): ciascun `TextBox` è avvolto in uno `StackPanel` verticale con
+il pulsante sopra, nuovo `Style` **con nome** `PulsanteDeltaOra` — non implicito, per lo stesso motivo
+di §6.1-sedecies (altrimenti il `Button` erediterebbe il chrome ritagliante di MaterialDesignThemes).
+
+#### Verifica
+
+`dotnet build` → **0 errori, 0 warning**. `dotnet test` → **429/429** (413 → 429, +16
+`PassaggioConsegneModelsTests` su `SpostaOra`: casi semplici, avvolgimento in entrambe le direzioni,
+minuti conservati, input non validi, ed entrambi i comandi verificati isolati sul proprio campo).
+
+> ⚠️ **Non verificato in questo ambiente** (manca un rasterizzatore WPF): l'aspetto a schermo dei due
+> pulsanti sopra i campi.
+
+### 6.1-vicies-bis Sprint 20 — pattern istanza singola ⭐
+
+**Richiesta.** Se l'utente riavvia l'eseguibile mentre l'app è già aperta, non deve comparire una
+seconda finestra: la seconda istanza deve riportare in primo piano quella già in esecuzione
+(ripristinandola se ridotta a icona) e chiudersi da sola, in silenzio.
+
+#### Architettura: tre pezzi, ciascuno con un solo compito
+
+| File | Compito |
+|---|---|
+| `core/NativeMethods.cs` | **Solo dichiarazioni P/Invoke pure** verso `user32.dll` (`ShowWindowAsync`, `SetForegroundWindow`, `BringWindowToTop`, `FlashWindowEx` + `FLASHWINFO`). Nome della classe per convenzione .NET (CA1060): un P/Invoke va isolato in una classe `NativeMethods`/`SafeNativeMethods`/`UnsafeNativeMethods`, non sparso nei chiamanti. Nessuna logica qui dentro. |
+| `core/SingleInstanceGuard.cs` | Il `Mutex` con nome, la ricerca del processo gemello, l'orchestrazione della sequenza di attivazione. L'unico chiamante di `NativeMethods`. |
+| `main/App.xaml.cs` | Due righe di orchestrazione: crea la guardia, se non è l'istanza primaria attiva quella esistente e chiude. |
+
+#### La scelta cruciale: il controllo del mutex viene **prima** di `base.OnStartup`
+
+`App.xaml` ha `StartupUri="MainWindow.xaml"`: è **dentro** `Application.OnStartup` (la base
+implementation, non un evento successivo) che WPF crea e mostra la finestra indicata da `StartupUri`.
+Il controllo del mutex doveva quindi girare **prima** della chiamata a `base.OnStartup(e)`, non dopo:
+
+```csharp
+_singleInstanceGuard = new Core.SingleInstanceGuard();
+if (!_singleInstanceGuard.IsPrimaryInstance)
+{
+    Core.SingleInstanceGuard.ActivateExistingInstance();
+    Shutdown();
+    return;                    // base.OnStartup non viene MAI chiamato
+}
+base.OnStartup(e);              // qui, e solo qui, nasce MainWindow
+```
+
+Con l'ordine invertito (base prima, poi il controllo) la seconda istanza creerebbe comunque
+`MainWindow`, la mostrerebbe per una frazione di secondo e poi la chiuderebbe: uno sfarfallio visibile
+esattamente della categoria che §6.1-undecies aveva già inseguito per il modulo PASSAGGIO CONSEGNE.
+Con l'ordine scelto, per la seconda istanza `MainWindow` non viene **mai** istanziata.
+
+#### Il mutex: `Local\`, nome fisso, con gestione dell'abbandono
+
+- **Nome fisso, generato una volta sola** (`Local\PersonalAutomationTool_SingleInstance_435588cb-…`),
+  non un `Guid.NewGuid()` a runtime — che darebbe un nome diverso a ogni avvio, rendendo impossibile
+  per una seconda istanza trovare la prima. Il GUID è scritto come costante in
+  `SingleInstanceGuard.MutexName`.
+- **`Local\`, non `Global\`.** `Global\` serve solo su un server Terminal Services con più sessioni
+  utente contemporanee, e in ambienti con criteri di sicurezza più stretti può sollevare
+  `UnauthorizedAccessException` se un'istanza gira elevata e l'altra no. Le workstation d'officina di
+  questa applicazione hanno un tecnico per macchina, una sessione desktop alla volta (§3): `Local\`
+  copre esattamente il caso reale, `Global\` avrebbe introdotto un rischio senza alcun beneficio.
+- **`AbandonedMutexException` gestita esplicitamente**: se l'istanza precedente deteneva il mutex ed è
+  terminata senza rilasciarlo (crash, Task Manager, mancanza di corrente), il costruttore di `Mutex`
+  solleva questa eccezione invece di restituire `createdNew=false`. Trattata come "sono comunque
+  l'unica istanza viva" (`IsPrimaryInstance = true`) — l'alternativa, propagarla, avrebbe reso
+  l'applicazione **permanentemente inavviabile** dopo un qualunque crash della sessione precedente,
+  fino al riavvio di Windows. **Verificato**, non solo scritto: uccisa a forza (`Stop-Process -Force`)
+  un'istanza che deteneva il mutex, una nuova istanza si è aperta normalmente in ~250 ms senza alcun
+  blocco.
+
+#### Attivazione della finestra esistente
+
+`ShowWindowAsync(hWnd, SW_RESTORE)` (sicuro anche su una finestra già normale, non serve interrogare
+prima `IsIconic`) seguito da `BringWindowToTop` e `SetForegroundWindow`. Se `SetForegroundWindow`
+viene rifiutata dalle regole anti-furto-focus di Windows (il chiamante non ha ricevuto input recente),
+ripiego su `FlashWindowEx` con `FLASHW_TIMERNOFG` — lampeggia la barra delle applicazioni finché la
+finestra non ottiene il focus, un segnale che Windows non nega mai.
+
+L'handle della finestra gemella si ottiene da `Process.GetProcessesByName(nomeProcesso)`, filtrando su
+`MainWindowHandle != IntPtr.Zero`. Il filtro non è ridondante: in sviluppo (`dotnet run`, `Avvia.bat`)
+il nome di processo è "dotnet" per **qualunque** eseguibile .NET in corso sulla macchina — un
+`dotnet build`/`dotnet test` in background comparirebbe nell'elenco ma non ha mai una finestra, quindi
+il filtro lo esclude senza bisogno di distinguere esplicitamente sviluppo da produzione.
+
+#### Compatibilità con la distribuzione stand-alone (§6.1-duodevicies)
+
+Nessuna interazione fra questo pattern e `PublishSingleFile`/`PublishReadyToRun`/`SelfContained`: il
+`Mutex` è un primitivo del CLR/OS senza alcun legame con come l'assembly è impacchettato, e tutte le
+funzioni P/Invoke sono in `user32.dll`, componente di sistema presente su ogni Windows — non viene
+estratta dal bundle né richiede alcuna dipendenza aggiuntiva da distribuire. **Verificato sul
+pacchetto pubblicato reale** (non solo sul codice sorgente), tre scenari in sequenza:
+
+1. Prima istanza avviata, poi una seconda: il processo della seconda è uscito da solo con **exit code
+   0** entro pochi secondi; un solo processo `PersonalAutomationTool.exe` è restato vivo.
+2. Finestra della prima istanza minimizzata (`IsIconic` confermato `True`), poi una seconda istanza
+   avviata: la finestra è tornata `IsIconic=False` e `GetForegroundWindow()` ha restituito esattamente
+   il suo handle — ripristino e focus confermati, non solo assunti dal codice.
+3. Istanza terminata a forza mentre deteneva il mutex (scenario di crash), poi una nuova istanza: avvio
+   normale, nessun blocco, nessuna eccezione visibile.
+
+Costo sul percorso comune (avvio normale, prima istanza): una singola chiamata di sistema per
+creare/aprire il mutex — nessuna enumerazione di processi, che avviene **solo** nel ramo raro
+dell'istanza duplicata. L'avvio a freddo non ne risente per costruzione.
+
+#### Verifica
+
+`dotnet build` → **0 errori, 0 warning**. `dotnet test` → **435/435** (429 → 435, +6
+`SingleInstanceGuardTests`: prima istanza primaria, seconda istanza non primaria sullo stesso nome di
+mutex, una nuova istanza torna primaria dopo il `Dispose` della prima, nomi di mutex diversi restano
+indipendenti, `Dispose` idempotente e sicuro anche sull'istanza secondaria). Nomi di mutex **generati
+per test** (mai quello reale di produzione): riusarlo avrebbe fatto collidere la suite con un'istanza
+reale dell'applicazione eventualmente in esecuzione sulla stessa macchina — stesso principio già
+applicato a `RenamerLog`, tramite un costruttore `internal` che accetta il nome.
+
+> ⚠️ **Non testato da xUnit, per scelta**: `ActivateExistingInstance` e la ricerca del processo
+> gemello parlano con Win32 e con l'elenco processi reale del sistema operativo — stessa categoria
+> della COM Excel/Outlook, Tier 3 "non affrontato" in questo progetto (§6.2). Verificato invece
+> manualmente sul pacchetto pubblicato, come sopra.
+
+### 6.1-vicies-ter Sprint 21 — rename dell'etichetta visibile "ETR1000FH" → "ETR1001FH" ⭐
+
+**Richiesta del committente**, formulata come "estendere il supporto alla flotta ETR1001FH, clone al
+100% di ETR1000". **Non era un'estensione da zero**: la flotta esisteva già, per intero, sotto il
+nome interno `"ETR1000FH"` (vista email dedicata, destinatari, shortcuts, cartelle Hitachi, ramo
+ROTABILE in EXCEL — vedi §5.3-bis). Il punto di partenza corretto era quindi capire *cosa* del già
+esistente andava rinominato, non ricostruire la flotta da capo — ricostruirla avrebbe duplicato
+destinatari/viste/shortcuts già in uso, con conflitti silenziosi.
+
+**Cosa già funzionava senza toccare nulla.** `CartelleView` (combo tipo treno) e
+`LogDumpFolderName.TryParse` sono entrambi **data/parametro-driven**: il primo legge
+`SELECT DISTINCT tipo FROM flotte` (nessun token hardcoded), il secondo accetta `knownTypes` dal
+chiamante. Il valore reale della colonna `tipo`, verificato sul `.db` reale, è già `"ETR1001FH"` (mai
+`"ETR1000FH"`, §5.3-bis) — quindi cartelle e parser già producevano/riconoscevano `"ETR1001FH"`
+prima di questo sprint. `LogDumpFolderNameTests.TryParse_ParsesEtr1001FH` lo dimostrava già.
+
+**Cosa invece mostrava ancora "ETR1000FH" all'utente/al destinatario** (oggetto mail, titolo vista,
+pulsante di navigazione, chiavi in `destinatari.json`/`shortcuts.json`): tutto ciò che riceveva il
+`trainType` iniettato da `ETR1000FHView.xaml.cs`, letteralmente la stringa `"ETR1000FH"`.
+
+#### Scoperta laterale: la combo cartelle della vista email era probabilmente rotta in produzione
+
+`ETR1000FHView` filtrava le cartelle madre di LOG & DUMP con
+`TrainViewHelper.LoadCartelle(CmbCartelle, "ETR1000FH", "ETR1000 FH")` — prefissi che **non**
+combaciano con `"ETR1001FH ..."`, il nome reale scritto da `CartelleView` (tipo preso direttamente
+dal DB). Con lo `StartsWith` ordinale usato da `LoadCartelle`, quella combo doveva restare
+sistematicamente vuota per qualunque cartella creata dal flusso DB-driven. Non verificato sul
+campo in questa sessione (nessun accesso alla macchina reale), ma è la spiegazione più probabile del
+perché la richiesta sia arrivata ora.
+
+#### Cosa è stato rinominato (identificatore "trainType", non solo testo)
+
+| File | Cambiamento |
+|---|---|
+| `modules/email/EmailView.xaml` | `Content="ETR1000FH"` → `"ETR1001FH"` sul pulsante di navigazione (colore invariato, `Click="Nav_ETR1000FH"` invariato: nome di metodo interno, mai visibile) |
+| `modules/email/trains/ETR1000FHView.xaml` | Titolo `"Generazione Email ETR1000FH"` → `"...ETR1001FH"` |
+| `modules/email/trains/ETR1000FHView.xaml.cs` | `LoadCartelle(..., "ETR1001FH", "ETR1000 FH")` (fix della combo, sopra) e `OpenChiusuraTicketDialog(cartella, "ETR1001FH", ...)` — qui nasce la stringa che si propaga a tutto il resto |
+| `modules/email/EmailService.cs` | `targetTrains` (testo "Confermo l'inserimento in rete...") aggiornato a `"ETR1001FH"`; il ramo `dbTrainType.Equals("ETR1000FH")` → `"ETR1001FH"` **lasciato invariato** (retrocompatibilità economica per eventuali chiamanti legacy, oggi innocuo perché mai più raggiunto dal codice vivo) |
+| `modules/email/dialogs/ChiusuraTicketDialog.xaml.cs` | `_standardTrainTypes` (testo macro Chiusura Ticket) aggiornato a `"ETR1001FH"` |
+| `modules/destinatari_mail/DestinatariManager.cs` | Seed di default aggiornato + nuovo `MigrateLegacyTrainName` (vedi sotto) |
+| `modules/email/dialogs/ShortcutsManager.cs` | Seed di default aggiornato + stesso `MigrateLegacyTrainName` |
+
+**Deliberatamente NON toccato**: i percorsi Hitachi in `VerificheViewModel`/`VerifichePathsManager`
+(`"SSB_SST - Interventi ETR1000FH"`, `"ETR1000 FH"`) restano `"ETR1000FH"` **perché sono nomi reali
+di cartelle su una share di rete esterna**, non un'etichetta dell'app — rinominarli romperebbe la
+risoluzione di cartelle che esistono già con quel nome. Stesso discorso per il commento in
+`VerificheModel.cs`. Il modulo PASSAGGIO CONSEGNE non necessitava alcuna modifica: raggruppa già la
+flotta 1000 sotto `fleetId "1000"`/`destinatariKey "ETR1000"`, indipendente da questa etichetta.
+
+#### Migrazione di `destinatari.json`/`shortcuts.json` già in uso
+
+Questi due file vivono sotto `%APPDATA%\PersonalAutomationTool` (§6.1-duodevicies) e su una macchina
+reale contengono quasi certamente indirizzi/scorciatoie personalizzati a mano sotto la vecchia chiave
+`"ETR1000FH"`. Cambiare solo il seed di default **non** li avrebbe aggiornati: `GetRecipients`
+confronta per uguaglianza esatta (ripulita da spazi), quindi dopo il rename una entry legacy
+`"ETR1000FH"` sarebbe rimasta orfana e `GetRecipients("ETR1001FH", ...)` avrebbe restituito `null` —
+campi "A:"/"CC:" vuoti in una mail reale a Hitachi. `ShortcutsManager.GetShortcutsForTrain` ha un
+fallback silenzioso (ripiega sui default generici), quindi lì il rischio era una regressione di
+UX, non una mail vuota — ma la stessa migrazione copre entrambi con lo stesso meccanismo.
+
+Soluzione: `MigrateLegacyTrainName(config, "ETR1000FH", "ETR1001FH")` in entrambe le classi,
+chiamata da `LoadConfig()` dopo la deserializzazione. Rinomina in-place l'entry legacy **solo se**
+esiste ed **solo se** non esiste già una entry con il nome nuovo (nessun doppione, nessuna
+sovrascrittura silenziosa di una entry già migrata/personalizzata); se rinomina, ripersiste subito
+il file. Idempotente: al secondo avvio la entry legacy non c'è più, quindi non fa nulla.
+
+#### Verifica
+
+`dotnet build` → 0 errori, 0 warning. `dotnet test` → **448/448** (+10 in questa sessione: golden-file
+HTML e subject per `"ETR1001FH"`, round-trip `Format`/`TryParse` per il tipo a token singolo, 4 test
+di migrazione/default per `DestinatariManager`, 3 per `ShortcutsManager`). Non verificato sul campo
+(nessuna macchina reale disponibile in questa sessione): da controllare al prossimo turno in officina
+che il pulsante "ETR1001FH" in EMAIL apra la vista, che la combo "Cartella selezionata" non sia più
+vuota, e che una `destinatari.json`/`shortcuts.json` reale con la vecchia chiave venga effettivamente
+migrata al primo avvio della build aggiornata.
+
+### 6.1-vicies-quater Sprint 22 — "Scrivi report": da decine di secondi a centinaia di millisecondi ⭐
+
+**Segnalazione.** "Scrivi report" estremamente lento, *nonostante le ottimizzazioni recenti*. Il
+committente ha fornito il file vero: `Report Interventi ETR1000 130926 04_10 Marigliano A.xlsx`.
+
+#### La diagnosi: il file, prima ancora del codice
+
+L'ispezione del pacchetto OpenXML ha trovato una patologia dimensionale che nessuna ottimizzazione
+del codice avrebbe potuto aggirare:
+
+| | |
+|---|---|
+| `xl/worksheets/sheet1.xml` | **59 MB** (6,3 MB compressi) |
+| Elementi `<row>` totali | **1.048.575** — una per *ogni* riga del foglio |
+| Di cui **vuoti**, `<row r="…" spans="1:27" x14ac:dyDescent="0.25"/>` | **1.028.205** (≈ 40 MB di soli segnaposto) |
+| Righe con celle | 20.370 (di cui con dati reali fino alla **17442**) |
+| `<dimension>` | `A1:XFD1048575` |
+
+Le celle vere sono 550.916 su 27 colonne: le righe dati esistono preformattate (celle con stile e
+senza valore) fino alla 20369, e **la numerazione progressiva in colonna A è già precompilata** con
+formula condivisa e valore in cache anche nelle righe ancora vuote. Il foglio non ha
+`tableParts` (nessun ListObject: l'area dati usa un `autoFilter` di foglio,
+`_xlnm._FilterDatabase` su `$A$1:$AA$1`), non ha formattazione condizionale e **non ha
+`vbaProject.bin`** — questo report è `.xlsx`, senza macro. Ha invece 33 `dataValidation`,
+254 `mergeCell` e 37 `<col>`, che vanno preservati.
+
+#### Il collo di bottiglia nel codice: il file veniva caricato per intero **due volte**
+
+`ExecuteScriviReport` faceva, in sequenza:
+
+1. **ClosedXML** (`new XLWorkbook(fs)`) per ricavare un solo numero, la riga di destinazione:
+   **5.694 ms e 1.436 MB allocati**, misurati. In più `RangeUsed().LastRow()` restituiva
+   **1.048.575** invece di 17442, proprio a causa dei segnaposto.
+2. **Excel Interop**: avvio di `EXCEL.EXE`, `Workbooks.Open` dei 59 MB, scrittura cella per cella
+   via COM (una chiamata cross-process per cella, con retry), `Save()` — che riscrive tutti i 59 MB
+   e ricostruisce la catena di calcolo di ~20.000 formule — `Close()`, `Quit()` e fino a 3 s di
+   attesa nella pulizia del processo.
+
+E il `ReportInterventiWriter` già presente, nato come percorso "chirurgico", **non era veloce su
+questo file**: leggeva `worksheetPart.Worksheet`, cioè il DOM completo del foglio →
+**4.680 ms e 925 MB** per scrivere una riga. Chirurgico rispetto alle *altre parti* del pacchetto,
+ma pur sempre DOM dentro il foglio.
+
+#### L'intervento: streaming vero, e nient'altro caricato in memoria
+
+`ReportInterventiWriter` è stato riscritto attorno a `XmlReader`/`XmlWriter`: attraversa la parte
+copiando ogni nodo così com'è (`CopyShallow`) e materializza **una sola riga**, quella di
+destinazione, per fondervi i valori conservando celle, stili e formule già presenti. Tre metodi:
+
+- `WriteRow` — invariato come contratto pubblico, quindi le **30 prove di integrità preesistenti
+  continuano a valere come rete di regressione** e sono passate senza modifiche;
+- `FindLastFilledRow` — sostituisce la scansione ClosedXML: **952 ms** invece di 5.694, senza DOM.
+  Scansiona l'intero foglio invece di fermarsi dopo 20 righe vuote come la vecchia euristica: è
+  anche più corretto, perché un buco più lungo di 20 righe non fa più ripartire la scrittura da un
+  punto sbagliato;
+- `CompactEmptyRows` — rimuove i segnaposto (vedi sotto).
+
+Due dettagli che sembrano inezie e non lo sono:
+
+- `WorksheetParts.First()` **non è il primo foglio**: restituisce le parti nell'ordine delle
+  relazioni. Su questo report il primo elemento è `sheet2.xml` ("istruzioni", 12 KB). Una misura
+  fatta così sembrava dare 70 ms — stava riscrivendo il foglio sbagliato. Il foglio giusto si
+  risolve dal `r:id` del primo `<sheet>` in `workbook.xml`, letto come XML grezzo per non farne
+  toccare il DOM all'SDK (§6.1 precedente).
+- `XmlWriter.WriteNode` copia l'intero sottoalbero **avanzando il reader**: comodo per una copia
+  pura, inutilizzabile se serve intervenire sulle singole righe. Da lì `CopyShallow`, che copia il
+  solo nodo corrente. E `WriteFullEndElement` e non `WriteEndElement`, perché un `<a></a>` non
+  diventi `<a/>` in punti che non abbiamo motivo di toccare.
+
+#### `CompactEmptyRows`: perché tocca anche `zeroHeight`, e perché **non** è automatica
+
+Rimuovere i 1.028.205 segnaposto porta la parte da 59 a 19 MB e la scrittura successiva a
+**288-580 ms**. Ma il foglio dichiara `<sheetFormatPr … zeroHeight="1">`: con quell'attributo le
+righe **prive** di un proprio `<row>` sono nascoste. Oggi non si nota perché un elemento esiste per
+ogni riga; rimuovendoli senza altro, tutto ciò che sta sotto l'ultima riga superstite diventerebbe
+invisibile in Excel. La compattazione porta quindi `zeroHeight` a `"0"`, così le righe non elencate
+usano `defaultRowHeight` e restano visibili e alte come adesso: la trasformazione è neutra a video.
+
+Sono considerate rimovibili **solo** le righe self-closing i cui attributi siano esclusivamente
+`r`/`spans`/`dyDescent`. Una riga vuota che dichiari `ht`, `hidden`, `customHeight`, `s`,
+`customFormat`, `outlineLevel` o `collapsed` porta informazione e resta. Restano anche le righe
+"preformattate", che hanno celle (con stile, senza valori) e non sono segnaposto.
+
+**Non è cablata nel percorso di scrittura, ed è una scelta.** Il ragionamento su `zeroHeight` viene
+dalla specifica ECMA-376 ed è verificato dai test sul pacchetto prodotto, ma **in questo ambiente
+non c'è Excel** e "come lo disegna Excel" è esattamente ciò che non si può verificare qui. Far
+restructurare in silenzio il report aziendale ufficiale al primo salvataggio è il tipo di rischio
+che §6.1-octies ha già fatto pagare una volta. La compattazione resta quindi un'operazione
+esplicita, da eseguire una volta su una copia e da controllare a occhio in Excel prima di adottarla.
+`<dimension>` non viene riallineato: è un suggerimento che Excel ricalcola all'apertura, e
+correggerlo richiederebbe una seconda passata sul foglio per conoscerne l'estensione finale.
+
+#### Misure (report ETR1000 reale, stessa macchina)
+
+| operazione | prima | dopo |
+|---|---|---|
+| ricerca riga di destinazione | 5.694 ms · 1.436 MB (ClosedXML) | **952 ms** · streaming |
+| scrittura riga | 4.680 ms · 925 MB (DOM) **+ tutto il giro Excel Interop** | **1.822 ms** · 303 MB |
+| scrittura su file compattato | — | **548 ms** |
+| `CompactEmptyRows` (una tantum) | — | 717 ms, 1.028.205 righe, parte 59 → 19 MB, file 6,3 → 5,1 MB |
+
+Verificato sul file vero, non solo sulla fixture: formula condivisa della colonna A intatta
+(`t="shared" si="281"`, valore in cache 17215), `dataValidations` 33 = 33, `mergeCells` 254 = 254,
+`cols` 37 = 37, `autoFilter` `A1:AA1` identico, e la riga dati preesistente 17442 **byte-identica**
+(`XNode.DeepEquals`) dopo la scrittura.
+
+#### Conseguenze da conoscere
+
+- **Excel non serve più** per salvare il report: sparisce l'errore "Excel non risulta installato",
+  e con l'Interop spariscono anche `ExecuteComWithRetry`/`TryComCleanup` e tutto il PID-tracking di
+  `EXCEL.EXE` dell'intervento 1.4 — non c'è più alcun processo da sorvegliare.
+- **Nessuna formula viene più ricalcolata al salvataggio** e `workbook.xml` non viene toccato
+  (niente `fullCalcOnLoad`, che romperebbe l'invariante "l'unica parte modificata è il foglio").
+  Sostenibile perché l'applicazione scrive valori in celle prive di formule, e l'unica colonna
+  calcolata del report — la numerazione progressiva in A — dipende dalla propria colonna e ha già
+  il valore in cache anche nelle righe vuote. **Se in futuro il report acquisisse formule che
+  dipendono dalle colonne scritte, questa scelta va rivista.**
+- `ConfigureAwait(false)` **non** è stato usato sull'`await` di `ExecuteScriviReport`: la
+  continuazione tocca `IsLoading` e apre una `MessageBox`, quindi deve tornare sul thread della UI.
+  Ciò che serve alla reattività — tenere l'I/O fuori dal dispatcher — lo dà già il `Task.Run`.
+- Su un file **non** compattato il salvataggio lascia un pacchetto più grande dell'originale
+  (6,3 → 9,5 MB): l'SDK ricomprime la parte con un livello diverso da quello di Excel. Dopo la
+  compattazione il file è invece **più piccolo** dell'originale (5,1 MB). È una ragione in più per
+  eseguirla.
+- **Resta lento l'altro verso**: `LoadExcelFieldsAsync` apre ancora il report con ClosedXML (stessi
+  5,7 s e 1,4 GB) solo per leggere le intestazioni di riga 1 e le convalide. Non toccato in questo
+  sprint perché fuori dalla segnalazione, ma è lo stesso difetto e lo stesso rimedio.
+
+#### Verifica
+
+`dotnet build` → 0 errori, 0 warning. `dotnet test` → **458/458** (448 → 458): le 30 prove di
+integrità preesistenti invariate e verdi sul motore riscritto, più 10 nuove in
+`ReportInterventiWriterPerformanceTests` su una fixture che riproduce il rapporto reale fra righe
+piene e segnaposto (`BloatedReportBuilder`, 2.000 righe dati + 300.000 segnaposto, scritta come XML
+grezzo perché l'SDK emetterebbe `<row></row>` dove Excel scrive `<row/>`). La difesa contro il
+ritorno del DOM non è il cronometro — instabile fra macchine — ma la **memoria allocata**: il
+percorso DOM allocava ~16 volte la dimensione della parte, lo streaming ne alloca ~6, il test
+fallisce oltre 10.
+
+### 6.1-vicies-quinquies Sprint 23 — opzioni vincolate delle ComboBox del Report ETR1000/ETR1001FH ⭐
+
+**Segnalazione.** Nelle ComboBox di compilazione del report 1000 comparivano "opzioni generiche o non
+pertinenti"; il committente ha fornito l'elenco esatto delle voci ammesse per otto campi.
+
+#### Cosa era già corretto, e cosa no
+
+Cinque delle otto liste erano **già esatte**, tramite gli override per flotta già presenti in
+`ExcelViewModel` (`SelectedTrain == "ETR1000 / 1000FH"`): Cliente, Tipologia Intervento, Categoria
+Avaria e Versione SW Presente. Il Rotabile era corretto per un'altra via: la sua unica convalida
+punta all'intervallo `$AD$3:$AD$5`, che contiene una cella vuota più `ETR1000` ed `ETR1001FH`.
+
+Sbagliate erano **tre**:
+
+| Campo | Cosa compariva | Perché |
+|---|---|---|
+| **Sito** | 8 voci: le 6 giuste **+ `OMC ETR Vicenza` + `IMC AV Mestre`** | lista fissa nel codice, applicata a **tutte** le flotte senza distinzione |
+| **Scarico Dati Locale** | 4 voci: `Si`, `No`, `SI`, `NO` | unione della convalida storica `"Si,No"` con quella attuale `"SI, NO"`: il confronto fra stringhe distingue le maiuscole, quindi restavano entrambe |
+| **Materiale Fornito** | ~8 voci: `ASTS`, `ANSALDOBREDA`, `HITACHI`, `HITACHIRail`, `HR-STS` + le 3 giuste | unione di **cinque** convalide storiche diverse sulla stessa colonna |
+
+#### La causa comune: convalide stratificate negli anni, unite tutte insieme
+
+`LoadExcelFieldsAsync` raccoglieva **tutte** le convalide dati che toccano una colonna e ne univa le
+voci in un `HashSet`. Su un report reale quelle convalide sono decine, applicate negli anni a
+intervalli di righe diversi man mano che il foglio cambiava: la colonna "Materiale Fornito" del
+report ETR1000 ne ha cinque, il Sito due, "Scarico Dati Locale" due. L'unione mescolava il passato
+con il presente. La convalida **effettivamente valida** è quella che copre le righe in uso oggi:
+
+| Campo | Col. | Convalida che copre le righe in uso | Voci |
+|---|---|---|---|
+| Sito | C | `…C17128:C20369` | `Pistoia,Napoli Gianturco,Milano Martesana,Roma S.Lorenzo,Piacenza,Firenze,` |
+| Cliente | F | `…F10904:F65442` | `Hitachi,Trenitalia` |
+| Rotabile | J | `J1:J1048576` → `$AD$3:$AD$5` | (vuota), `ETR1000`, `ETR1001FH` |
+| Tipologia Intervento | L | `…L7335:L65442` | le 9 voci da `Mis` a `Correttiva senza sostit` |
+| Categoria Avaria | N | `N15795:N1048576` | le 11 voci, con **`JRU DIS`** (la storica su `N8831:N8834` ha `JRU`) |
+| Scarico Dati Locale | O | `…O16988:O20369` | `SI, NO` |
+| Materiale Fornito | P | `…P16981:P20369` | `HR, STS, TI` |
+| Versione SW Presente | AA | `AA16677:AA1048576` → `$AD$6:$AD$10` | `04.01 HR`, `04.03 HR`, `01.01.0000 Elo BL3`, `02.02.0006 Elo BL3 `, `02.02.0007 Elo BL3` |
+
+Le liste chieste dal committente **coincidono esattamente** con questa colonna: sono state
+verificate una per una sul file reale, comprese due insidie — la virgola finale del Sito, che
+produce una voce vuota da scartare, e lo spazio in coda in `AD9` (`"02.02.0006 Elo BL3 "`), che
+l'applicazione rimuove come per qualunque voce presa da un intervallo.
+
+#### L'intervento: `modules/excel/ReportOptionsCatalog.cs`
+
+Le liste del report 1000/1001FH sono state raccolte in una classe di lookup unica, consultata in
+fondo alla costruzione di ogni campo e **autorevole** per quella flotta. Gli override per flotta
+preesistenti restano, ma non citano più `"ETR1000 / 1000FH"`: c'è una sola definizione per ciascuna
+lista, e le altre flotte (ETR700, E404P, ETR1000 I-F) mantengono **esattamente** il comportamento di
+prima — compresa la lista Sito con `OMC ETR Vicenza` e `IMC AV Mestre`, che per loro non risulta
+sbagliata e non è stata toccata.
+
+`"TECNICO Cliente"` è escluso prima di ogni altro confronto: contiene "Cliente" e senza quel
+controllo erediterebbe la lista dei clienti.
+
+#### Due cose che il committente ha chiesto e che **non** servivano
+
+- **Un filtro reattivo al cambio di rotabile non ha senso qui, e sarebbe stato codice morto.**
+  ETR1000 ed ETR1001FH condividono lo stesso Report Interventi e la stessa voce di ComboBox (§5.3-bis)
+  e le otto liste sono **identiche** per i due: il rotabile è una *voce* della lista "Rotabile", non un
+  contesto che cambia le altre liste. Cambiare report (`SelectedTrain`) ricostruisce comunque
+  `FormFields` da zero, quindi nemmeno una selezione non più valida può sopravvivere.
+- **Nessuna modifica a `ExcelView.xaml`.** La vista lega già `ItemsSource="{Binding Options}"` con un
+  `DataTrigger` su `IsComboBox`: mostra quello che il ViewModel le passa, e il difetto non era lì.
+
+#### Cosa resta deliberatamente non risolto
+
+L'unione delle convalide storiche **non** è stata corretta alla radice: continua a valere per tutti
+gli altri campi e per tutte le altre flotte. La correzione pulita sarebbe selezionare le sole
+convalide che coprono la **riga di destinazione** della scrittura (oggi ricavabile a basso costo con
+`ReportInterventiWriter.FindLastFilledRow`, §6.1-vicies-quater), con ricaduta sull'unione come
+riserva quando nessuna convalida copre quella riga. È un intervento che tocca il comportamento di
+tutte le flotte e va deciso avendo sottomano anche i report ETR700/E404P/I-F, che in questo ambiente
+non ci sono: annotato qui perché è la vera radice, non il sintomo.
+
+#### Verifica
+
+`dotnet build` → 0 errori, 0 warning. `dotnet test` → **485/485** (458 → 485, +27 in
+`ReportOptionsCatalogTests`). Le prove non confrontano il catalogo con sé stesso: interpretano le
+stringhe `formula1` **reali** del report (riportate letteralmente nel file di test, con l'intervallo
+di righe di ciascuna) con lo stesso criterio usato da `ExcelViewModel`, e verificano che il catalogo
+coincida. Coperti anche i confini: `TECNICO Cliente` e `AVARIA SEGNALATA` non ricevono liste, le
+altre flotte non sono toccate, e l'etichetta di flotta è confrontata in modo esatto — `"ETR1000"` da
+solo **non** è il report, che si chiama `"ETR1000 / 1000FH"`.
+
+### 6.1-vicies-sexies Sprint 24 — "Descrizione LRU" da TextBox a ComboBox digitabile, 103 componenti ⭐
+
+**Richiesta.** Le colonne "Descrizione LRU" (R e U) del report ETR1000/ETR1001FH erano `TextBox`
+libere; il committente ha chiesto di trasformarle in `ComboBox` vincolate al catalogo componenti del
+file Excel, ma digitabili con ricerca testuale — a differenza delle otto liste chiuse appena
+introdotte nello Sprint 23.
+
+#### Perché erano TextBox, e perché quel motivo non si applicava più
+
+`ExcelViewModel` forzava già ogni campo il cui nome contiene "LRU" a restare `TextBox`, con un
+commento esplicito: *"per permettere l'autocompilazione libera"*. Sotto quella regola c'era però un
+secondo blocco, per il solo campo "Descrizione LRU", che tentava di **tagliare** la lista delle sue
+opzioni a partire da una voce contenente "ELO"+"Logic Onboard" — codice reso **permanentemente
+inerte** dal blocco sopra, che azzerava `Options` prima che potesse eseguire (`FindIndex` su una
+lista vuota restituisce sempre -1). Confermato con una ricerca nell'intero repository: nessun test
+lo esercitava. Rimosso in questo sprint insieme al resto, non lasciato accanto al nuovo codice
+funzionante per lo stesso campo.
+
+#### Il catalogo: `$AE$4:$AE$106`, non una lista CSV in linea
+
+Le colonne R e U condividono un'unica convalida, `sqref="U1:U1048576 R1:R1048576"`, che punta
+all'intervallo `$AE$4:$AE$106` — 103 componenti (BTM, antenne, RIML, schede ELO, alimentatori…),
+nella stessa forma già gestita da `ReportOptionsCatalog` per "Rotabile" e "Versione SW Presente"
+(§6.1-vicies-quinquies). La lista è stata **generata da uno script che legge l'intervallo dal file
+reale ed emette il letterale C#**, non trascritta a mano: 103 voci, ciascuna delle quali deve
+corrispondere byte per byte alla convalida per essere accettata da Excel, non erano un rischio di
+trascrizione da correre.
+
+**Sette voci hanno uno spazio iniziale significativo** (es. `" CPUE ALM N B61C.0100003"`,
+`" Edor 109A.0101709"`), marcato esplicitamente `xml:space="preserve"` in `sharedStrings.xml` — la
+prova che è Excel stesso a considerarlo necessario, non un refuso. Altre hanno spazi doppi interni
+(`"SUONERIA CAB.A  B64A.000002"`). Nessuna di queste è stata "ripulita": a differenza di Rotabile e
+Versione SW, che l'app tronca con `.Trim()` quando legge un intervallo, il catalogo LRU conserva le
+stringhe esatte, perché qui il `.Trim()` avrebbe rotto la corrispondenza con la convalida.
+
+#### Il difetto che il catalogo avrebbe silenziosamente riprodotto: `xml:space` mancante sulle stringhe inline
+
+`ReportInterventiWriter.SetCellValue` scrive le stringhe come `inlineStr` senza mai marcare
+`xml:space="preserve"`. Finché nessun valore aveva spazi ai bordi (le otto liste dello Sprint 23 ne
+sono prive) il problema non poteva manifestarsi. Con "Descrizione LRU" sì: scrivere
+`" CPUE ALM N B61C.0100003"` senza quell'attributo produce un `<t>` il cui spazio iniziale un
+processore XML conforme alla specifica può legittimamente normalizzare — la stessa classe di rischio
+già gestita da Excel per la propria tabella di stringhe condivise. Corretto aggiungendo l'attributo
+quando (e solo quando) il valore ha uno spazio iniziale o finale, esattamente come fa Excel: la
+stragrande maggioranza dei valori, che non ne ha bisogno, non riceve l'attributo. **Verificato sul
+report reale**: scritto `" CPUE ALM N B61C.0100003"` in colonna R, il file risultante ha
+`xml:space="preserve"` sulla cella e il pacchetto si riapre come OpenXML valido.
+
+#### UI: una terza variante di controllo, non una modifica a quella esistente
+
+Le nove ComboBox del report condividono un solo `DataTemplate` in `ExcelView.xaml` (una `ItemsControl`
+sui `FormFields`). Rendere `IsEditable="True"` **quella stessa** ComboBox avrebbe reso digitabili
+anche le otto liste appena chiuse nello Sprint 23 — vanificandole: un tecnico avrebbe potuto scrivere
+in "Sito" un valore fuori catalogo. Aggiunta quindi una **terza** ComboBox nello stesso
+`DataTemplate` (`FieldEditableComboBox`), visibile solo quando il nuovo
+`ExcelFieldViewModel.IsEditableComboBox` è vero — impostato da `ExcelViewModel` solo per il campo
+"Descrizione LRU", tramite `ReportOptionsCatalog.IsSearchableComponentField`. La ComboBox chiusa
+preesistente resta l'unica per tutti gli altri campi, invariata (nuova proprietà `IsClosedComboBox`,
+usata al posto di `IsComboBox` nel trigger che la mostra, per escludere il campo LRU).
+
+**Il binding cambia con `IsEditable`.** La ComboBox chiusa lega `SelectedItem`, corretto per una
+selezione obbligata dalla lista. Con `IsEditable="True"` è invece `Text` a riflettere sia la
+selezione dalla lista sia il testo digitato liberamente: `SelectedItem` resterebbe `null` non appena
+l'utente digita un carattere che non corrisponde esattamente a una voce, perdendo il valore. La nuova
+ComboBox lega quindi `Text="{Binding FieldValue, UpdateSourceTrigger=PropertyChanged}"`, non
+`SelectedItem`.
+
+`IsTextSearchEnabled="True"` è stato impostato solo sulla nuova ComboBox (è comunque il default WPF
+su qualunque ComboBox, quindi non cambia nulla per le altre): abilita il salto/completamento per
+prefisso, non un filtro visivo della lista — non richiesto, non aggiunto.
+
+#### Cosa continua a funzionare senza modifiche
+
+- **"Pulisci"** (`ExecutePulisciCampi`) già azzera `FieldValue` per ogni campo indistintamente:
+  funziona invariato anche per la nuova ComboBox, che lo riflette tramite lo stesso binding `Text`.
+- **La scrittura su Excel** (`ReportInterventiWriter.WriteRow`) tratta `FieldValue` come una stringa
+  qualunque, a prescindere dal controllo che l'ha prodotta: nessuna modifica al percorso di
+  scrittura oltre alla correzione di `xml:space` sopra, che vale per ogni campo, non solo per LRU.
+- **"LRU Rimossa" e "LRU Installata"** (colonne S e V) restano `TextBox`: **non hanno alcuna
+  convalida dati** nel file reale (verificato: nessun `dataValidation` le tocca), quindi la regola
+  "solo il campo esplicitamente chiesto" le esclude correttamente. Il confronto usa la stringa
+  esatta `"Descrizione LRU"`, non il generico `"LRU"` del vecchio blocco, proprio per non
+  ricomprenderle.
+
+#### Verifica
+
+`dotnet build` → 0 errori, 0 warning. `dotnet test` → **509/509** (485 → 509, +24 in
+`ReportOptionsCatalogTests` e `ReportInterventiWriterTests`): conteggio e assenza di duplicati sui
+103 componenti, preservazione esatta degli spazi iniziali e doppi interni, `IsSearchableComponentField`
+vero solo per "Descrizione LRU" e falso per le altre otto liste **e** per "LRU Rimossa"/"LRU
+Installata", scrittura di un valore con spazio iniziale con `xml:space="preserve"` prodotto
+correttamente e assente sui valori che non ne hanno bisogno. Verificato anche sul report reale: un
+valore con spazio iniziale scritto in colonna R e un valore con backslash scritto in colonna U
+risultano corretti nel pacchetto e il file si riapre come OpenXML valido.
+
+**Non verificato in questa sessione, perché richiede l'app in esecuzione**: l'aspetto e il
+comportamento a schermo della nuova ComboBox digitabile (stile MaterialDesign coerente con le altre,
+autocompletamento per prefisso funzionante, apertura/chiusura del menu). Nessun'altra ComboBox
+digitabile esisteva prima in questa applicazione: è il primo caso, quindi merita una verifica visiva
+al prossimo turno, non solo i test automatici.
+
 ### 6.2 Le 4 macro-aree della roadmap strategica
 
 Elaborata come risposta alla domanda "se fossi il Lead Architect, cosa faresti dopo l'audit
@@ -2994,18 +3582,21 @@ all'interfaccia, rivalutare a quel punto.
       deterministico dell'handle SQLite), 11 Tier 1 (`HomeViewModelTests`, prefisso "SR" in Aggiorna
       Ticket), 21 Tier 1 (`ExcelViewModelMatchesTrainTests`, §6.1-terdecies: match dei **nomi di file
       report** per flotta, con la separazione ETR1000 ↔ ETR1000 I-F di §5.3-bis in entrambe le
-      direzioni), **112 per il modulo PASSAGGIO CONSEGNE riscritto** (§6.1-quaterdecies + §6.1-sedecies: 26
-      `PassaggioConsegneModelsTests`, 26 `PassaggioConsegneViewModelTests` — incluso il flusso
+      direzioni), **128 per il modulo PASSAGGIO CONSEGNE riscritto** (§6.1-quaterdecies + §6.1-sedecies + §6.1-vicies-semel: 42
+      `PassaggioConsegneModelsTests` (16 aggiunti nello Sprint 19 su `RapportinoTurno.SpostaOra`, i
+      pulsanti "-4"/"+4" di ORA INIZIO/FINE), 26 `PassaggioConsegneViewModelTests` — incluso il flusso
       "Genera Mail" completo con Outlook e disco finti, e da §6.1-sedecies il pop-up di stato che lo
       precede —, 12 `PassaggioConsegnePdfExporterTests` che generano e riaprono un PDF vero (incluso il
       nome fisso `Rapportino di Turno.pdf`, §6.1-sedecies), 7 `ComponiCorpoConFirmaTests`
       sull'invariante §5.5, **26 `PassaggioConsegneEmailServiceTests`** nuovi (§6.1-sedecies: le quattro
       fasce orarie del saluto, il colore per ciascuno dei 3 stati, la struttura del corpo HTML), più le
-      asserzioni sullo snapshot, 6 `AzioneDestinatariTests`), **56 per l'archiviazione VERIFICHE** (§6.1-quindecies: 21 `VerificheArchivioNamingTests` sui nomi reali dei fogli storici e sul pattern del file, 35 `VerificheArchivioServiceTests` end-to-end su workbook con la struttura reale), **15 `AppPathsTests`** (§6.1-duodevicies: migrazione dello stato scrivibile verso `%APPDATA%`, copia dei soli file mancanti senza mai sovrascrivere), **22 `PathHealthCheckServiceTests`** (§6.1-undevicies: le tre classificazioni di stato, `CheckDirectory`/`CheckFile` su percorsi reali, la garanzia che un percorso mancante non venga mai creato dalla sola verifica) — **407 in tutto** (212 → 181 dopo la rimozione del vecchio modulo,
+      asserzioni sullo snapshot, 6 `AzioneDestinatariTests`), **56 per l'archiviazione VERIFICHE** (§6.1-quindecies: 21 `VerificheArchivioNamingTests` sui nomi reali dei fogli storici e sul pattern del file, 35 `VerificheArchivioServiceTests` end-to-end su workbook con la struttura reale), **15 `AppPathsTests`** (§6.1-duodevicies: migrazione dello stato scrivibile verso `%APPDATA%`, copia dei soli file mancanti senza mai sovrascrivere), **22 `PathHealthCheckServiceTests`** (§6.1-undevicies: le tre classificazioni di stato, `CheckDirectory`/`CheckFile` su percorsi reali, la garanzia che un percorso mancante non venga mai creato dalla sola verifica), **6 `EmailServiceBuildSubjectTests`** (§6.1-vicies: il bug del software duplicato con due ticket, Tier 2 su cartelle vere), **6 `SingleInstanceGuardTests`** (§6.1-vicies-bis: mutex con nome iniettabile, mai quello reale di produzione — stesso principio di `RenamerLog`) — **435 in tutto** (212 → 181 dopo la rimozione del vecchio modulo,
       → 202 con la copertura di `MatchesTrain`, → 286 con il modulo riscritto, → 364 con il pop-up di
       stato e il corpo email dinamico di §6.1-sedecies, → 379 con `Core.AppPaths` e la distribuzione
       stand-alone di §6.1-duodevicies, → 407 con l'health-check percorsi di §6.1-undevicies e le
-      cartelle "Report Interventi OLD" aggiunte in coda allo stesso sprint).
+      cartelle "Report Interventi OLD" aggiunte in coda allo stesso sprint, → 413 con la correzione del
+      software duplicato di §6.1-vicies, → 429 con i pulsanti "-4"/"+4" di §6.1-vicies-semel, → 435 con
+      il pattern istanza singola di §6.1-vicies-bis).
       Restano
       da coprire: `ExtractLocosFromFolder`, `AreTrainTypesCompatible` (Tier 1, non
       dipendono da `LogDumpFolderName`, possono procedere in parallelo a §6.3) — **`MatchesTrain` è
@@ -3280,6 +3871,15 @@ non può proteggerle. Ogni modifica al parsing va verificata su casi reali presi
     ricreato nulla.
     **(c)** Verificare che chiudere il dialog e riaprirlo (nuovo clic su "Verifica Percorsi Hitachi")
     riesegua la scansione da capo, senza mostrare risultati della sessione precedente.
+34. **Pattern istanza singola** (§6.1-vicies-bis) ⭐ *già verificato in questa sessione sul pacchetto
+    pubblicato — qui solo perché lo rifaccia chi prepara una release, non perché il comportamento sia
+    in dubbio*.
+    **(a)** Avviare l'eseguibile, poi avviarlo una seconda volta: non deve comparire una seconda
+    finestra, e il processo della seconda istanza deve terminare da solo entro pochi secondi.
+    **(b)** Ridurre a icona la finestra aperta, poi avviare di nuovo l'eseguibile: la finestra deve
+    tornare visibile e ottenere il focus, senza bisogno di cliccarla in barra.
+    **(c)** Terminare l'applicazione da Task Manager (non dal pulsante di chiusura, per simulare un
+    crash) e riavviarla subito dopo: deve aprirsi normalmente, senza attese né messaggi d'errore.
 31. **PASSAGGIO CONSEGNE / pop-up di stato e corpo email dinamico** (§6.1-sedecies) ⭐ *le due
     verifiche che questo ambiente non ha potuto fare, manca Office*. Colori, testo condizionale e
     fasce orarie sono coperti da `PassaggioConsegneEmailServiceTests` — **da non ri-verificare a
@@ -3299,3 +3899,66 @@ non può proteggerle. Ogni modifica al parsing va verificata su casi reali presi
     **(c) Nome dell'allegato** → il PDF allegato deve chiamarsi **esattamente** "Rapportino di
     Turno.pdf" per tutte e tre le flotte: generarne uno per ciascuna scheda e controllare che il nome
     non cambi (cambia solo il contenuto).
+35. **EMAIL / rename "ETR1000FH" → "ETR1001FH"** (§6.1-vicies-ter) ⭐ *nessuna macchina reale
+    disponibile in questa sessione: da fare al prossimo turno in officina, prima di considerare
+    chiuso lo sprint*.
+    **(a)** In EMAIL, il pulsante che prima si chiamava "ETR1000FH" deve ora leggersi "ETR1001FH"
+    (stesso colore arancione, stessa posizione). Aprirlo: il titolo della vista deve leggere
+    "Generazione Email ETR1001FH".
+    **(b)** Nella combo "Cartella selezionata" di quella vista, verificare che compaiano le cartelle
+    madre reali della flotta FH (prima di questo sprint erano probabilmente assenti, vedi la
+    "Scoperta laterale" in §6.1-vicies-ter — è il punto che più merita attenzione sul campo).
+    **(c)** Generare una Chiusura Ticket da quella vista: l'oggetto e il corpo devono riportare
+    "ETR1001FH" (non più "ETR1000FH"), e i campi "A:"/"CC:" **non devono essere vuoti**.
+    **(d)** Su una macchina con un `destinatari.json`/`shortcuts.json` **già esistenti** da prima di
+    questo aggiornamento (quindi con la vecchia chiave "ETR1000FH" e indirizzi/scorciatoie
+    personalizzati): dopo il primo avvio della build aggiornata, aprire DESTINATARI MAIL e verificare
+    che la riga sia diventata "ETR1001FH" **con gli stessi indirizzi di prima**, non i default
+    generici, e che non sia comparsa una riga duplicata.
+36. **EXCEL / "Scrivi report" riscritto senza Excel Interop** (§6.1-vicies-quater) ⭐ *la verifica
+    che conta di più di tutte: da qui in poi il report aziendale lo scrive l'applicazione, non più
+    Excel. Struttura e dati sono coperti da test automatici sul file vero — **da non ri-verificare a
+    mano** — qui si controlla ciò che si vede solo aprendo il file in Excel.*
+    **(a)** Su una **copia** di un Report Interventi reale, fare "Scrivi report" e aprirla in Excel.
+    Controllare che la riga nuova sia in fondo ai dati, con lo stesso aspetto delle altre (bordi,
+    sfondo, altezza), che la **data si legga come data** e non come numero, e che il numero
+    progressivo in colonna A sia quello giusto.
+    **(b)** Sulla stessa copia: menu a tendina delle convalide ancora presenti sulla riga nuova,
+    filtro automatico intatto, celle unite al loro posto, e il foglio "istruzioni" invariato.
+    **(c)** Il salvataggio non deve più avviare `EXCEL.EXE`: aprire Gestione attività **durante**
+    l'operazione e verificare che non compaia alcun processo Excel. Di conseguenza deve funzionare
+    anche su una macchina **senza Office installato**, dove prima compariva "Excel non risulta
+    installato".
+    **(d) Solo se si decide di adottare la compattazione** (`CompactEmptyRows`, oggi non collegata a
+    nessun pulsante): eseguirla su una **copia**, aprirla in Excel e verificare che sotto l'ultima
+    riga di dati il foglio **non appaia troncato** — le righe vuote devono restare visibili e alte
+    come prima. È l'unico effetto che questo ambiente non ha potuto verificare, ed è il motivo per
+    cui l'operazione non è automatica.
+37. **EXCEL / opzioni vincolate del report 1000** (§6.1-vicies-quinquies) → selezionare la flotta
+    `ETR1000 / 1000FH` e aprire un report: nelle otto ComboBox devono comparire **solo** le voci
+    concordate. I tre controlli che contano, perché sono i campi che prima erano sbagliati:
+    **Sito** deve avere 6 voci, senza `OMC ETR Vicenza` né `IMC AV Mestre`; **Scarico Dati Locale**
+    deve averne 2 (`SI`, `NO`) e non 4; **Materiale Fornito** deve averne 3 (`HR`, `STS`, `TI`) e non
+    otto con `ASTS`/`ANSALDOBREDA`/`HITACHIRail`.
+    **(b)** Ripetere su **ETR700, E404P ed ETR1000 I-F**: le loro liste **non** devono essere
+    cambiate rispetto a prima — in particolare il Sito di quelle flotte contiene ancora
+    `OMC ETR Vicenza` e `IMC AV Mestre`, ed è corretto così.
+    **(c)** Dopo uno "Scrivi report" con questi valori, aprire il file in Excel e verificare che
+    nessuna delle celle scritte risulti segnalata come **non valida** dalla convalida dati: è la
+    prova che le voci del menu coincidono con quelle che il foglio accetta.
+38. **EXCEL / "Descrizione LRU" digitabile** (§6.1-vicies-sexies) ⭐ *la prima ComboBox digitabile
+    dell'applicazione: qui non bastano i test automatici, va vista a schermo*.
+    **(a)** Sulla flotta `ETR1000 / 1000FH`, i **due** campi intitolati "Descrizione LRU" (colonne R
+    e U del report) devono comparire come ComboBox **con freccia a discesa e cursore di testo**, non
+    come TextBox semplice. Digitare le prime lettere di un componente (es. "BTM"): il menu deve
+    saltare/completare sulla voce corrispondente.
+    **(b)** Digitare un testo che non corrisponde a nessun componente del catalogo e uscire dal
+    campo: il testo digitato deve restare visibile (non deve svuotarsi), a differenza delle altre
+    ComboBox del report, dove un valore non in lista non è raggiungibile perché non digitabili.
+    **(c)** Verificare che lo stile sia coerente con le altre ComboBox del form (stesso bordo
+    MaterialDesign, stesso evidenziamento giallo se il campo è "importante").
+    **(d)** "LRU Rimossa" e "LRU Installata" (le colonne accanto, con le sole locazioni N/R della
+    scheda) devono restare **TextBox semplici** come prima: non hanno convalida nel file reale e non
+    devono essere state toccate da questo intervento.
+    **(e)** Premere "Pulisci": anche il testo digitato nella nuova ComboBox deve svuotarsi, come gli
+    altri campi.

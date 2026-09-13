@@ -455,8 +455,11 @@ namespace PersonalAutomationTool.Modules.Email
             else
             {
                 htmlBuilder.Append("<p style='font-size: 14pt;'>con la presente vi invio la chiusura del ticket in oggetto.</p>");
-                
-                string[] targetTrains = ["ETR700", "ETR1000", "ETR1000I-F", "ETR1000FH"];
+
+                // E404P (ETR 500) inclusa da qui in poi: la notifica LOG & DUMP, prima una mail
+                // separata (ramo "Log Dump" sopra), è ora accorpata alla Chiusura Ticket esattamente
+                // come già avveniva per ETR700/ETR1000 (modifica operativa di cantiere).
+                string[] targetTrains = ["ETR700", "ETR1000", "ETR1000I-F", "ETR1001FH", "E404P"];
                 if (targetTrains.Contains(trainType, StringComparer.OrdinalIgnoreCase))
                 {
                     htmlBuilder.Append("<p style='font-size: 14pt;'>Confermo l'inserimento in rete dei seguenti files:</p>");
@@ -559,6 +562,9 @@ namespace PersonalAutomationTool.Modules.Email
                 }
                 else if (dbTrainType.Equals("ETR1000FH", StringComparison.OrdinalIgnoreCase))
                 {
+                    // "ETR1000FH" era la vecchia etichetta interna prima del rename a "ETR1001FH"
+                    // (il valore vero della colonna `tipo` in flotte.db): il ramo resta per non
+                    // rompere chiamanti che passassero ancora quella stringa.
                     dbTrainType = "ETR1001FH";
                 }
 

@@ -110,6 +110,24 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
 
+        <!-- Pulsanti "-4"/"+4" sopra i campi ORA INIZIO/FINE: uno Style con nome (non implicito)
+             perché il Button ereditasse altrimenti il chrome ritagliante di MaterialDesignThemes,
+             come già capitato a StatoTurnoDialog/CognomeDialog. -->
+        <Style x:Key="PulsanteDeltaOra" TargetType="Button">
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0,0,0,3"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Background" Value="#EEF2FF"/>
+            <Setter Property="Foreground" Value="#4338CA"/>
+            <Setter Property="BorderBrush" Value="#C7D2FE"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
         <!-- ============================================================
              Contenuto di una scheda: un RapportinoTurno.
              Le tre schede condividono questo template, esattamente come i tre fogli del
@@ -145,11 +163,21 @@
                                           SelectedItem="{Binding TurnoSelezionato, Mode=TwoWay}"/>
 
                                 <TextBlock Text="ORA INIZIO/FINE" Style="{StaticResource EtichettaCampo}"/>
-                                <TextBox Width="70" Style="{StaticResource CampoTesto}" Margin="0,0,6,0"
-                                         Text="{Binding OraInizio, UpdateSourceTrigger=PropertyChanged}"/>
+                                <StackPanel Margin="0,0,6,0">
+                                    <Button Content="-4" Style="{StaticResource PulsanteDeltaOra}"
+                                            Command="{Binding SottraiQuattroOreInizioCommand}"
+                                            ToolTip="Sottrae 4 ore all'ora di inizio"/>
+                                    <TextBox Width="70" Style="{StaticResource CampoTesto}" Margin="0"
+                                             Text="{Binding OraInizio, UpdateSourceTrigger=PropertyChanged}"/>
+                                </StackPanel>
                                 <TextBlock Text="-" Style="{StaticResource EtichettaCampo}"/>
-                                <TextBox Width="70" Style="{StaticResource CampoTesto}"
-                                         Text="{Binding OraFine, UpdateSourceTrigger=PropertyChanged}"/>
+                                <StackPanel>
+                                    <Button Content="+4" Style="{StaticResource PulsanteDeltaOra}"
+                                            Command="{Binding AggiungiQuattroOreFineCommand}"
+                                            ToolTip="Aggiunge 4 ore all'ora di fine"/>
+                                    <TextBox Width="70" Style="{StaticResource CampoTesto}"
+                                             Text="{Binding OraFine, UpdateSourceTrigger=PropertyChanged}"/>
+                                </StackPanel>
                             </WrapPanel>
                         </StackPanel>
                     </Border>

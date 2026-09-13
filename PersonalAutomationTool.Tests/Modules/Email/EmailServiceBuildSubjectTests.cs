@@ -87,6 +87,26 @@ namespace PersonalAutomationTool.Tests.Modules.Email
         }
 
         [Fact]
+        public void TrenoEtr1001FH_TipoETokenSingoloNonSfasaLEstrazioneDiLocoESoftware()
+        {
+            // A differenza di "ETR1000 I-F" (due token separati da spazio, §5.2), "ETR1001FH" è un
+            // unico token glued: il nome reale di cartella non ha mai uno spazio interno al tipo
+            // (colonna `tipo` di flotte.db, PROJECT_MEMORY.md §5.3-bis). Con due ticket, un eventuale
+            // sfasamento dell'indice romperebbe silenziosamente solo questa flotta.
+            CreaSottocartella("SR5566778 LOG ETR1001FH 410 04.03HR 230626 Blu");
+            CreaSottocartella("SR5566778 DUMP ETR1001FH 410 04.03HR 230626 Blu");
+            CreaSottocartella("SR5566779 LOG ETR1001FH 411 04.03HR 230626 Blu");
+            CreaSottocartella("SR5566779 DUMP ETR1001FH 411 04.03HR 230626 Blu");
+
+            string subject = EmailService.BuildSubject(
+                "ETR1001FH 12", "ETR1001FH", "Chiusura Ticket", isNdPrefix: false, logFolders: [], folderPath: _cartella);
+
+            Assert.Equal(
+                "CHIUSURA TICKET SR5566778 - SR5566779 ETR1001FH 410 - 411 04.03HR IMC AV Milano 230626 Blu",
+                subject);
+        }
+
+        [Fact]
         public void LogDumpE404P_DueTicket_IlSoftwareComparUnaSolaVolta()
         {
             // Stesso difetto, ramo diverso: "Log Dump" su E404P ha un formato di oggetto proprio,

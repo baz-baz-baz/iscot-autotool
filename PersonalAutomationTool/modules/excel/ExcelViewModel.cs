@@ -427,13 +427,19 @@ namespace PersonalAutomationTool.Modules.Excel
                             fieldViewModel.Options = [];
                         }
 
-                        if (fieldName.Equals("Cliente", StringComparison.OrdinalIgnoreCase) || fieldName.Contains("Cliente", StringComparison.OrdinalIgnoreCase))
+                        // I blocchi per flotta qui sotto NON coprono più il report ETR1000/ETR1001FH:
+                        // le sue liste stanno tutte in ReportOptionsCatalog, applicato in fondo al
+                        // ciclo. Qui resta il comportamento delle altre flotte, invariato.
+                        bool isEtr1000Report = currentTrain == ReportOptionsCatalog.Etr1000Report;
+
+                        if (!isEtr1000Report &&
+                            (fieldName.Equals("Cliente", StringComparison.OrdinalIgnoreCase) || fieldName.Contains("Cliente", StringComparison.OrdinalIgnoreCase)))
                         {
                             fieldViewModel.IsComboBox = true;
                             fieldViewModel.Options = ["Hitachi", "Trenitalia"];
                         }
 
-                        if (fieldName.Contains("Sito", StringComparison.OrdinalIgnoreCase))
+                        if (!isEtr1000Report && fieldName.Contains("Sito", StringComparison.OrdinalIgnoreCase))
                         {
                             fieldViewModel.IsComboBox = true;
                             fieldViewModel.Options = ["Pistoia", "Napoli Gianturco", "Milano Martesana", "Roma S.Lorenzo", "Piacenza", "Firenze", "OMC ETR Vicenza", "IMC AV Mestre"];
@@ -453,7 +459,7 @@ namespace PersonalAutomationTool.Modules.Excel
                         if (fieldName.Contains("Tipologia", StringComparison.OrdinalIgnoreCase))
                         {
                             fieldViewModel.IsComboBox = true;
-                            if (SelectedTrain == "E404P" || SelectedTrain == "ETR1000 / 1000FH" || SelectedTrain == "ETR1000 I-F")
+                            if (SelectedTrain == "E404P" || SelectedTrain == "ETR1000 I-F")
                             {
                                 fieldViewModel.Options = ["Mis", "Extragaranzia", "Upgrade", "Man Programmata", "Man Predittiva", "Controlli Remoto", "Nulla Riscontrato", "Correttiva con sostit", "Correttiva senza sostit"];
                             }
@@ -470,26 +476,13 @@ namespace PersonalAutomationTool.Modules.Excel
                             {
                                 fieldViewModel.Options = ["Oscuram Monitor", "Verifica", "Catena Radio", "Catena Vigilante", "Catena RSDD", "JRU", "Data Logger", "RIML", "Odometria", "Perdita Rid. SSB", "Altro"];
                             }
-                            else if (SelectedTrain == "ETR1000 / 1000FH" || SelectedTrain == "ETR1000 I-F")
+                            else if (SelectedTrain == "ETR1000 I-F")
                             {
                                 fieldViewModel.Options = ["Oscuram Monitor", "Verifica", "Catena Radio", "Catena Vigilante", "Catena RSDD", "JRU DIS", "Data Logger", "RIML", "Odometria", "Perdita Rid. SSB", "Altro"];
                             }
                             else
                             {
                                 fieldViewModel.Options = ["Oscuram Monitor", "Verifica", "Catena Radio", "Catena Vigilante", "Catena RSDD", "JRU", "Data Logger", "Nulla di Riscontrato", "RIML", "Odometria", "Perdita Rid. SSB", "Altro"];
-                            }
-                        }
-
-                        if (fieldName.Contains("Descrizione LRU", StringComparison.OrdinalIgnoreCase))
-                        {
-                            var list = fieldViewModel.Options;
-                            if (list != null)
-                            {
-                                int eloIndex = list.FindIndex(o => o.Contains("ELO", StringComparison.OrdinalIgnoreCase) && o.Contains("Logic Onboard", StringComparison.OrdinalIgnoreCase));
-                                if (eloIndex > 0)
-                                {
-                                    list.RemoveRange(0, eloIndex);
-                                }
                             }
                         }
 
@@ -500,18 +493,31 @@ namespace PersonalAutomationTool.Modules.Excel
                             {
                                 fieldViewModel.Options = ["04.00.34CR", "04.00.35A1", "04.00.35HR", "04.00.36HR", "04.01.0002HR", "04.02.0007HR"];
                             }
-                            else if (SelectedTrain == "ETR1000 / 1000FH")
-                            {
-                                fieldViewModel.Options = ["04.01 HR", "04.03 HR", "01.01.0000 Elo BL3", "02.02.0006 Elo BL3", "02.02.0007 Elo BL3"];
-                            }
                             else
                             {
                                 fieldViewModel.Options = ["04.01.0002HR", "04.02.0007HR", "04.04.0003HR", "02.02.0004_ELO_BL3", "02.02.0006_ELO_BL3", "02.02.0007_ELO_BL3"];
                             }
                         }
 
+                        // Report ETR1000/ETR1001FH: le opzioni ammesse sono quelle del catalogo, e
+                        // sostituiscono qualunque cosa sia stata ricavata sopra. Le convalide dati di
+                        // questo file sono stratificate su anni (cinque liste diverse solo per
+                        // "Materiale Fornito", applicate a intervalli di righe differenti) e unirle
+                        // produceva menu con voci non più valide. Vedi ReportOptionsCatalog.
+                        var opzioniCanoniche = ReportOptionsCatalog.GetOptions(currentTrain, fieldName);
+                        if (opzioniCanoniche != null)
+                        {
+                            fieldViewModel.IsComboBox = true;
+                            fieldViewModel.Options = [.. opzioniCanoniche];
+
+                            // "Descrizione LRU" (103 componenti) resta digitabile con ricerca
+                            // testuale: le altre otto liste di ReportOptionsCatalog restano chiuse,
+                            // per non vanificare il vincolo "solo queste voci" appena introdotto.
+                            fieldViewModel.IsEditableComboBox = ReportOptionsCatalog.IsSearchableComponentField(fieldName);
+                        }
+
                         fieldViewModel.IsImportant = ImportantKeywords.Any(k =>
-                            (k == "SN" || k == "LOCO" || k == "Cliente") ? fieldName.Equals(k, StringComparison.OrdinalIgnoreCase) 
+                            (k == "SN" || k == "LOCO" || k == "Cliente") ? fieldName.Equals(k, StringComparison.OrdinalIgnoreCase)
                                                                          : fieldName.Contains(k, StringComparison.OrdinalIgnoreCase));
 
                         result.Add(fieldViewModel);
@@ -1213,189 +1219,37 @@ namespace PersonalAutomationTool.Modules.Excel
             try
             {
                 _isReportFileOperationInProgress = true;
-                var fieldsData = FormFields.Select(f => f.FieldValue).ToList();
-                int targetRow = 1;
-
-                await Task.Run(() => 
+                // Colonne del report a partire dalla B (indice 2), nell'ordine dei campi del form.
+                var valuesByColumn = new Dictionary<int, string?>();
+                for (int i = 0; i < FormFields.Count; i++)
                 {
-                    // 1. Usa ClosedXML per trovare l'ultima riga reale in modo veloce e preciso, ignorando spazi vuoti o formattazione.
-                    // FileShare.Delete: vedi la nota in LoadExcelFieldsAsync — senza, questo stream
-                    // bloccherebbe rinomine e spostamenti del report finché resta aperto.
-                    using var fs = new FileStream(_currentExcelFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-                    using var workbook = new XLWorkbook(fs);
-                    var ws = workbook.Worksheets.FirstOrDefault();
-                    if (ws != null)
-                    {
-                        int maxFilledRow = 1;
-                        int scanLimit = ws.RangeUsed()?.LastRow()?.RowNumber() ?? 1;
+                    valuesByColumn[i + 2] = FormFields[i].FieldValue;
+                }
 
-                        // Ogni cella viene recuperata una sola volta: la versione precedente chiamava
-                        // ws.Cell(r, c) due volte per colonna (IsEmpty + GetString). Inoltre le righe
-                        // oltre scanLimit non vengono più toccate: sono per definizione fuori dal
-                        // RangeUsed e quindi vuote, ma interrogarle costringeva ClosedXML a
-                        // materializzare in memoria fino a 60 celle fantasma per ogni riga scansionata.
-                        static bool HasValue(IXLWorksheet sheet, int row, int col)
-                        {
-                            var cell = sheet.Cell(row, col);
-                            return !cell.IsEmpty() && !string.IsNullOrWhiteSpace(cell.GetString());
-                        }
+                string reportPath = _currentExcelFilePath;
 
-                        // Trova l'ultima riga compilata della tabella analizzando le colonne chiave (B: Data, C: Sito, D: Ticket, G: Loco)
-                        for (int r = 2; r <= scanLimit; r++)
-                        {
-                            bool hasData = HasValue(ws, r, 2) || HasValue(ws, r, 3) ||
-                                           HasValue(ws, r, 4) || HasValue(ws, r, 7);
-
-                            if (hasData)
-                            {
-                                maxFilledRow = r;
-                            }
-                            else
-                            {
-                                // Controlla le successive 20 righe per assicurarsi che non ci siano righe vuote in mezzo
-                                bool anyDataAhead = false;
-                                for (int ahead = 1; ahead <= 20; ahead++)
-                                {
-                                    int checkRow = r + ahead;
-                                    if (checkRow > scanLimit) break;
-
-                                    if (HasValue(ws, checkRow, 2) || HasValue(ws, checkRow, 3) || HasValue(ws, checkRow, 4))
-                                    {
-                                        anyDataAhead = true;
-                                        break;
-                                    }
-                                }
-
-                                if (!anyDataAhead)
-                                {
-                                    break;
-                                }
-                            }
-                        }
-                        targetRow = maxFilledRow + 1;
-                    }
-                }); // Fine Task.Run ClosedXML - file completamente rilasciato
-
-                // 2. Usa Excel Interop per scrivere i valori in modo nativo, per NON alterare in alcun modo la formattazione e la struttura del file
+                // Individuazione della riga e scrittura, entrambe in streaming sul solo <sheetData>
+                // del foglio (ReportInterventiWriter). Sostituiscono, dallo Sprint 22, due letture
+                // complete del workbook: la scansione con ClosedXML per ricavare la riga di
+                // destinazione (5.694 ms e 1.436 MB misurati sul report ETR1000 reale) e l'intero
+                // percorso Excel Interop — avvio di EXCEL.EXE, apertura del file, scrittura cella per
+                // cella via COM, Save() e pulizia del processo. Vedi PROJECT_MEMORY.md §6.1-vicies-quater.
                 //
-                // L'INTERA interazione COM — individuazione del ProgID, avvio del processo Excel,
-                // scrittura e pulizia — gira dentro un unico Task.Run. Prima, ricerca del ProgID e
-                // Activator.CreateInstance stavano sul thread UI: quest'ultima **avvia il processo
-                // EXCEL.EXE**, operazione che su una macchina d'officina lenta costa secondi, e per
-                // tutto quel tempo la finestra restava bloccata prima ancora che comparisse
-                // l'overlay di avanzamento. Tenere creazione e uso nello stesso apartment COM è
-                // anche più coerente di prima, quando l'oggetto veniva creato sul thread STA della
-                // UI e poi usato da un thread del pool.
-                //
-                // L'esito viene restituito come messaggio d'errore (null = successo) perché i
-                // MessageBox devono restare sul thread UI, fuori dal Task.Run.
-                string? comErrorMessage = await Task.Run(() =>
+                // NB: nessun ConfigureAwait(false) su questa await. La continuazione tocca IsLoading e
+                // apre una MessageBox: deve tornare sul thread della UI. Ciò che serve alla reattività
+                // — tenere l'I/O fuori dal dispatcher — è già garantito dal Task.Run.
+                int targetRow = await Task.Run(() =>
                 {
-                Type? excelType = Type.GetTypeFromProgID("Excel.Application");
-                if (excelType == null)
-                {
-                    return "Excel non risulta installato. Impossibile salvare senza alterare il file.";
-                }
+                    // Colonne chiave che qualificano una riga come compilata: Data (B), Sito (C),
+                    // Ticket (D), Loco (G) — le stesse su cui si basava la scansione precedente.
+                    int lastFilled = ReportInterventiWriter.FindLastFilledRow(reportPath, [2, 3, 4, 7]);
 
-                // Snapshot dei processi EXCEL.EXE già in esecuzione PRIMA di crearne uno nuovo: Excel
-                // non espone il proprio PID sull'oggetto Application quando è invisibile (niente Hwnd
-                // utilizzabile), quindi il PID del processo appena creato si ricava per differenza.
-                // Serve come ultima rete di sicurezza: se Quit() e le ReleaseComObject qui sotto non
-                // bastano a far terminare il processo (COM può lasciare un riferimento vivo per motivi
-                // fuori dal nostro controllo, es. un dialog di Excel rimasto aperto in background),
-                // il PID tracciato permette di terminarlo forzatamente invece di lasciarlo orfano.
-                var excelPidsBefore = new System.Collections.Generic.HashSet<int>(
-                    System.Diagnostics.Process.GetProcessesByName("EXCEL").Select(p => p.Id));
+                    // Con il foglio privo di dati si riparte dalla riga 2, sotto le intestazioni.
+                    int row = Math.Max(lastFilled, 1) + 1;
 
-                dynamic? excelApp = Activator.CreateInstance(excelType);
-                if (excelApp == null)
-                {
-                    return "Impossibile avviare Excel.";
-                }
-
-                int? excelProcessId = System.Diagnostics.Process.GetProcessesByName("EXCEL")
-                    .Select(p => (int?)p.Id)
-                    .FirstOrDefault(id => !excelPidsBefore.Contains(id!.Value));
-
-                dynamic? workbookInterop = null;
-                dynamic? worksheetInterop = null;
-
-                try
-                {
-                    ExecuteComWithRetry(() => excelApp.Visible = false);
-                    ExecuteComWithRetry(() => excelApp.DisplayAlerts = false);
-
-                    ExecuteComWithRetry(() => { workbookInterop = excelApp.Workbooks.Open(_currentExcelFilePath); });
-                    
-                    ExecuteComWithRetry(() => { worksheetInterop = workbookInterop!.Worksheets[1]; }); // Interop è 1-based
-
-                    // Scrivi i valori
-                    for (int i = 0; i < fieldsData.Count; i++)
-                    {
-                        int col = i + 2; // FormFields parte dalla colonna B (indice 2)
-                        string? val = fieldsData[i];
-
-                        // Scrive solo se c'è un valore
-                        if (!string.IsNullOrWhiteSpace(val))
-                        {
-                            if (DateTime.TryParseExact(val, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime parsedDate))
-                            {
-                                ExecuteComWithRetry(() => worksheetInterop!.Cells[targetRow, col].Value = parsedDate);
-                            }
-                            else
-                            {
-                                ExecuteComWithRetry(() => worksheetInterop!.Cells[targetRow, col].Value = val);
-                            }
-                        }
-                    }
-
-                    ExecuteComWithRetry(() => workbookInterop!.Save());
-                    ExecuteComWithRetry(() => workbookInterop!.Close());
-                }
-                finally
-                {
-                    // Quit() e i tre rilasci vanno protetti singolarmente: nella versione precedente
-                    // erano istruzioni consecutive nel finally, quindi una qualunque eccezione su
-                    // Quit() (o su un rilascio) saltava i rilasci successivi e lasciava un processo
-                    // EXCEL.EXE orfano in memoria — su macchine datate bastavano pochi salvataggi
-                    // falliti per saturare la RAM.
-                    TryComCleanup(() => ExecuteComWithRetry(() => excelApp.Quit()));
-                    TryComCleanup(() => { if (worksheetInterop != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(worksheetInterop); });
-                    TryComCleanup(() => { if (workbookInterop != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(workbookInterop); });
-                    TryComCleanup(() => { if (excelApp != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(excelApp); });
-
-                    // Rete di sicurezza finale: se il processo tracciato risulta ancora vivo dopo
-                    // Quit(), gli si concede un breve margine (Quit() è asincrono lato Excel) e poi
-                    // viene terminato forzatamente. Senza questo passo, i casi in cui la pulizia COM
-                    // sopra non basta lascerebbero comunque un EXCEL.EXE orfano in memoria.
-                    TryComCleanup(() =>
-                    {
-                        if (!excelProcessId.HasValue) return;
-                        try
-                        {
-                            using var orphan = System.Diagnostics.Process.GetProcessById(excelProcessId.Value);
-                            if (!orphan.HasExited && !orphan.WaitForExit(3000))
-                            {
-                                orphan.Kill();
-                            }
-                        }
-                        catch (ArgumentException)
-                        {
-                            // Il processo è già terminato: GetProcessById lancia se il PID non esiste più.
-                        }
-                    });
-                }
-
-                return null;
-                }); // Fine Task.Run Interop
-
-                if (comErrorMessage != null)
-                {
-                    IsLoading = false;
-                    await Task.Delay(100);
-                    MessageBox.Show(comErrorMessage, "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
+                    ReportInterventiWriter.WriteRow(reportPath, row, valuesByColumn);
+                    return row;
+                });
 
                 IsLoading = false;
                 await Task.Delay(100);
@@ -1560,40 +1414,6 @@ namespace PersonalAutomationTool.Modules.Excel
             foreach (var field in FormFields)
             {
                 field.FieldValue = string.Empty;
-            }
-        }
-
-        /// <summary>
-        /// Esegue un passo di pulizia COM assorbendo eventuali eccezioni, così che i passi
-        /// successivi vengano comunque eseguiti.
-        /// </summary>
-        private static void TryComCleanup(Action action)
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Pulizia COM Excel fallita: {ex.Message}");
-            }
-        }
-
-        private static void ExecuteComWithRetry(Action action, int maxRetries = 10)
-        {
-            int retries = 0;
-            while (true)
-            {
-                try
-                {
-                    action();
-                    break;
-                }
-                catch (Exception ex) when ((uint)ex.HResult == 0x8001010A && retries < maxRetries)
-                {
-                    retries++;
-                    System.Threading.Thread.Sleep(1000);
-                }
             }
         }
 

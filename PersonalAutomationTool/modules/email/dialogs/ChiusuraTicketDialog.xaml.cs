@@ -350,7 +350,7 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
         }
 
         private static readonly HashSet<string> _standardTrainTypes = new(StringComparer.OrdinalIgnoreCase)
-            { "ETR1000", "ETR1000IF", "ETR1000FH" };
+            { "ETR1000", "ETR1000IF", "ETR1001FH" };
 
         private static string GetMacroText(string macroName, string trainType)
         {
@@ -367,7 +367,7 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
                 };
             }
 
-            // ETR700, ETR1000, ETR1000IF, ETR1000FH condividono lo stesso testo
+            // ETR700, ETR1000, ETR1000IF, ETR1001FH condividono lo stesso testo
             if (trainType == "ETR700" || _standardTrainTypes.Contains(trainType))
             {
                 return macroName switch

@@ -125,7 +125,34 @@ namespace PersonalAutomationTool.Modules.DestinatariMail
                 return data;
             }
 
+            if (MigrateLegacyTrainName(data, "ETR1000FH", "ETR1001FH"))
+            {
+                SaveConfig(data);
+            }
+
             return data;
+        }
+
+        /// <summary>
+        /// Rinomina in-place la voce <paramref name="legacyName"/> in <paramref name="newName"/>,
+        /// preservando i destinatari già personalizzati a mano dal tecnico. Usata per il rename
+        /// "ETR1000FH" → "ETR1001FH" (quest'ultimo è il valore reale della colonna `tipo` in
+        /// flotte.db, PROJECT_MEMORY.md §5.3-bis): un file destinatari.json già in uso su una
+        /// macchina reale contiene ancora la vecchia chiave, che senza questa migrazione non
+        /// corrisponderebbe più al tipo treno inviato dalla UI dopo il rename, lasciando "A:"/"CC:"
+        /// vuoti in una mail reale. Non fa nulla se la voce nuova esiste già (nessun doppione), né se
+        /// la voce legacy non c'è.
+        /// </summary>
+        internal static bool MigrateLegacyTrainName(ObservableCollection<TrainConfig> config, string legacyName, string newName)
+        {
+            var legacy = config.FirstOrDefault(t => t.TrainName.Equals(legacyName, StringComparison.OrdinalIgnoreCase));
+            if (legacy == null) return false;
+
+            bool newAlreadyPresent = config.Any(t => t.TrainName.Equals(newName, StringComparison.OrdinalIgnoreCase));
+            if (newAlreadyPresent) return false;
+
+            legacy.TrainName = newName;
+            return true;
         }
 
         public static void SaveConfig(ObservableCollection<TrainConfig> config)
@@ -173,7 +200,7 @@ namespace PersonalAutomationTool.Modules.DestinatariMail
                     Actions =
                     [
                         new() { ActionName = "Passaggio di consegne", ToRecipients = "vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com", CcRecipients = "Service_ISCOT_IMC_AV_Milano@it.iscot.com" },
-                        new() { ActionName = "Chiusura Ticket", ToRecipients = "vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com", CcRecipients = "Service_ISCOT_IMC_AV_Milano@it.iscot.com" },
+                        new() { ActionName = "Chiusura Ticket", ToRecipients = "etr500_analisidiagssb_asts@hitachirail.com", CcRecipients = "Service_ISCOT_IMC_AV_Milano@it.iscot.com; team-adv@advservicesrl.it; vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com; salvatore.cascegna@hitachirail.com; francesco.montanaro@hitachirail.com" },
                         new() { ActionName = "Log Dump", ToRecipients = "etr500_analisidiagssb_sts@hitachirail.com", CcRecipients = "vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com; salvatore.cascegna@hitachirail.com; francesco.montanaro@hitachirail.com; salvatore.demartino@hitachirail.com; Service_ISCOT_IMC_AV_Milano@it.iscot.com" },
                         new() { ActionName = "Scadenza 6 Mesi", ToRecipients = "vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com", CcRecipients = "Service_ISCOT_IMC_AV_Milano@it.iscot.com" },
                         new() { ActionName = "Scadenza 12 Mesi", ToRecipients = "vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com", CcRecipients = "Service_ISCOT_IMC_AV_Milano@it.iscot.com" },
@@ -217,7 +244,7 @@ namespace PersonalAutomationTool.Modules.DestinatariMail
                 },
                 new()
                 {
-                    TrainName = "ETR1000FH",
+                    TrainName = "ETR1001FH",
                     Actions =
                     [
                         new() { ActionName = "Passaggio di consegne", ToRecipients = "etr1000_analisidiagssb_sts@hitachirail.com", CcRecipients = "Service_ISCOT_IMC_AV_Milano@it.iscot.com; vincenzo.loporchio@hitachirail.com; salvatore.cascegna@hitachirail.com; francesco.montanaro@hitachirail.com; team-adv@advservicesrl.it; salvatore.demartino@hitachirail.com; mario.arcini@hitachirail.com" },

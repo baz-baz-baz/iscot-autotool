@@ -202,6 +202,68 @@ namespace PersonalAutomationTool.Tests.Modules.PassaggioConsegne
             Assert.Equal(Enumerable.Range(1, 9), rapportino.InterventiNonSvolti.Select(n => n.Numero));
         }
 
+        // ------------------------------------------------------------------
+        // SpostaOra — pulsanti "-4"/"+4" sopra ORA INIZIO/FINE
+        // ------------------------------------------------------------------
+
+        [Theory]
+        [InlineData("10:00", 4, "14:00")]      // caso semplice, nessun avvolgimento
+        [InlineData("10:00", -4, "06:00")]
+        [InlineData("06:00", -4, "02:00")]
+        public void SpostaOra_CasoSempliceSenzaAttraversareLaMezzanotte(string orario, int delta, string atteso) =>
+            Assert.Equal(atteso, RapportinoTurno.SpostaOra(orario, delta));
+
+        [Theory]
+        [InlineData("02:00", -4, "22:00")]     // sottrazione che scavalla la mezzanotte all'indietro
+        [InlineData("01:30", -4, "21:30")]
+        [InlineData("22:00", 4, "02:00")]      // addizione che scavalla la mezzanotte in avanti
+        [InlineData("23:15", 4, "03:15")]
+        public void SpostaOra_AvvolgeOltreLaMezzanotteInEntrambeLeDirezioni(string orario, int delta, string atteso) =>
+            Assert.Equal(atteso, RapportinoTurno.SpostaOra(orario, delta));
+
+        [Fact]
+        public void SpostaOra_ConservaIMinutiInvariati()
+        {
+            // Solo l'ora si sposta: i minuti (es. il "16:30" del Turno Centrale) non devono cambiare.
+            Assert.Equal("20:30", RapportinoTurno.SpostaOra("16:30", 4));
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        [InlineData("non un orario")]
+        [InlineData("25:00")]  // ora fuori range
+        [InlineData("10:70")]  // minuti fuori range
+        public void SpostaOra_OrarioNonValidoOVuoto_RestituisceInvariato(string? orario) =>
+            Assert.Equal(orario ?? string.Empty, RapportinoTurno.SpostaOra(orario, 4));
+
+        [Fact]
+        public void SottraiQuattroOreInizioCommand_AggiornaSoloOraInizio()
+        {
+            var rapportino = CreaRapportino();
+            rapportino.OraInizio = "10:00";
+            rapportino.OraFine = "18:00";
+
+            rapportino.SottraiQuattroOreInizioCommand.Execute(null);
+
+            Assert.Equal("06:00", rapportino.OraInizio);
+            Assert.Equal("18:00", rapportino.OraFine);
+        }
+
+        [Fact]
+        public void AggiungiQuattroOreFineCommand_AggiornaSoloOraFine()
+        {
+            var rapportino = CreaRapportino();
+            rapportino.OraInizio = "06:00";
+            rapportino.OraFine = "22:00";
+
+            rapportino.AggiungiQuattroOreFineCommand.Execute(null);
+
+            Assert.Equal("06:00", rapportino.OraInizio);
+            Assert.Equal("02:00", rapportino.OraFine);
+        }
+
         internal static RapportinoTurno CreaRapportino() => new(
             tipoTreno: "ETR 700",
             sottotitolo: "ETR 700 (da aggiornare durante il turno con verifica presso ufficio CT Hitachi)",

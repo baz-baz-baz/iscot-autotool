@@ -63,14 +63,41 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
                 string? json = ReadConfigJson(path);
                 if (json == null) return new List<TrainShortcutsModel>();
 
-                var config = JsonSerializer.Deserialize<List<TrainShortcutsModel>>(json);
-                return config ?? new List<TrainShortcutsModel>();
+                var config = JsonSerializer.Deserialize<List<TrainShortcutsModel>>(json) ?? new List<TrainShortcutsModel>();
+
+                if (MigrateLegacyTrainName(config, "ETR1000FH", "ETR1001FH"))
+                {
+                    SaveConfig(config);
+                }
+
+                return config;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Errore lettura shortcuts.json: {ex.Message}");
                 return new List<TrainShortcutsModel>();
             }
+        }
+
+        /// <summary>
+        /// Rinomina in-place la voce <paramref name="legacyName"/> in <paramref name="newName"/>,
+        /// preservando gli shortcut già personalizzati. Stesso rename "ETR1000FH" → "ETR1001FH" di
+        /// <see cref="DestinatariMail.DestinatariManager.MigrateLegacyTrainName"/> (il tipo reale in
+        /// flotte.db, PROJECT_MEMORY.md §5.3-bis): senza questa migrazione, uno shortcuts.json già in
+        /// uso resterebbe con la vecchia chiave e <see cref="GetShortcutsForTrain"/> ripiegherebbe sui
+        /// default generici invece di quelli scelti dal tecnico. Non fa nulla se la voce nuova esiste
+        /// già, né se la voce legacy non c'è.
+        /// </summary>
+        internal static bool MigrateLegacyTrainName(List<TrainShortcutsModel> config, string legacyName, string newName)
+        {
+            var legacy = config.FirstOrDefault(t => t.TrainName.Equals(legacyName, StringComparison.OrdinalIgnoreCase));
+            if (legacy == null) return false;
+
+            bool newAlreadyPresent = config.Any(t => t.TrainName.Equals(newName, StringComparison.OrdinalIgnoreCase));
+            if (newAlreadyPresent) return false;
+
+            legacy.TrainName = newName;
+            return true;
         }
 
         public static void SaveConfig(List<TrainShortcutsModel> config)
@@ -110,7 +137,7 @@ namespace PersonalAutomationTool.Modules.Email.Dialogs
             {
                 new TrainShortcutsModel { TrainName = "E404P", Shortcuts = new List<string>(defaultShortcuts) },
                 new TrainShortcutsModel { TrainName = "ETR1000", Shortcuts = new List<string>(defaultShortcuts) },
-                new TrainShortcutsModel { TrainName = "ETR1000FH", Shortcuts = new List<string>(defaultShortcuts) },
+                new TrainShortcutsModel { TrainName = "ETR1001FH", Shortcuts = new List<string>(defaultShortcuts) },
                 new TrainShortcutsModel { TrainName = "ETR700", Shortcuts = new List<string>(defaultShortcuts) },
                 new TrainShortcutsModel { TrainName = "ETR521", Shortcuts = new List<string>(defaultShortcuts) },
                 new TrainShortcutsModel { TrainName = "ETR522", Shortcuts = new List<string>(defaultShortcuts) }

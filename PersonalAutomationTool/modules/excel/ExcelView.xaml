@@ -188,10 +188,33 @@
                                             </TextBox.Style>
                                         </TextBox>
                                         
-                                        <!-- ComboBox -->
+                                        <!-- ComboBox chiusa: solo selezione dalla lista (Sito, Cliente, Rotabile, ecc.) -->
                                         <ComboBox x:Name="FieldComboBox"
                                                   ItemsSource="{Binding Options}"
                                                   SelectedItem="{Binding FieldValue}"
+                                                  Visibility="Collapsed">
+                                            <ComboBox.Style>
+                                                <Style TargetType="ComboBox" BasedOn="{StaticResource MaterialDesignOutlinedComboBox}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsImportant}" Value="True">
+                                                            <Setter Property="Background" Value="#FFF9C4"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ComboBox.Style>
+                                        </ComboBox>
+
+                                        <!-- ComboBox digitabile con ricerca testuale: solo "Descrizione LRU"
+                                             (IsEditableComboBox), il catalogo componenti da 103 voci. Le altre
+                                             ComboBox restano quella sopra, non digitabile, per non permettere
+                                             di scrivere un valore fuori dalla lista concordata. Bind su Text,
+                                             non SelectedItem: con IsEditable="True" è Text a riflettere sia la
+                                             selezione dalla lista sia il testo digitato liberamente. -->
+                                        <ComboBox x:Name="FieldEditableComboBox"
+                                                  ItemsSource="{Binding Options}"
+                                                  Text="{Binding FieldValue, UpdateSourceTrigger=PropertyChanged}"
+                                                  IsEditable="True"
+                                                  IsTextSearchEnabled="True"
                                                   Visibility="Collapsed">
                                             <ComboBox.Style>
                                                 <Style TargetType="ComboBox" BasedOn="{StaticResource MaterialDesignOutlinedComboBox}">
@@ -208,8 +231,11 @@
                                         <DataTrigger Binding="{Binding IsTextBox}" Value="True">
                                             <Setter TargetName="FieldTextBox" Property="Visibility" Value="Visible"/>
                                         </DataTrigger>
-                                        <DataTrigger Binding="{Binding IsComboBox}" Value="True">
+                                        <DataTrigger Binding="{Binding IsClosedComboBox}" Value="True">
                                             <Setter TargetName="FieldComboBox" Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsEditableComboBox}" Value="True">
+                                            <Setter TargetName="FieldEditableComboBox" Property="Visibility" Value="Visible"/>
                                         </DataTrigger>
                                     </DataTemplate.Triggers>
                                 </DataTemplate>

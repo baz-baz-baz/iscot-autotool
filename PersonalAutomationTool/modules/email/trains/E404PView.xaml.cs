@@ -19,12 +19,6 @@ namespace PersonalAutomationTool.Modules.Email.Trains
             TrainViewHelper.OpenChiusuraTicketDialog(cartella, "E404P", isNd: false);
         }
 
-        private void BtnLogDump_Click(object sender, RoutedEventArgs e)
-        {
-            string cartella = CmbCartelle.SelectedItem?.ToString() ?? "";
-            TrainViewHelper.OpenChiusuraTicketDialog(cartella, "E404P", isNd: false, actionType: "Log Dump");
-        }
-
         private void BtnScadenza6Mesi_Click(object sender, RoutedEventArgs e)
         {
             string cartella = CmbCartelle.SelectedItem?.ToString() ?? "";

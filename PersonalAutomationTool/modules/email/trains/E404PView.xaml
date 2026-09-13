@@ -66,7 +66,6 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -76,16 +75,13 @@
 
                 <!-- Row 0 -->
                 <Button Grid.Row="0" Grid.Column="0" Content="Chiusura Ticket" Style="{StaticResource EmailActionBtn}" Click="BtnChiusuraTicket_Click"/>
-                <Button Grid.Row="0" Grid.Column="1" Content="Log Dump" Style="{StaticResource EmailActionBtn}" Click="BtnLogDump_Click"/>
-                <Button Grid.Row="0" Grid.Column="2" Content="Scadenza 6 Mesi" Style="{StaticResource EmailActionBtn}" Click="BtnScadenza6Mesi_Click"/>
+                <Button Grid.Row="0" Grid.Column="1" Content="Scadenza 6 Mesi" Style="{StaticResource EmailActionBtn}" Click="BtnScadenza6Mesi_Click"/>
+                <Button Grid.Row="0" Grid.Column="2" Content="Scadenza 12 Mesi" Style="{StaticResource EmailActionBtn}" Click="BtnScadenza12Mesi_Click"/>
 
                 <!-- Row 1 -->
-                <Button Grid.Row="1" Grid.Column="0" Content="Scadenza 12 Mesi" Style="{StaticResource EmailActionBtn}" Click="BtnScadenza12Mesi_Click"/>
-                <Button Grid.Row="1" Grid.Column="1" Content="Scadenza V.I" Style="{StaticResource EmailActionBtn}" Click="BtnScadenzaVI_Click"/>
-                <Button Grid.Row="1" Grid.Column="2" Content="Scadenza V.T" Style="{StaticResource EmailActionBtn}" Click="BtnScadenzaVT_Click"/>
-
-                <!-- Row 2 -->
-                <Button Grid.Row="2" Grid.Column="0" Content="R2" Style="{StaticResource EmailActionBtn}" Click="BtnR2_Click"/>
+                <Button Grid.Row="1" Grid.Column="0" Content="Scadenza V.I" Style="{StaticResource EmailActionBtn}" Click="BtnScadenzaVI_Click"/>
+                <Button Grid.Row="1" Grid.Column="1" Content="Scadenza V.T" Style="{StaticResource EmailActionBtn}" Click="BtnScadenzaVT_Click"/>
+                <Button Grid.Row="1" Grid.Column="2" Content="R2" Style="{StaticResource EmailActionBtn}" Click="BtnR2_Click"/>
             </Grid>
         </Border>
     </Grid>

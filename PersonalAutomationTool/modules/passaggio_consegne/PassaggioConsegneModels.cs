@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Windows.Input;
 using PersonalAutomationTool.Core;
 
 namespace PersonalAutomationTool.Modules.PassaggioConsegne
@@ -405,6 +406,12 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
             set => SetProperty(ref _oraFine, value);
         }
 
+        /// <summary>Sottrae 4 ore a <see cref="OraInizio"/> (pulsante "-4" sopra il campo in vista).</summary>
+        public ICommand SottraiQuattroOreInizioCommand { get; }
+
+        /// <summary>Aggiunge 4 ore a <see cref="OraFine"/> (pulsante "+4" sopra il campo in vista).</summary>
+        public ICommand AggiungiQuattroOreFineCommand { get; }
+
         public ObservableCollection<MovimentoTrenoRow> Movimenti { get; } = [];
         public ObservableCollection<DettaglioInterventoRow> Interventi { get; } = [];
         public ObservableCollection<InterventoNonSvoltoRow> InterventiNonSvolti { get; } = [];
@@ -417,6 +424,9 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
             DestinatariKey = destinatariKey;
             OggettoEmail = oggettoEmail;
 
+            SottraiQuattroOreInizioCommand = new RelayCommand(_ => OraInizio = SpostaOra(OraInizio, -4));
+            AggiungiQuattroOreFineCommand = new RelayCommand(_ => OraFine = SpostaOra(OraFine, 4));
+
             for (int i = 1; i <= RigheMovimenti; i++)
                 Movimenti.Add(new MovimentoTrenoRow { Numero = i });
 
@@ -425,6 +435,41 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
 
             for (int i = 1; i <= RigheInterventiNonSvolti; i++)
                 InterventiNonSvolti.Add(new InterventoNonSvoltoRow { Numero = i });
+        }
+
+        /// <summary>
+        /// Sposta un orario "HH:mm" di <paramref name="deltaOre"/> ore, avvolgendo oltre la
+        /// mezzanotte in entrambe le direzioni (es. "02:00" - 4 → "22:00", "22:00" + 4 → "02:00"):
+        /// sono orari di turno senza data associata, non istanti calendariali, quindi non c'è un
+        /// "giorno prima/dopo" da tracciare — solo il quadrante delle 24 ore.
+        ///
+        /// <para>
+        /// Un orario non valido o vuoto (turno non ancora compilato) viene restituito **invariato**
+        /// invece di sollevare un'eccezione o azzerarlo: il pulsante non deve rompere un campo che
+        /// l'utente sta ancora scrivendo.
+        /// </para>
+        /// </summary>
+        internal static string SpostaOra(string? orario, int deltaOre)
+        {
+            if (!TryParseOra(orario, out int ore, out int minuti)) return orario ?? string.Empty;
+
+            int nuovaOra = ((ore + deltaOre) % 24 + 24) % 24;
+            return $"{nuovaOra:D2}:{minuti:D2}";
+        }
+
+        private static bool TryParseOra(string? orario, out int ore, out int minuti)
+        {
+            ore = 0;
+            minuti = 0;
+
+            if (string.IsNullOrWhiteSpace(orario)) return false;
+
+            string[] parti = orario.Split(':');
+            if (parti.Length != 2) return false;
+            if (!int.TryParse(parti[0], out ore) || !int.TryParse(parti[1], out minuti)) return false;
+            if (ore is < 0 or > 23 || minuti is < 0 or > 59) return false;
+
+            return true;
         }
 
         /// <summary>

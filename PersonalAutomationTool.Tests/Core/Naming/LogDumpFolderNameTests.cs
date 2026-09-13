@@ -322,5 +322,28 @@ namespace PersonalAutomationTool.Tests.Core.Naming
             Assert.True(success);
             Assert.Equal(original, reparsed);
         }
+
+        [Fact]
+        public void Format_ThenTryParse_RoundTrips_ForEtr1001FH()
+        {
+            // A differenza di "ETR1000 I-F" sopra, "ETR1001FH" è un tipo a token singolo (nessuno
+            // spazio interno): il round-trip copre quindi una forma diversa dello stesso contratto.
+            var original = new LogDumpFolderName
+            {
+                Ticket = "5566778",
+                Kind = LogDumpKind.Dump,
+                Tipo = "ETR1001FH",
+                Loco = "410",
+                Software = "04.03HR",
+                Data = "230626",
+                Utente = "Blu"
+            };
+
+            string formatted = original.Format();
+            bool success = LogDumpFolderName.TryParse(formatted, RealKnownTypes, out var reparsed);
+
+            Assert.True(success);
+            Assert.Equal(original, reparsed);
+        }
     }
 }

@@ -386,6 +386,53 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
             Assert.Equal(before, after);
         }
 
+        /// <summary>
+        /// Sprint 24 (§6.1-vicies-sexies): sette componenti del catalogo "Descrizione LRU" hanno uno
+        /// spazio iniziale significativo, marcato <c>xml:space="preserve"</c> nella convalida dati
+        /// reale — vedi <see cref="ReportOptionsCatalog"/>. La cella scritta deve riprodurlo
+        /// esattamente: uno spazio perso o aggiunto farebbe divergere il valore da ogni voce della
+        /// convalida.
+        /// </summary>
+        [Fact]
+        public void ScritturaRiga_ValoreConSpazioInizialeSignificativo_VieneScrittoEsattoConXmlSpacePreserve()
+        {
+            var (working, _) = CreateTemplatePair("lru_leading_space");
+            var valori = new Dictionary<int, string?> { [2] = " CPUE ALM N B61C.0100003" };
+
+            ReportInterventiWriter.WriteRow(working, rowNumber: 5, valori);
+
+            var textElement = ReadSheetXml(working).Root!
+                .Element(S + "sheetData")!.Elements(S + "row")
+                .First(r => r.Attribute("r")?.Value == "5")
+                .Elements(S + "c").First(c => c.Attribute("r")?.Value == "B5")
+                .Element(S + "is")!.Element(S + "t")!;
+
+            // Il valore esatto, spazio iniziale incluso: né perso né raddoppiato.
+            Assert.Equal(" CPUE ALM N B61C.0100003", textElement.Value);
+
+            XNamespace xml = "http://www.w3.org/XML/1998/namespace";
+            Assert.Equal("preserve", textElement.Attribute(xml + "space")?.Value);
+        }
+
+        [Fact]
+        public void ScritturaRiga_ValoreSenzaSpaziAiBordi_NonRiceveXmlSpacePreserve()
+        {
+            var (working, _) = CreateTemplatePair("lru_no_space");
+            var valori = new Dictionary<int, string?> { [2] = "ARMADIO ALA B61A.000014" };
+
+            ReportInterventiWriter.WriteRow(working, rowNumber: 5, valori);
+
+            var textElement = ReadSheetXml(working).Root!
+                .Element(S + "sheetData")!.Elements(S + "row")
+                .First(r => r.Attribute("r")?.Value == "5")
+                .Elements(S + "c").First(c => c.Attribute("r")?.Value == "B5")
+                .Element(S + "is")!.Element(S + "t")!;
+
+            XNamespace xml = "http://www.w3.org/XML/1998/namespace";
+            // Nessun attributo superfluo sulla stragrande maggioranza dei valori, che non ne hanno bisogno.
+            Assert.Null(textElement.Attribute(xml + "space"));
+        }
+
         [Fact]
         public void ScrittureRipetute_SuRigheDiverse_MantengonoLOrdineERestanoValide()
         {

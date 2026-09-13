@@ -28,6 +28,28 @@ namespace PersonalAutomationTool.Modules.Excel
                 if (SetProperty(ref _isComboBox, value))
                 {
                     OnPropertyChanged(nameof(IsTextBox));
+                    OnPropertyChanged(nameof(IsClosedComboBox));
+                }
+            }
+        }
+
+        private bool _isEditableComboBox;
+
+        /// <summary>
+        /// Vero per un campo la cui ComboBox deve restare digitabile con ricerca testuale (oggi solo
+        /// "Descrizione LRU", il catalogo componenti da 103 voci: vedi
+        /// <see cref="ReportOptionsCatalog.IsSearchableComponentField"/>). Le altre ComboBox restano
+        /// chiuse — <see cref="IsClosedComboBox"/> — per non permettere di scrivere nel report un
+        /// valore fuori dalla lista concordata.
+        /// </summary>
+        public bool IsEditableComboBox
+        {
+            get => _isEditableComboBox;
+            set
+            {
+                if (SetProperty(ref _isEditableComboBox, value))
+                {
+                    OnPropertyChanged(nameof(IsClosedComboBox));
                 }
             }
         }
@@ -47,5 +69,8 @@ namespace PersonalAutomationTool.Modules.Excel
         }
 
         public bool IsTextBox => !IsComboBox;
+
+        /// <summary>Vero per una ComboBox vincolata alla sola selezione dalla lista (tutte tranne quelle con <see cref="IsEditableComboBox"/>).</summary>
+        public bool IsClosedComboBox => IsComboBox && !IsEditableComboBox;
     }
 }

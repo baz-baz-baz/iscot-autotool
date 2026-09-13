@@ -8,7 +8,10 @@ namespace PersonalAutomationTool.Modules.Email.Trains
         public ETR1000FHView()
         {
             InitializeComponent();
-            TrainViewHelper.LoadCartelle(CmbCartelle, "ETR1000FH", "ETR1000 FH");
+            // "ETR1001FH" è il tipo reale scritto nei nomi di cartella (colonna `tipo` di flotte.db,
+            // vedi PROJECT_MEMORY.md §5.3-bis): "ETR1000 FH" resta come prefisso di compatibilità per
+            // eventuali cartelle più vecchie create prima che questa combo diventasse DB-driven.
+            TrainViewHelper.LoadCartelle(CmbCartelle, "ETR1001FH", "ETR1000 FH");
         }
 
         private void BtnBack_Click(object sender, RoutedEventArgs e) => TrainViewHelper.NavigateBack();
@@ -17,7 +20,7 @@ namespace PersonalAutomationTool.Modules.Email.Trains
         {
             string cartella = CmbCartelle.SelectedItem?.ToString() ?? "";
             bool isNd = ChkPrefissoND.IsChecked == true;
-            TrainViewHelper.OpenChiusuraTicketDialog(cartella, "ETR1000FH", isNd);
+            TrainViewHelper.OpenChiusuraTicketDialog(cartella, "ETR1001FH", isNd);
         }
 
         private void BtnScadenza6Mesi_Click(object sender, RoutedEventArgs e) { }
