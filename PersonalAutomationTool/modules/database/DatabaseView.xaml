@@ -14,20 +14,27 @@
 
         <TextBlock Grid.Row="0" Text="Esploratore Database SQLite" FontSize="28" FontWeight="SemiBold" Margin="20,20,20,10" Foreground="#2D3436"/>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="20,0,20,10">
-            <TextBlock Text="Database:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-            <ComboBox x:Name="CmbDatabases" Width="150" Margin="0,0,15,0" SelectionChanged="CmbDatabases_SelectionChanged"/>
+        <StackPanel Grid.Row="1" Margin="20,0,20,10">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Database:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <ComboBox x:Name="CmbDatabases" Width="150" Margin="0,0,15,0" SelectionChanged="CmbDatabases_SelectionChanged"/>
 
-            <TextBlock Text="Tabella:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-            <ComboBox x:Name="CmbTables" Width="150" Margin="0,0,15,0" SelectionChanged="CmbTables_SelectionChanged"/>
+                <TextBlock Text="Tabella:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <ComboBox x:Name="CmbTables" Width="150" Margin="0,0,15,0" SelectionChanged="CmbTables_SelectionChanged"/>
 
-            <Button Content="Ricarica Dati" Margin="0,0,0,0" Padding="15,5" Click="BtnReload_Click" Background="#0984E3" Foreground="White" BorderThickness="0" Cursor="Hand" />
-            
-            <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="15,0,15,0" />
-            
-            <Button Content="Nuova Riga" Margin="0,0,5,0" Padding="15,5" Click="BtnAddRow_Click" Background="#27AE60" Foreground="White" BorderThickness="0" Cursor="Hand" />
-            <Button Content="Elimina Riga" Margin="0,0,5,0" Padding="15,5" Click="BtnDeleteRow_Click" Background="#E74C3C" Foreground="White" BorderThickness="0" Cursor="Hand" />
-            <Button Content="Salva Modifiche" Margin="10,0,0,0" Padding="15,5" Click="BtnSaveChanges_Click" Background="#F39C12" Foreground="White" BorderThickness="0" Cursor="Hand" />
+                <Button Content="Ricarica Dati" Margin="0,0,0,0" Padding="15,5" Click="BtnReload_Click" Background="#0984E3" Foreground="White" BorderThickness="0" Cursor="Hand" />
+
+                <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="15,0,15,0" />
+
+                <Button Content="Nuova Riga" Margin="0,0,5,0" Padding="15,5" Click="BtnAddRow_Click" Background="#27AE60" Foreground="White" BorderThickness="0" Cursor="Hand" />
+                <Button Content="Elimina Riga" Margin="0,0,5,0" Padding="15,5" Click="BtnDeleteRow_Click" Background="#E74C3C" Foreground="White" BorderThickness="0" Cursor="Hand" />
+                <Button Content="Salva Modifiche" Margin="10,0,0,0" Padding="15,5" Click="BtnSaveChanges_Click" Background="#F39C12" Foreground="White" BorderThickness="0" Cursor="Hand" />
+            </StackPanel>
+
+            <!-- Percorso assoluto del file .db aperto: serve a diagnosticare a colpo d'occhio se il
+                 tecnico sta guardando davvero il file che pensa di guardare (es. macchine con più
+                 profili utente, o redirezioni di %APPDATA%), senza dover aprire un terminale. -->
+            <TextBlock x:Name="TxtPercorsoFile" Text="" FontSize="11" Foreground="#7F8C8D" Margin="0,6,0,0" TextWrapping="Wrap"/>
         </StackPanel>
 
         <Border Grid.Row="2" Background="White" CornerRadius="8" Margin="20,10,20,20" Padding="10">

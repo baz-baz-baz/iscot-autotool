@@ -4,7 +4,34 @@
 > Contiene tutto ciò che serve per lavorare sul progetto senza doverlo ri-esplorare da zero: architettura,
 > vincoli, invarianti da non rompere e stato del lavoro svolto.
 >
-> **Ultimo aggiornamento:** 13 settembre 2026 — Sprint 25 (§6.1-vicies-septies): **auto-update
+> **Ultimo aggiornamento:** 13 settembre 2026 — Sprint 27 (§6.1-vicies-novies) ⚠️⚠️ **da leggere prima
+> di fidarsi di qualunque controllo su `%APPDATA%\PersonalAutomationTool` fatto dal terminale di
+> Claude**: l'app Claude Desktop è un pacchetto Windows (MSIX), e Windows può virtualizzare
+> silenziosamente `%APPDATA%` per i processi lanciati da dentro questa sessione, reindirizzandoli a una
+> copia privata sotto `AppData\Local\Packages\Claude_...\LocalCache\Roaming\...` **senza cambiare il
+> percorso mostrato a video**. In questa sessione ha fatto perdere tempo a un'intera indagine: un
+> confronto byte-per-byte fra il seed del repository e `%APPDATA%` risultava sempre identico, dando
+> l'impressione che 52 rotabili ETR1001FH aggiunti dal committente fossero andati persi — non lo
+> erano, esistevano nel file vero, invisibile solo da dentro questa sessione. **Verificato SEMPRE
+> chiedendo al committente di eseguire lo stesso comando dalla propria PowerShell**, non deducendolo da
+> un controllo di Claude, per quanto incrociato con altri controlli fatti allo stesso modo (anche
+> quelli finiscono nello stesso ambiente virtualizzato). Il repository sotto `Documents\GitHub\...` non
+> ha mostrato lo stesso problema in questa sessione (build/test/git coerenti per tutta la durata), ma
+> non darlo per scontato in futuro. Aggiornato il seed `train_software.db` con i dati reali (228→278
+> righe in `flotte`, 54 `ETR1001FH`) e svuotata `renamer_log` (cronologia reale ma specifica di quella
+> macchina, non adatta come stato iniziale di un'altra installazione). Nello stesso sprint, corretto
+> anche un bug reale e indipendente in `DatabaseView.xaml.cs` — §6.1-vicies-octies, sotto.
+> Precede questo lo **Sprint 26** (§6.1-vicies-octies): bug segnalato dal
+> committente, **"Nuova Riga" nella schermata DATABASE perdeva in silenzio le modifiche non salvate**.
+> Aggiungere un rotabile, compilarne i campi e cliccare di nuovo "Nuova Riga" (o cambiare
+> tabella/database) prima di "Salva Modifiche" cancellava senza avviso i dati appena digitati — una
+> ventina di ETR1001FH aggiunti dal committente sono andati persi così, **non recuperabili** (nessun
+> log delle righe mai salvate). Prova non da un confronto di contenuto ma **forense**: il contatore
+> `sqlite_sequence` di `flotte` era a 480 con solo 228 righe realmente presenti. Corretto estraendo la
+> logica di salvataggio in `DatabaseView.SalvaModifichePendenti()`, richiamata prima di ogni azione
+> che ricarica la griglia (nuova riga, elimina riga, cambio tabella, cambio database) — "Ricarica Dati"
+> resta l'unico punto che scarta le modifiche, perché è l'unico il cui scopo è proprio quello.
+> Precede questo lo **Sprint 25** (§6.1-vicies-septies): **auto-update
 > zero-click all'avvio**. All'apertura, l'app confronta da sola la propria versione (`<Version>` nel
 > `.csproj`, ora obbligatoria da allineare a ogni release) con l'ultima release su
 > `github.com/baz-baz-baz/iscot-autotool`; se più recente la scarica e si sostituisce da sola tramite
@@ -3464,6 +3491,150 @@ proprietà `<Version>`, nessuna differenza nel profilo di distribuzione di §6.1
 > (`<Version>` diverse) come release GitHub, copiare il primo `.exe` su una macchina, avviarlo con il
 > secondo tag già pubblicato come "latest" e osservare lo splash, il download, la sostituzione e il
 > riavvio automatico.
+
+### 6.1-vicies-octies Sprint 26 — bug segnalato dal committente: "Nuova Riga" in DATABASE perdeva le modifiche non salvate ⭐
+
+**Come è emerso.** Il committente ha aggiunto una ventina di rotabili ETR1001FH dalla schermata
+DATABASE, li ha visti a schermo con tutti i dati compilati, ma **non li ha ritrovati** nel file
+`train_software.db` dopo aver chiuso l'app — né nella copia del repository, né in quella
+`%APPDATA%` che l'app usa davvero (§6.1-duodevicies). Prima di correggere qualunque cosa, la sessione
+ha dovuto stabilire *se* i dati fossero davvero spariti (non era ovvio: sono state escluse in
+sequenza l'ipotesi di un file sbagliato — un confronto byte-per-byte fra `train_software.db` del
+repository e quello in `%APPDATA%` non ha trovato differenze — e l'ipotesi di virtualizzazione di
+Windows per app pacchettizzate, che in questo ambiente di sviluppo crea davvero una copia ombra di
+`%APPDATA%` sotto `AppData\Local\Packages\...\LocalCache\Roaming\`: anche quella copia risultava
+identica, stesso secondo di ultima modifica). **La prova decisiva è stata forense, non un confronto
+di contenuto**: la tabella `flotte` aveva 228 righe con id fino a 234, ma il contatore
+`sqlite_sequence` per `flotte` era fermo a **480** — segno che circa 246 `INSERT` erano stati eseguiti
+e non erano più nella tabella. I dati del committente erano quindi stati scritti e poi persi, non
+mai salvati fin dall'inizio.
+
+**Causa.** `DatabaseView.BtnAddRow_Click` esegue subito un `INSERT` di una riga segnaposto
+(`tipo='Nuovo', treno=0, loco=0, software='Da definire'`) e ricarica la griglia da disco
+(`LoadDataForTable`, una `SELECT *` che sostituisce l'intera `DataTable` legata a
+`MainDataGrid.ItemsSource`). I valori digitati **dopo** nelle celle (per trasformare "Nuovo" in
+"ETR1001FH" ecc.) restano solo nella `DataTable` in memoria, come righe `DataRowState.Modified`, finché
+non si preme esplicitamente "Salva Modifiche" (`BtnSaveChanges_Click`, l'unico punto che eseguiva le
+`UPDATE`). Cliccare di nuovo "Nuova Riga" prima di quel salvataggio — lo scenario naturale quando si
+aggiungono più rotabili di seguito — richiama `LoadDataForTable`, che sostituisce la `DataTable` con
+una copia fresca da disco: le modifiche pendenti sulla riga precedente spariscono **senza alcun
+avviso**. La stessa identica esposizione esisteva su "Elimina Riga", sul cambio tabella
+(`CmbTables_SelectionChanged`) e sul cambio database (`CmbDatabases_SelectionChanged`) — ogni punto
+che richiama `LoadDataForTable`/`LoadTables` dopo la propria azione.
+
+**Correzione.** Estratta la logica di `BtnSaveChanges_Click` in un metodo privato
+`SalvaModifichePendenti()`, richiamato **prima** di ogni azione che sostituisce la griglia: inizio di
+`BtnAddRow_Click`, `BtnDeleteRow_Click`, `CmbTables_SelectionChanged`, `CmbDatabases_SelectionChanged`.
+Un dettaglio non ovvio: `CmbTables_SelectionChanged` scatta **dopo** che `CmbTables.SelectedItem` ha
+già assunto il nuovo valore, quindi non si può più risalire da lì a "quale tabella era caricata
+prima". Nuovo campo `_tabellaCorrenteInGriglia`, aggiornato solo da `LoadDataForTable` — a differenza
+di `CmbTables.SelectedItem`, resta sulla tabella vecchia fino a quando la griglia non viene
+effettivamente ricaricata, ed è quello che `SalvaModifichePendenti()` usa per sapere su quale tabella
+scrivere le `UPDATE`. `BtnReload_Click` ("Ricarica Dati") è stato lasciato **invariato**
+deliberatamente: è l'unico pulsante il cui scopo può legittimamente essere "scarta le mie modifiche e
+ricarica da disco", diverso dagli altri quattro punti dove la perdita era un effetto collaterale non
+voluto di un'azione che aveva un obiettivo diverso.
+
+**Verifica.** `dotnet build` sull'intera `.sln` → **0 errori, 0 warning**. `dotnet test` → **538/538**
+(nessun nuovo test xUnit: `DatabaseView` è un `UserControl` WPF di solo code-behind, stessa categoria
+di `RenamePreviewDialog`/`ProgressOverlay`/`CartelleView` già esclusa dai test per lo stesso motivo,
+§2.2). Verificata invece la sequenza esatta del bug con un harness usa-e-getta (fuori dal repository,
+riferimento diretto a `DatabaseManager`, la stessa classe di produzione): `INSERT` segnaposto →
+`SELECT` in una `DataTable` → modifica delle celle in memoria → `SalvaModifichePendenti()` → nuovo
+`INSERT` (simula un secondo "Nuova Riga") → nuova `SELECT` → **la prima riga mantiene i valori
+digitati** (`ETR1001FH`/`27`/`127`/`01.01CR2`), non i segnaposto. Sette asserzioni, tutte verdi.
+
+> ⚠️ **Non verificato in questo ambiente** (manca un rasterizzatore WPF): il comportamento a schermo
+> reale del `DataGrid` — che l'edit di cella generi davvero un `DataRowState.Modified` nello stesso
+> modo simulato dall'harness, e che nessun messaggio di errore compaia cliccando "Nuova Riga" in
+> rapida successione. Verifica manuale consigliata: riaprire l'app, aggiungere 3-4 rotabili ETR1001FH
+> in sequenza SENZA premere "Salva Modifiche" fra uno e l'altro, chiudere e riaprire l'app, e
+> controllare che tutti compaiano con i valori corretti (non segnaposto) nella tabella `flotte`.
+>
+> ⚠️ **I ~246 inserimenti perduti in questa sessione non sono recuperabili**: non esiste un log delle
+> righe cancellate/mai salvate in `flotte` (a differenza di `renamer_log`, che copre solo le
+> rinomine PDF). Il committente dovrà reinserire i rotabili ETR1001FH mancanti — questa volta il fix
+> impedisce che accada di nuovo, ma i dati già persi restano persi.
+
+### 6.1-vicies-novies Sprint 27 — aggiornamento del seed `flotte`/`renamer_log` + trappola scoperta: `%APPDATA%` può essere virtualizzata per chi gira dentro Claude Desktop ⭐⭐
+
+**Richiesta.** Il committente aveva aggiunto una cinquantina di rotabili ETR1001FH dalla schermata
+DATABASE sulla sua macchina di sviluppo e voleva che quei dati diventassero il seed distribuito
+(`PersonalAutomationTool/modules/database/train_software.db`, già tracciato in Git dallo Sprint 16,
+§6.1-duodevicies) — così che ogni nuova installazione, incluse quelle da GitHub Actions, parta con
+l'anagrafica flotte aggiornata.
+
+#### ⚠️⚠️ La trappola, da leggere PRIMA di diagnosticare qualunque problema su `%APPDATA%\PersonalAutomationTool` da dentro una sessione Claude Code
+
+**Il fatto.** L'app Claude Desktop è installata come pacchetto Windows (MSIX/AppX — confermato con
+`Get-AppxPackage -Name "*Claude*"`). Windows virtualizza `%APPDATA%` (e altre cartelle "note") per i
+processi che condividono l'identità di un pacchetto, per compatibilità legacy: quando un processo
+lanciato **da dentro** questa sessione (Bash, PowerShell, `dotnet run`, qualunque cosa) accede a
+`C:\Users\<utente>\AppData\Roaming\...`, Windows può silenziosamente reindirizzarlo a una copia
+privata sotto `C:\Users\<utente>\AppData\Local\Packages\Claude_<hash>\LocalCache\Roaming\...` —
+**senza che il percorso stampato a video cambi.** `$env:APPDATA` continua a mostrare il percorso
+normale; è l'I/O sottostante a essere deviato.
+
+**Come si è manifestata in questa sessione.** Un confronto byte-per-byte fra il seed nel repository e
+la copia in `%APPDATA%` risultava sempre identico — nessuna traccia dei rotabili appena aggiunti dal
+committente. Persino confrontare esplicitamente il percorso "normale" con quello sotto
+`AppData\Local\Packages\Claude_...\LocalCache\Roaming\` non ha aiutato: **erano identici fra loro**,
+perché entrambe le letture passavano dallo stesso ambiente virtualizzato — un confronto che sembrava
+un controesempio ma era in realtà circolare. La prova che ha smascherato il problema è stata far
+eseguire **allo stesso committente**, dalla **sua** PowerShell (fuori da questa sessione), lo stesso
+identico comando `Get-Item ... | Select-Object Length, LastWriteTime`: dimensione e data diverse da
+quelle viste da Claude. Il file vero (53 248 byte, 278 righe in `flotte`) non aveva mai smesso di
+esistere; era invisibile solo a chi operava da dentro questa sessione.
+
+**Conseguenza pratica, da applicare sempre d'ora in poi.** Nessun controllo su
+`%APPDATA%\PersonalAutomationTool\...` (o su qualunque percorso sotto una cartella "nota" di Windows:
+`Documents`, `Desktop`, ecc. **possono** essere soggette allo stesso meccanismo, anche se in questa
+sessione il repository sotto `Documents\GitHub\...` si è dimostrato **non** virtualizzato — verificato
+ripetutamente con build/test/git coerenti per l'intera sessione) fatto dal terminale di Claude va
+considerato affidabile da solo. **Se un'ipotesi di lavoro dipende dallo stato reale di un file sotto
+una cartella utente "nota", va fatta confermare da un comando eseguito dal committente nella propria
+sessione**, non dedotta da un controllo di Claude, per quanto ripetuto o incrociato con altri controlli
+fatti allo stesso modo. Il tempo perso in questa sessione — un'ipotesi di bug reale (vedi sotto)
+scambiata per la causa di una perdita dati mai avvenuta — è interamente costato a questo singolo
+presupposto non verificato all'inizio.
+
+#### Il bug reale trovato per strada (indipendente dalla trappola sopra)
+
+Durante l'indagine è comunque emerso un difetto vero in `DatabaseView.xaml.cs`, corretto in questo
+stesso sprint: "Nuova Riga"/"Elimina Riga"/cambio tabella/cambio database ricaricavano la griglia da
+disco senza prima salvare le modifiche di cella non ancora confermate con "Salva Modifiche",
+perdendole in silenzio. Vedi §6.1-vicies-octies per i dettagli — quella correzione resta valida e
+utile **indipendentemente** dal fatto che, in questo caso specifico, i dati del committente non fossero
+in realtà mai stati persi. Aggiunta anche una riga diagnostica permanente nella UI (`TxtPercorsoFile`)
+che mostra il percorso assoluto del file `.db` aperto: è stata proprio questa riga, letta dal
+committente sulla propria macchina, a fornire la prova finale che il file corretto era quello atteso e
+che il problema stava altrove.
+
+#### Cosa è cambiato nel seed
+
+`git diff --stat` di questo sprint: `train_software.db` passa da 45 056 a 53 248 byte.
+
+| Tabella | Prima | Dopo |
+|---|---|---|
+| `flotte` | 228 righe, 2 `ETR1001FH` | **278 righe, 54 `ETR1001FH`** (+52, nessuna riga segnaposto `'Nuovo'/'Da definire'` residua) |
+| `renamer_log` | (dati reali di questa macchina: rinomine PDF vere, non di test) | **svuotata** (schema intatto, contatore autoincrement azzerato) — su richiesta esplicita: la cronologia delle rinomine di un tecnico non ha senso come stato iniziale di un'altra installazione, a differenza delle anagrafiche |
+| `renamer_config`, `renamer_queue`, `indirizzi_email` (`emails.db`) | invariate | invariate — confermato che il committente non le aveva toccate, verificato anche qui con un controllo fatto dalla sua PowerShell, non dedotto da Claude |
+
+Nessuna modifica a `.gitignore` o al `.csproj`: entrambi già coprivano questo caso dallo Sprint 16
+(commento esplicito in `.gitignore` contro una regola `*.db` globale; `<None Update="modules\database\*.db">`
+già presente nel `.csproj`).
+
+#### Verifica
+
+`dotnet build` sull'intera `.sln` → **0 errori, 0 warning**. `dotnet test` → **538/538** (nessun nuovo
+test: la modifica è ai dati del seed e a un'etichetta diagnostica in una view WPF di solo
+code-behind). Verificato con uno strumento usa-e-getta (fuori dal repository) che lo schema di
+`renamer_log` resta identico dopo lo svuotamento e che `flotte`/`renamer_config`/`indirizzi_email` non
+hanno subito alcuna modifica involontaria.
+
+> ⚠️ **Non verificato in questo ambiente**: l'aspetto a schermo della nuova riga `TxtPercorsoFile`
+> (manca un rasterizzatore WPF) — confermato però dal committente con uno screenshot reale durante
+> questa stessa sessione, quindi la verifica manuale è già stata fatta, solo non da questo ambiente.
 
 ### 6.2 Le 4 macro-aree della roadmap strategica
 

@@ -13,6 +13,16 @@ namespace PersonalAutomationTool.Modules.Database
         private string _dbDirectory = "";
         private bool _isInitializing = true;
 
+        /// <summary>
+        /// Nome della tabella attualmente legata a <see cref="MainDataGrid"/>.ItemsSource. Non è lo
+        /// stesso di <c>CmbTables.SelectedItem</c>: quando un evento di selezione della ComboBox
+        /// scatta, <c>SelectedItem</c> riflette già la NUOVA scelta dell'utente, mentre questo campo
+        /// resta sulla tabella VECCHIA finché <see cref="LoadDataForTable"/> non la aggiorna — è
+        /// quello che serve a <see cref="SalvaModifichePendenti"/> per sapere su quale tabella
+        /// scrivere l'UPDATE prima che la griglia venga sostituita.
+        /// </summary>
+        private string? _tabellaCorrenteInGriglia;
+
         public DatabaseView()
         {
             InitializeComponent();
@@ -77,8 +87,13 @@ namespace PersonalAutomationTool.Modules.Database
         {
             if (_isInitializing || CmbDatabases.SelectedItem == null) return;
 
+            // Sul _dbManager VECCHIO, prima di sostituirlo: senza questo, modifiche di cella non
+            // ancora salvate sul database che si sta abbandonando andrebbero perse in silenzio.
+            SalvaModifichePendenti();
+
             string selectedDb = CmbDatabases.SelectedItem.ToString()!;
             _dbPath = Path.Combine(_dbDirectory, selectedDb);
+            TxtPercorsoFile.Text = $"File aperto: {_dbPath}";
 
             _dbManager?.Dispose();
             _dbManager = new DatabaseManager(_dbPath);
@@ -104,13 +119,18 @@ namespace PersonalAutomationTool.Modules.Database
             else
             {
                 MainDataGrid.ItemsSource = null;
+                _tabellaCorrenteInGriglia = null;
             }
         }
 
         private void CmbTables_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_isInitializing || CmbTables.SelectedItem == null) return;
-            
+
+            // Sulla tabella VECCHIA (CmbTables.SelectedItem è già quella nuova a questo punto):
+            // stessa ragione di CmbDatabases_SelectionChanged, prima di sostituire la griglia.
+            SalvaModifichePendenti();
+
             string selectedTable = CmbTables.SelectedItem.ToString()!;
             LoadDataForTable(selectedTable);
         }
@@ -121,6 +141,7 @@ namespace PersonalAutomationTool.Modules.Database
             string query = $"SELECT * FROM {tableName};";
             var data = _dbManager.ExecuteQuery(query);
             MainDataGrid.ItemsSource = data.DefaultView;
+            _tabellaCorrenteInGriglia = tableName;
         }
 
         private void BtnReload_Click(object sender, RoutedEventArgs e)
@@ -135,6 +156,12 @@ namespace PersonalAutomationTool.Modules.Database
         {
             if (_dbManager == null || CmbTables.SelectedItem == null) return;
             string tableName = CmbTables.SelectedItem.ToString()!;
+
+            // Senza questo: aggiungere una riga ricarica subito la griglia da disco (sotto, dopo
+            // l'INSERT) e le modifiche di cella non ancora salvate sulla riga aggiunta in
+            // precedenza sparirebbero senza preavviso — il bug per cui una serie di "Nuova Riga"
+            // consecutivi perdeva tutte le righe tranne l'ultima salvata esplicitamente.
+            SalvaModifichePendenti();
 
             try
             {
@@ -187,6 +214,10 @@ namespace PersonalAutomationTool.Modules.Database
             if (_dbManager == null) return;
             string tableName = CmbTables.SelectedItem.ToString()!;
 
+            // Stessa ragione di BtnAddRow_Click: eliminare una riga ricarica la griglia da disco,
+            // che altrimenti butterebbe via le modifiche non salvate delle righe rimaste.
+            SalvaModifichePendenti();
+
             try
             {
                 if (MainDataGrid.SelectedItem is System.Data.DataRowView rowView)
@@ -218,10 +249,33 @@ namespace PersonalAutomationTool.Modules.Database
         }
 
 
-        private void BtnSaveChanges_Click(object sender, RoutedEventArgs e)
+        private void BtnSaveChanges_Click(object sender, RoutedEventArgs e) => SalvaModifichePendenti();
+
+        /// <summary>
+        /// Scrive su disco, con una <c>UPDATE</c> per riga, le modifiche di cella non ancora salvate
+        /// della tabella attualmente legata a <see cref="MainDataGrid"/> — quella indicata da
+        /// <see cref="_tabellaCorrenteInGriglia"/>, non necessariamente <c>CmbTables.SelectedItem</c>
+        /// (vedi il commento sul campo). Nessun'operazione se non ci sono modifiche pendenti.
+        ///
+        /// <para>
+        /// <b>Perché esiste come metodo a parte, richiamato anche fuori da "Salva Modifiche".</b>
+        /// Prima di questa correzione, "Nuova Riga"/"Elimina Riga"/cambio tabella/cambio database
+        /// chiamavano tutti <see cref="LoadDataForTable"/> subito dopo la propria operazione,
+        /// sostituendo <see cref="MainDataGrid"/>.ItemsSource con una <c>DataTable</c> fresca da
+        /// disco. Le modifiche digitate nelle celle vivono solo in quella <c>DataTable</c> in
+        /// memoria finché non si preme esplicitamente "Salva Modifiche": la sostituzione le buttava
+        /// via in silenzio, senza alcun avviso. Effetto osservato: aggiungere una ventina di treni
+        /// con "Nuova Riga", compilarne i campi e passare al successivo prima di salvare cancellava
+        /// ogni volta i dati appena digitati sulla riga precedente — l'unico segno lasciato è stato
+        /// il contatore <c>sqlite_sequence</c> della tabella, avanzato ben oltre le righe realmente
+        /// presenti. Richiamare questo metodo PRIMA di ogni azione che invoca
+        /// <see cref="LoadDataForTable"/> rende quella sostituzione sicura: le modifiche pendenti
+        /// sono già su disco quando la griglia viene ricaricata.
+        /// </para>
+        /// </summary>
+        private void SalvaModifichePendenti()
         {
-            if (_dbManager == null || CmbTables.SelectedItem == null) return;
-            string tableName = CmbTables.SelectedItem.ToString()!;
+            if (_dbManager == null || _tabellaCorrenteInGriglia == null) return;
 
             try
             {
@@ -260,13 +314,12 @@ namespace PersonalAutomationTool.Modules.Database
                             }
                         }
 
-                        string updateQuery = $"UPDATE {tableName} SET {string.Join(", ", updates)} WHERE {primaryKeyCol} = @PK";
+                        string updateQuery = $"UPDATE {_tabellaCorrenteInGriglia} SET {string.Join(", ", updates)} WHERE {primaryKeyCol} = @PK";
                         _dbManager.ExecuteNonQuery(updateQuery, parameters);
                     }
                 }
 
                 dataTable.AcceptChanges();
-                // MessageBox.Show("Salvataggio completato con successo.", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
