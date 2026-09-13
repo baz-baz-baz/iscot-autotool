@@ -22,7 +22,7 @@ namespace PersonalAutomationTool.Modules.Pdf
             {
                 PersonalAutomationTool.Core.AppWatcher.OnLogDumpFolderChanged -= RefreshData;
                 PersonalAutomationTool.Core.AppWatcher.OnLogDumpFolderChanged += RefreshData;
-                LoadFolders();
+                LoadFolders(mostraErrori: true);
             };
 
             this.Unloaded += (s, e) =>
@@ -35,58 +35,83 @@ namespace PersonalAutomationTool.Modules.Pdf
         {
             Dispatcher.InvokeAsync(() =>
             {
-                LoadFolders();
+                LoadFolders(mostraErrori: false);
             });
         }
 
-        private async void LoadFolders()
+        /// <param name="mostraErrori">
+        /// Vero quando è il tecnico ad aprire la schermata: un errore di lettura va mostrato. Falso per
+        /// l'aggiornamento automatico di AppWatcher, che su una cartella momentaneamente bloccata
+        /// (sincronizzazione OneDrive, copia in corso) scatterebbe a ripetizione: lì l'errore va solo nel
+        /// log degli errori, e l'elenco resta quello precedente fino all'evento successivo.
+        /// </param>
+        private async void LoadFolders(bool mostraErrori)
         {
             string logDumpFolder = PersonalAutomationTool.Core.AppConfig.LogAndDumpFolder;
             if (!Directory.Exists(logDumpFolder)) return;
 
-            // Leggi il file system in background
-            var newCards = await System.Threading.Tasks.Task.Run(() =>
+            System.Collections.Generic.List<TrainCardModel> newCards;
+            try
             {
-                var cardsList = new System.Collections.Generic.List<TrainCardModel>();
-                string[] parentDirectories = Directory.GetDirectories(logDumpFolder);
-                foreach (string parentDir in parentDirectories)
+                // Leggi il file system in background
+                newCards = await System.Threading.Tasks.Task.Run(() =>
                 {
-                    var card = new TrainCardModel
+                    var cardsList = new System.Collections.Generic.List<TrainCardModel>();
+                    string[] parentDirectories = Directory.GetDirectories(logDumpFolder);
+                    foreach (string parentDir in parentDirectories)
                     {
-                        Title = Path.GetFileName(parentDir),
-                        FullPath = parentDir,
-                        IsND = false
-                    };
-
-                    // Add SubDirectories
-                    string[] subDirs = Directory.GetDirectories(parentDir);
-                    foreach (string sub in subDirs)
-                    {
-                        card.Children.Add(new FolderItemModel
+                        var card = new TrainCardModel
                         {
-                            Name = Path.GetFileName(sub),
-                            FullPath = sub,
-                            IsDirectory = true
-                        });
-                    }
+                            Title = Path.GetFileName(parentDir),
+                            FullPath = parentDir,
+                            IsND = false
+                        };
 
-                    // Add Files
-                    string[] files = Directory.GetFiles(parentDir);
-                    foreach (string file in files)
-                    {
-                        card.Children.Add(new FolderItemModel
+                        // Add SubDirectories
+                        string[] subDirs = Directory.GetDirectories(parentDir);
+                        foreach (string sub in subDirs)
                         {
-                            Name = Path.GetFileName(file),
-                            FullPath = file,
-                            IsDirectory = false,
-                            Extension = Path.GetExtension(file).ToLower()
-                        });
-                    }
+                            card.Children.Add(new FolderItemModel
+                            {
+                                Name = Path.GetFileName(sub),
+                                FullPath = sub,
+                                IsDirectory = true
+                            });
+                        }
 
-                    cardsList.Add(card);
+                        // Add Files
+                        string[] files = Directory.GetFiles(parentDir);
+                        foreach (string file in files)
+                        {
+                            card.Children.Add(new FolderItemModel
+                            {
+                                Name = Path.GetFileName(file),
+                                FullPath = file,
+                                IsDirectory = false,
+                                Extension = Path.GetExtension(file).ToLower()
+                            });
+                        }
+
+                        cardsList.Add(card);
+                    }
+                    return cardsList;
+                });
+            }
+            catch (Exception ex)
+            {
+                // Tipicamente una cartella madre rimossa o rinominata fra il suo elenco e la sua lettura
+                // (es. "Elimina" in HOME, o un'altra rinomina), oppure un accesso negato. Da questo async
+                // void l'eccezione arrivava al dispatcher e chiudeva l'applicazione.
+                if (mostraErrori)
+                {
+                    MessageBox.Show($"Impossibile leggere le cartelle di LOG & DUMP:\n{ex.Message}", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
-                return cardsList;
-            });
+                else
+                {
+                    CrashReporter.RegistraAnomalia("PDF: aggiornamento automatico dell'elenco cartelle non riuscito", ex);
+                }
+                return;
+            }
 
             // Aggiorna l'interfaccia sul thread UI
             TrainCards.Clear();
@@ -176,7 +201,17 @@ namespace PersonalAutomationTool.Modules.Pdf
 
         private async void BtnAnnullaRinomina_Click(object sender, RoutedEventArgs e)
         {
-            var result = await System.Threading.Tasks.Task.Run(() => RenamerLog.UndoLastBatch(RenameBatchKind.PdfRename));
+            RenameUndoResult result;
+            try
+            {
+                result = await System.Threading.Tasks.Task.Run(() => RenamerLog.UndoLastBatch(RenameBatchKind.PdfRename));
+            }
+            catch (Exception ex)
+            {
+                // Stesso motivo di LoadFolders: da un async void l'eccezione chiudeva l'applicazione.
+                MessageBox.Show($"Errore durante l'annullamento della rinomina:\n{ex.Message}", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
 
             if (!result.BatchFound)
             {

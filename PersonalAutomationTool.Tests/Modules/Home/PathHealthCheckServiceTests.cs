@@ -11,7 +11,7 @@ namespace PersonalAutomationTool.Tests.Modules.Home
     ///
     /// <para>
     /// <b>Perché <see cref="PathHealthCheckService.EseguiControllo"/> non è testato direttamente qui.</b>
-    /// Legge le configurazioni reali da <c>%APPDATA%\PersonalAutomationTool</c> (<c>HitachiPathsManager</c>,
+    /// Legge le configurazioni reali dalla cartella dati di <c>AppPaths</c> (<c>HitachiPathsManager</c>,
     /// <c>VerifichePathsManager</c>) apposta — è il punto di forza del servizio, l'elenco controllato è
     /// sempre quello davvero in uso — ma questo lo rende dipendente dalla macchina su cui gira la suite,
     /// non isolabile in una cartella temporanea usa-e-getta. Sono testate invece le due funzioni pure

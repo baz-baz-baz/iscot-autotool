@@ -409,8 +409,19 @@ namespace PersonalAutomationTool.Modules.Home
 
         private async void OnAnnullaRinomina(object? parameter)
         {
-            var result = await System.Threading.Tasks.Task.Run(() =>
-                RenamerLog.UndoLastBatch(RenameBatchKind.HomeTicket, RenameBatchKind.HomeData));
+            RenameUndoResult result;
+            try
+            {
+                result = await System.Threading.Tasks.Task.Run(() =>
+                    RenamerLog.UndoLastBatch(RenameBatchKind.HomeTicket, RenameBatchKind.HomeData));
+            }
+            catch (Exception ex)
+            {
+                // Database non apribile o cartella bloccata: da questo async void l'eccezione arrivava al
+                // dispatcher e chiudeva l'applicazione.
+                System.Windows.MessageBox.Show($"Errore durante l'annullamento della rinomina:\n{ex.Message}", "Errore", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                return;
+            }
 
             if (!result.BatchFound)
             {

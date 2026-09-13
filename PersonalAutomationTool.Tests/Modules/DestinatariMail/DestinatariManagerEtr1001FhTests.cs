@@ -17,7 +17,7 @@ namespace PersonalAutomationTool.Tests.Modules.DestinatariMail
     /// aggiornata.
     /// <para>
     /// Stesso schema backup/restore di <see cref="PersonalAutomationTool.Tests.Modules.PassaggioConsegne.AzioneDestinatariTests"/>:
-    /// <c>destinatari.json</c> vive sotto <c>%APPDATA%\PersonalAutomationTool</c>, lo stesso percorso
+    /// <c>destinatari.json</c> vive in <c>AppPaths.DataFolder</c> (<c>%LOCALAPPDATA%\iscot-autotool</c>), lo stesso percorso
     /// letto dall'applicazione installata.
     /// </para>
     /// </summary>

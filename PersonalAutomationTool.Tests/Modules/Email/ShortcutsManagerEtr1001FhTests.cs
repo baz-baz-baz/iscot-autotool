@@ -17,7 +17,7 @@ namespace PersonalAutomationTool.Tests.Modules.Email
     /// silenziosa dell'esperienza d'uso).
     /// <para>
     /// Stesso schema backup/restore di <see cref="PersonalAutomationTool.Tests.Core.HitachiPathsManagerTests"/>:
-    /// <c>shortcuts.json</c> vive sotto <c>%APPDATA%\PersonalAutomationTool</c>, lo stesso percorso
+    /// <c>shortcuts.json</c> vive in <c>AppPaths.DataFolder</c> (<c>%LOCALAPPDATA%\iscot-autotool</c>), lo stesso percorso
     /// letto dall'applicazione installata.
     /// </para>
     /// </summary>

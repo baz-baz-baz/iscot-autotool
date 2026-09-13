@@ -7,7 +7,8 @@ namespace PersonalAutomationTool.Tests.Core
 {
     /// <summary>
     /// Tier 2: <c>HitachiPathsManager</c> legge/scrive <c>hitachi_paths.json</c> in
-    /// <c>Core.AppPaths.DataFolder</c> (<c>%APPDATA%\PersonalAutomationTool</c> dallo Sprint 16,
+    /// <c>Core.AppPaths.DataFolder</c> (<c>%LOCALAPPDATA%\iscot-autotool</c> dallo Sprint 29,
+    /// <c>%APPDATA%\PersonalAutomationTool</c> dallo Sprint 16,
     /// §6.1-duodevicies di PROJECT_MEMORY.md — prima era <c>AppDomain.CurrentDomain.BaseDirectory</c>,
     /// e questi test operavano su un file isolato nella cartella di output di
     /// <c>PersonalAutomationTool.Tests</c>, mai sull'installazione reale). Da quel percorso in poi

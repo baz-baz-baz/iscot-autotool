@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 
 namespace PersonalAutomationTool.Core
 {
@@ -15,44 +16,41 @@ namespace PersonalAutomationTool.Core
     /// <c>dotnet run</c> o da una cartella di output funzionava, perché lì <c>BaseDirectory</c> è la
     /// cartella dell'eseguibile. Pubblicando in <b>single-file</b> (§ "Profilo di distribuzione" nel
     /// <c>.csproj</c>) non è più vero: <c>BaseDirectory</c> diventa la <b>cartella temporanea di
-    /// estrazione</b> del bundle, il cui nome dipende dall'hash del file. Verificato a runtime sul
-    /// pacchetto pubblicato: i due <c>.db</c> finivano in
-    /// <c>%LOCALAPPDATA%\Temp\.net\PersonalAutomationTool\&lt;hash&gt;\modules\database\</c>, e lì
-    /// venivano anche scritti.
+    /// estrazione</b> del bundle, il cui nome dipende dall'hash del file. A ogni aggiornamento
+    /// dell'eseguibile l'hash cambia, quindi cambia la cartella, e i tecnici avrebbero ritrovato
+    /// l'applicazione azzerata — compreso <c>destinatari.json</c>, con gli indirizzi reali compilati a mano.
     /// </para>
     ///
     /// <para>
-    /// <b>Cosa comportava.</b> L'applicazione funzionava, ma perdeva lo stato in silenzio: Windows può
-    /// ripulire <c>%TEMP%</c>, e soprattutto <b>a ogni aggiornamento dell'eseguibile l'hash cambia</b>,
-    /// quindi cambia la cartella e i tecnici avrebbero ritrovato l'applicazione azzerata — compreso
-    /// <c>destinatari.json</c>, che contiene gli indirizzi reali personalizzati a mano e la cui
-    /// preziosità è già segnalata in §6.1-quaterdecies.
-    /// </para>
-    ///
-    /// <para>
-    /// <b>Soluzione.</b> Lo stato scrivibile vive in <c>%APPDATA%\PersonalAutomationTool</c>, che non
-    /// dipende né da dove è installato l'eseguibile né da come è stato pubblicato. Al primo avvio
-    /// <see cref="Initialize"/> vi trasferisce i file già esistenti accanto all'eseguibile: la stessa
-    /// operazione copre <b>due</b> casi che sembrano diversi ma non lo sono — l'aggiornamento di una
-    /// macchina che usava la versione a cartella (migrazione delle personalizzazioni) e il primo avvio
-    /// del pacchetto single-file (seed dei <c>.db</c> distribuiti dentro il bundle).
+    /// <b>Sprint 29: da <c>%APPDATA%\PersonalAutomationTool</c> a <c>%LOCALAPPDATA%\iscot-autotool</c>.</b>
+    /// Due motivi. Il primo è tecnico: <c>%APPDATA%</c> è il profilo <i>roaming</i>, che nei domini
+    /// aziendali viene spesso reindirizzato su una condivisione di rete o sincronizzato al logon — il
+    /// posto sbagliato per un database SQLite, il cui locking su file non è affidabile in rete. Il
+    /// secondo è la richiesta esplicita del committente: dati e log degli errori
+    /// (<see cref="CrashReporter"/>) nella stessa cartella, sotto il nome del progetto. La 2.0.0 aveva
+    /// scartato lo spostamento perché avrebbe orfanato lo stato già esistente (§6.1-tricies di
+    /// PROJECT_MEMORY.md): qui non succede, perché <see cref="Initialize"/> migra <b>per prima</b> la
+    /// cartella della 2.0.0 (<see cref="LegacyDataFolder"/>), che non viene né modificata né cancellata.
     /// </para>
     /// </summary>
     public static class AppPaths
     {
-        /// <summary>Nome della cartella applicativa sotto <c>%APPDATA%</c>.</summary>
-        private const string NomeCartellaApplicazione = "PersonalAutomationTool";
+        /// <summary>Nome della cartella applicativa sotto <c>%LOCALAPPDATA%</c>.</summary>
+        private const string NomeCartellaApplicazione = "iscot-autotool";
+
+        /// <summary>Nome della cartella dati usata fino alla 2.0.0, sotto <c>%APPDATA%</c> (roaming).</summary>
+        private const string NomeCartellaLegacy = "PersonalAutomationTool";
 
         /// <summary>
         /// Sottocartella dei database, mantenuta <b>identica</b> a quella di installazione
-        /// (<c>modules\database</c>) invece di essere semplificata: i due percorsi vengono confrontati
-        /// e copiati l'uno nell'altro, e tenerli speculari rende la migrazione una copia diretta.
+        /// (<c>modules\database</c>) invece di essere semplificata: i percorsi vengono confrontati e
+        /// copiati l'uno nell'altro, e tenerli speculari rende la migrazione una copia diretta.
         /// </summary>
         private const string SottocartellaDatabase = @"modules\database";
 
         /// <summary>
-        /// File di stato trasferiti dalla cartella di installazione a quella dati al primo avvio.
-        /// Percorsi relativi, così valgono per entrambe le cartelle.
+        /// File di stato trasferiti nella cartella dati al primo avvio. Percorsi relativi, così valgono
+        /// per tutte le cartelle di origine.
         /// </summary>
         private static readonly string[] FileDiStato =
         [
@@ -65,7 +63,17 @@ namespace PersonalAutomationTool.Core
         ];
 
         /// <summary>
-        /// Cartella dei dati scrivibili: <c>%APPDATA%\PersonalAutomationTool</c>.
+        /// Database seed incorporati nell'assembly: percorso relativo nella cartella dati → nome logico
+        /// della risorsa (<c>LogicalName</c> nel <c>.csproj</c>, da tenere allineato).
+        /// </summary>
+        private static readonly (string Relativo, string Risorsa)[] SeedIncorporati =
+        [
+            (@"modules\database\train_software.db", "Seed.train_software.db"),
+            (@"modules\database\emails.db", "Seed.emails.db")
+        ];
+
+        /// <summary>
+        /// Cartella dei dati scrivibili: <c>%LOCALAPPDATA%\iscot-autotool</c>.
         /// Valorizzata da <see cref="Initialize"/>.
         /// </summary>
         public static string DataFolder { get; private set; } = string.Empty;
@@ -81,6 +89,21 @@ namespace PersonalAutomationTool.Core
         public static string InstallFolder => AppDomain.CurrentDomain.BaseDirectory;
 
         /// <summary>
+        /// Dove <see cref="Initialize"/> colloca la cartella dati. Calcolata senza bisogno di
+        /// <see cref="Initialize"/>: la usa anche <see cref="CrashReporter"/>, che deve poter scrivere il
+        /// log proprio quando l'avvio fallisce prima di arrivarci.
+        /// </summary>
+        public static string CartellaDatiPredefinita =>
+            Path.Combine(CartellaSpeciale(Environment.SpecialFolder.LocalApplicationData), NomeCartellaApplicazione);
+
+        /// <summary>
+        /// Cartella dati della 2.0.0 (<c>%APPDATA%\PersonalAutomationTool</c>): sola origine di
+        /// migrazione, mai scritta.
+        /// </summary>
+        public static string LegacyDataFolder =>
+            Path.Combine(CartellaSpeciale(Environment.SpecialFolder.ApplicationData), NomeCartellaLegacy);
+
+        /// <summary>
         /// Percorso completo di un file di configurazione dentro <see cref="DataFolder"/>.
         /// </summary>
         public static string DataFile(string nomeFile) => Path.Combine(DataFolder, nomeFile);
@@ -91,20 +114,55 @@ namespace PersonalAutomationTool.Core
         public static string DatabaseFile(string nomeFile) => Path.Combine(DatabaseFolder, nomeFile);
 
         /// <summary>
-        /// Prepara la cartella dati e vi trasferisce i file di stato già esistenti nella cartella di
-        /// installazione. Da chiamare una sola volta all'avvio, <b>prima</b> di qualunque accesso a
-        /// configurazioni o database.
+        /// Prepara la cartella dati e vi trasferisce i file di stato mancanti. Da chiamare una sola volta
+        /// all'avvio, <b>prima</b> di qualunque accesso a configurazioni o database.
         /// </summary>
+        /// <exception cref="InvalidOperationException">
+        /// Se <c>%LOCALAPPDATA%</c> non è determinabile: proseguire significherebbe scrivere su un
+        /// percorso relativo alla cartella corrente, cioè accanto all'eseguibile.
+        /// </exception>
         public static void Initialize()
         {
-            DataFolder = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                NomeCartellaApplicazione);
+            string cartellaDati = CartellaDatiPredefinita;
+            if (!Path.IsPathFullyQualified(cartellaDati))
+            {
+                throw new InvalidOperationException(
+                    $"Impossibile determinare la cartella %LOCALAPPDATA% dell'utente: la cartella dati risulterebbe '{cartellaDati}'.");
+            }
 
-            Directory.CreateDirectory(DataFolder);
-            Directory.CreateDirectory(DatabaseFolder);
+            DataFolder = cartellaDati;
+            Prepara(cartellaDati, LegacyDataFolder, InstallFolder, typeof(AppPaths).Assembly);
+        }
 
-            TrasferisciFileMancanti(InstallFolder, DataFolder, FileDiStato);
+        /// <summary>
+        /// Crea <paramref name="cartellaDati"/> e la completa da tre origini, in ordine di precedenza.
+        /// Ogni passo copia <b>solo ciò che manca ancora</b>, quindi la prima origine che possiede un file
+        /// vince sulle successive e nulla di già presente viene mai sovrascritto:
+        /// <list type="number">
+        /// <item><paramref name="cartellaLegacy"/> — lo stato reale della 2.0.0 (database modificati dai
+        /// tecnici, <c>destinatari.json</c> curato a mano);</item>
+        /// <item><paramref name="cartellaInstallazione"/> — personalizzazioni di una versione "a cartella"
+        /// pre-Sprint 16, oppure il contenuto estratto del bundle single-file;</item>
+        /// <item>i seed incorporati in <paramref name="assemblySeed"/> — l'ultima rete: non dipendono né da
+        /// dove né da come è stato estratto l'eseguibile.</item>
+        /// </list>
+        /// </summary>
+        internal static void Prepara(string cartellaDati, string cartellaLegacy, string cartellaInstallazione, Assembly assemblySeed)
+        {
+            Directory.CreateDirectory(cartellaDati);
+            Directory.CreateDirectory(Path.Combine(cartellaDati, SottocartellaDatabase));
+
+            foreach (string origine in new[] { cartellaLegacy, cartellaInstallazione })
+            {
+                // Un'origine relativa (cartella speciale di Windows non risolvibile) verrebbe cercata nella
+                // cartella corrente, dove non c'è nulla da migrare.
+                if (Path.IsPathFullyQualified(origine))
+                {
+                    TrasferisciFileMancanti(origine, cartellaDati, FileDiStato);
+                }
+            }
+
+            EstraiSeedMancanti(assemblySeed, cartellaDati, SeedIncorporati);
         }
 
         /// <summary>
@@ -113,7 +171,7 @@ namespace PersonalAutomationTool.Core
         ///
         /// <para>
         /// <b>"Solo quelli mancanti" è la regola che rende l'operazione sicura da ripetere</b>: gira a
-        /// ogni avvio e non deve mai sovrascrivere il lavoro dell'utente. Se in <c>%APPDATA%</c> c'è già
+        /// ogni avvio e non deve mai sovrascrivere il lavoro dell'utente. Se nella cartella dati c'è già
         /// un <c>destinatari.json</c> curato a mano, un aggiornamento dell'applicazione che ne porta uno
         /// di default non lo tocca. Il rovescio consapevole della medaglia: un <c>train_software.db</c>
         /// aggiornato in una nuova release <b>non</b> rimpiazza quello già in uso, perché quel file
@@ -155,7 +213,63 @@ namespace PersonalAutomationTool.Core
             return copiati;
         }
 
+        /// <summary>
+        /// Scrive in <paramref name="destinazione"/> i database seed incorporati nell'assembly che non vi
+        /// esistono ancora, e restituisce quanti ne ha scritti. Stessa regola di
+        /// <see cref="TrasferisciFileMancanti"/>: un file esistente non viene mai toccato.
+        ///
+        /// <para>
+        /// La scrittura passa da un file temporaneo rinominato solo a copia completata: un avvio
+        /// interrotto a metà non può lasciare un <c>.db</c> troncato, che al giro successivo
+        /// risulterebbe "già presente" e non verrebbe più ripristinato.
+        /// </para>
+        /// </summary>
+        internal static int EstraiSeedMancanti(Assembly assembly, string destinazione, IEnumerable<(string Relativo, string Risorsa)> seed)
+        {
+            int estratti = 0;
+
+            foreach (var (relativo, risorsa) in seed)
+            {
+                string arrivo = Path.Combine(destinazione, relativo);
+                string temporaneo = arrivo + ".seed-tmp";
+
+                try
+                {
+                    if (File.Exists(arrivo)) continue;
+
+                    using Stream? contenuto = assembly.GetManifestResourceStream(risorsa);
+                    if (contenuto == null) continue;
+
+                    string? cartellaArrivo = Path.GetDirectoryName(arrivo);
+                    if (!string.IsNullOrEmpty(cartellaArrivo)) Directory.CreateDirectory(cartellaArrivo);
+
+                    using (var file = new FileStream(temporaneo, FileMode.Create, FileAccess.Write, FileShare.None))
+                    {
+                        contenuto.CopyTo(file);
+                    }
+
+                    File.Move(temporaneo, arrivo);
+                    estratti++;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Estrazione del seed '{risorsa}' non riuscita: {ex.Message}");
+                    try { if (File.Exists(temporaneo)) File.Delete(temporaneo); } catch { /* best-effort */ }
+                }
+            }
+
+            return estratti;
+        }
+
+        private static string CartellaSpeciale(Environment.SpecialFolder cartella) =>
+            // DoNotVerify: senza, GetFolderPath restituisce una stringa VUOTA quando la cartella non esiste
+            // ancora fisicamente, e Path.Combine("", …) diventa un percorso relativo.
+            Environment.GetFolderPath(cartella, Environment.SpecialFolderOption.DoNotVerify);
+
         /// <summary>I file di stato gestiti, esposti per i test.</summary>
         internal static IReadOnlyList<string> FileDiStatoGestiti => FileDiStato;
+
+        /// <summary>I seed incorporati gestiti, esposti per i test.</summary>
+        internal static IReadOnlyList<(string Relativo, string Risorsa)> SeedIncorporatiGestiti => SeedIncorporati;
     }
 }

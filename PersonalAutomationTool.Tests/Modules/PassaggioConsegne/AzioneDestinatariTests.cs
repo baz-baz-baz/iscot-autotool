@@ -24,8 +24,9 @@ namespace PersonalAutomationTool.Tests.Modules.PassaggioConsegne
     /// <para>
     /// <b>Backup/restore, non solo lettura.</b> <c>GetRecipients</c> passa da <c>LoadConfig</c>, che
     /// se non trova <c>destinatari.json</c> genera e salva la configurazione di default — proprio ciò
-    /// che questa suite vuole verificare. Dallo Sprint 16 (§6.1-duodevicies) quel file vive sotto
-    /// <c>%APPDATA%\PersonalAutomationTool</c>, lo stesso percorso letto dall'applicazione installata:
+    /// che questa suite vuole verificare. Dallo Sprint 16 (§6.1-duodevicies) quel file vive nella cartella
+    /// dati di <c>AppPaths</c> (<c>%LOCALAPPDATA%\iscot-autotool</c> dallo Sprint 29), lo stesso percorso
+    /// letto dall'applicazione installata:
     /// senza backup/restore, una macchina con un <c>destinatari.json</c> già personalizzato a mano
     /// (l'indirizzario reale che questo stesso modulo esiste per non perdere, §6.1-quaterdecies)
     /// verrebbe letto al posto dei valori di default attesi dalle asserzioni, con risultati che

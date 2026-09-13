@@ -39,10 +39,21 @@ namespace PersonalAutomationTool.Modules.Email.Trains
             string baseLogDump = Core.AppConfig.LogAndDumpFolder;
             if (!Directory.Exists(baseLogDump)) return;
 
-            var directoryInfo = new DirectoryInfo(baseLogDump);
-            var directories = directoryInfo.GetDirectories()
-                .Where(d => prefixes.Any(p => d.Name.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
-                .ToList();
+            List<DirectoryInfo> directories;
+            try
+            {
+                var directoryInfo = new DirectoryInfo(baseLogDump);
+                directories = directoryInfo.GetDirectories()
+                    .Where(d => prefixes.Any(p => d.Name.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                // Chiamato dal costruttore delle viste treno: un'eccezione qui impediva di aprirle e,
+                // arrivando al dispatcher dal gestore del clic, chiudeva l'applicazione.
+                MessageBox.Show($"Impossibile leggere le cartelle di LOG & DUMP:\n{ex.Message}", "Errore", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
 
             if (excludePrefixes != null)
             {

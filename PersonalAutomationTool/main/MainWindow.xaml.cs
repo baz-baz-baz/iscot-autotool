@@ -26,8 +26,8 @@ namespace PersonalAutomationTool
         {
             InitializeComponent();
 
-            // Inizializza il FileSystemWatcher per gli aggiornamenti in tempo reale
-            Core.AppWatcher.Initialize();
+            // Il FileSystemWatcher di LOG & DUMP è avviato da App.AvviaAsync, non più qui: questa finestra
+            // veniva costruita prima di AppConfig.Initialize() e il watcher non partiva (§6.1-tricies-semel).
 
             // Carica la Home all'avvio
             NavigateTo<HomeView>();

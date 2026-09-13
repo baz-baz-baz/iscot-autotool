@@ -7,8 +7,9 @@ using Xunit;
 namespace PersonalAutomationTool.Tests.Core
 {
     /// <summary>
-    /// Tier 2 (file veri su disco): il trasferimento dello stato applicativo verso <c>%APPDATA%</c>
-    /// eseguito da <see cref="AppPaths"/> al primo avvio.
+    /// Tier 2 (file veri su disco): il trasferimento dello stato applicativo verso la cartella dati
+    /// (<c>%LOCALAPPDATA%\iscot-autotool</c> dallo Sprint 29, prima <c>%APPDATA%\PersonalAutomationTool</c>)
+    /// eseguito da <see cref="AppPaths"/> a ogni avvio.
     ///
     /// <para>
     /// <b>Perché questa suite conta più di quanto sembri.</b> Copre la riga che separa "l'applicazione
@@ -26,11 +27,15 @@ namespace PersonalAutomationTool.Tests.Core
         private readonly string _origine;
         private readonly string _destinazione;
 
+        /// <summary>Simula <c>%APPDATA%\PersonalAutomationTool</c> della 2.0.0. Non creata di default.</summary>
+        private readonly string _legacy;
+
         public AppPathsTests()
         {
             string radice = Path.Combine(Path.GetTempPath(), "PatTests_AppPaths_" + Guid.NewGuid().ToString("N"));
             _origine = Path.Combine(radice, "installazione");
             _destinazione = Path.Combine(radice, "dati");
+            _legacy = Path.Combine(radice, "appdata_2_0_0");
             Directory.CreateDirectory(_origine);
             Directory.CreateDirectory(_destinazione);
         }
@@ -148,16 +153,130 @@ namespace PersonalAutomationTool.Tests.Core
         }
 
         [Fact]
-        public void LaCartellaDatiStaSottoAppDataENonAccantoAllEseguibile()
+        public void LaCartellaDatiStaInLocalAppDataIscotAutotoolENonAccantoAllEseguibile()
         {
             // Il punto dell'intero intervento: lo stato scrivibile non deve dipendere da dove si trova
-            // l'eseguibile né da come è stato pubblicato.
+            // l'eseguibile né da come è stato pubblicato. Sprint 29: profilo locale, non roaming.
             AppPaths.Initialize();
 
-            string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            string atteso = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "iscot-autotool");
 
-            Assert.StartsWith(appData, AppPaths.DataFolder, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(atteso, AppPaths.DataFolder, ignoreCase: true);
             Assert.True(Directory.Exists(AppPaths.DataFolder));
+        }
+
+        [Fact]
+        public void LaCartellaDiMigrazioneEQuellaUsataDallaVersione200()
+        {
+            string atteso = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PersonalAutomationTool");
+
+            Assert.Equal(atteso, AppPaths.LegacyDataFolder, ignoreCase: true);
+        }
+
+        [Fact]
+        public void Prepara_LoStatoDellaVersione200HaLaPrecedenzaSulSeedDellInstallazione()
+        {
+            // Il rischio che aveva fatto scartare lo spostamento nello Sprint 28: orfanare il lavoro dei
+            // tecnici. La cartella della 2.0.0 viene migrata PRIMA di qualunque seed.
+            ScriviIn(_legacy, "destinatari.json", "INDIRIZZI VERI DEL TECNICO");
+            ScriviIn(_legacy, @"modules\database\train_software.db", "FLOTTE MODIFICATE DAL TECNICO");
+            ScriviOrigine("destinatari.json", "DEFAULT DELLA RELEASE");
+            ScriviOrigine(@"modules\database\train_software.db", "SEED DELLA RELEASE");
+
+            AppPaths.Prepara(_destinazione, _legacy, _origine, typeof(AppPaths).Assembly);
+
+            Assert.Equal("INDIRIZZI VERI DEL TECNICO", LeggiDestinazione("destinatari.json"));
+            Assert.Equal("FLOTTE MODIFICATE DAL TECNICO", LeggiDestinazione(@"modules\database\train_software.db"));
+        }
+
+        [Fact]
+        public void Prepara_NonModificaNeCancellaLaCartellaDellaVersione200()
+        {
+            ScriviIn(_legacy, "destinatari.json", "ORIGINALE");
+
+            AppPaths.Prepara(_destinazione, _legacy, _origine, typeof(AppPaths).Assembly);
+
+            Assert.Equal("ORIGINALE", File.ReadAllText(Path.Combine(_legacy, "destinatari.json")));
+        }
+
+        [Fact]
+        public void Prepara_UnFileGiaPresenteNellaCartellaDatiNonVieneMaiSovrascritto()
+        {
+            ScriviDestinazione("destinatari.json", "GIA MIGRATO E POI MODIFICATO");
+            ScriviIn(_legacy, "destinatari.json", "COPIA VECCHIA DELLA 2.0.0");
+            ScriviOrigine("destinatari.json", "DEFAULT DELLA RELEASE");
+
+            AppPaths.Prepara(_destinazione, _legacy, _origine, typeof(AppPaths).Assembly);
+
+            Assert.Equal("GIA MIGRATO E POI MODIFICATO", LeggiDestinazione("destinatari.json"));
+        }
+
+        [Fact]
+        public void Prepara_SenzaAlcunaOrigineIDatabaseArrivanoDaiSeedIncorporati()
+        {
+            // Né cartella della 2.0.0 né file accanto all'eseguibile: il primo avvio non deve dipendere
+            // dalla cartella temporanea di estrazione del bundle single-file.
+            AppPaths.Prepara(_destinazione, _legacy, _origine, typeof(AppPaths).Assembly);
+
+            foreach (var (relativo, _) in AppPaths.SeedIncorporatiGestiti)
+            {
+                string percorso = Path.Combine(_destinazione, relativo);
+                Assert.True(File.Exists(percorso), $"seed mancante: {relativo}");
+                Assert.Equal("SQLite format 3\0", LeggiIntestazioneAscii(percorso, 16));
+            }
+        }
+
+        [Fact]
+        public void ISeedIncorporatiSonoPresentiNellAssembly()
+        {
+            // Protegge l'allineamento fra LogicalName nel .csproj e AppPaths.SeedIncorporati.
+            string[] risorse = typeof(AppPaths).Assembly.GetManifestResourceNames();
+
+            foreach (var (_, risorsa) in AppPaths.SeedIncorporatiGestiti)
+            {
+                Assert.Contains(risorsa, risorse);
+            }
+        }
+
+        [Fact]
+        public void OgniSeedIncorporatoEUnFileDiStatoGestito()
+        {
+            foreach (var (relativo, _) in AppPaths.SeedIncorporatiGestiti)
+            {
+                Assert.Contains(relativo, AppPaths.FileDiStatoGestiti);
+            }
+        }
+
+        [Fact]
+        public void EstraiSeedMancanti_NonSovrascriveUnDatabaseEsistente()
+        {
+            ScriviDestinazione(@"modules\database\emails.db", "RUBRICA DEL TECNICO");
+
+            int estratti = AppPaths.EstraiSeedMancanti(
+                typeof(AppPaths).Assembly, _destinazione, [(@"modules\database\emails.db", "Seed.emails.db")]);
+
+            Assert.Equal(0, estratti);
+            Assert.Equal("RUBRICA DEL TECNICO", LeggiDestinazione(@"modules\database\emails.db"));
+        }
+
+        [Fact]
+        public void EstraiSeedMancanti_UnaRisorsaInesistenteVieneSaltataSenzaLasciareFileTemporanei()
+        {
+            int estratti = AppPaths.EstraiSeedMancanti(
+                typeof(AppPaths).Assembly, _destinazione, [(@"modules\database\fantasma.db", "Seed.non_esiste.db")]);
+
+            Assert.Equal(0, estratti);
+            Assert.Empty(Directory.EnumerateFiles(_destinazione, "*", SearchOption.AllDirectories));
+        }
+
+        [Fact]
+        public void IlDesktopDiLogAndDumpEUnPercorsoAssoluto()
+        {
+            // GetFolderPath senza DoNotVerify restituisce "" se il Desktop non esiste fisicamente (OneDrive
+            // non ancora sincronizzato): LOG & DUMP diventerebbe relativa alla cartella corrente.
+            Assert.True(Path.IsPathFullyQualified(AppConfig.RisolviDesktop()));
         }
 
         // ------------------------------------------------------------------
@@ -180,5 +299,20 @@ namespace PersonalAutomationTool.Tests.Core
 
         private string LeggiDestinazione(string relativo) =>
             File.ReadAllText(Path.Combine(_destinazione, relativo));
+
+        private static void ScriviIn(string cartella, string relativo, string contenuto)
+        {
+            string percorso = Path.Combine(cartella, relativo);
+            Directory.CreateDirectory(Path.GetDirectoryName(percorso)!);
+            File.WriteAllText(percorso, contenuto);
+        }
+
+        private static string LeggiIntestazioneAscii(string percorso, int byteDaLeggere)
+        {
+            using var stream = File.OpenRead(percorso);
+            var buffer = new byte[byteDaLeggere];
+            int letti = stream.Read(buffer, 0, buffer.Length);
+            return System.Text.Encoding.ASCII.GetString(buffer, 0, letti);
+        }
     }
 }

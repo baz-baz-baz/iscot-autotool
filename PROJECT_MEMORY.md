@@ -4,7 +4,18 @@
 > Contiene tutto ciò che serve per lavorare sul progetto senza doverlo ri-esplorare da zero: architettura,
 > vincoli, invarianti da non rompere e stato del lavoro svolto.
 >
-> **Ultimo aggiornamento:** 13 settembre 2026 — Sprint 28 (§6.1-tricies): **release di produzione
+> **Ultimo aggiornamento:** 14 settembre 2026 — Sprint 29 (§6.1-tricies-semel): ⚠️⚠️ **emergenza
+> post-distribuzione della 2.0.0**, corretta nella **2.0.1** (pubblicata in `Release_Dist`, **non ancora
+> rilasciata su GitHub**). Causa radice: `StartupUri` in `App.xaml` + `async void OnStartup` → con
+> l'eseguibile dal nome reale WPF costruiva `MainWindow` al primo `await` del controllo aggiornamenti,
+> **prima** di `AppConfig.Initialize()`: watcher di LOG & DUMP mai avviato (niente auto-refresh), HOME
+> vuota, `Application.MainWindow` nulla (pulsanti treno di EMAIL inerti), percorsi relativi accanto
+> all'exe. Lo smoke test dello Sprint 28 non poteva vederlo perché **rinominava** l'eseguibile. Aggiunti
+> `Core.CrashReporter` (tre intercettori globali, log in `%LOCALAPPDATA%\iscot-autotool\crash.log` — **la
+> prima cosa da chiedere dopo un crash**) e `Core.Debouncer`; cartella dati spostata in
+> `%LOCALAPPDATA%\iscot-autotool` con migrazione automatica e non distruttiva dalla 2.0.0. 573/573 test,
+> 0 warning, verificato prima/dopo sul pacchetto pubblicato pilotando la UI con UI Automation.
+> Precede questo lo **Sprint 28** (§6.1-tricies): **release di produzione
 > 2.0.0**. `dotnet clean` + `dotnet test` (538/538) + `dotnet publish -r win-x64 -o ./Release_Dist` →
 > un unico `PersonalAutomationTool.exe` da **81,2 MB**, `FileVersion 2.0.0.0`, icona verificata
 > riestraendola dal binario. Il `.csproj` non è stato toccato (era già completo dallo Sprint 16); il
@@ -15,7 +26,9 @@
 > della nuova versione. Pacchetto **eseguito**, non solo compilato: con la cartella dati azzerata
 > l'`.exe` si avvia e seeda `train_software.db` con le 278 righe e i 54 `ETR1001FH` di §6.1-vicies-novies.
 > Trucco utile: **rinominare l'eseguibile disattiva l'auto-update** (controlla il proprio nome file),
-> quindi è il modo pulito per provare un pacchetto di release in locale.
+> quindi è il modo pulito per provare un pacchetto di release in locale — ⚠️ **ma salta il percorso di
+> avvio asincrono**, ed è così che il difetto della 2.0.0 è sfuggito: lo smoke test finale va rifatto
+> anche con il nome file reale (§6.1-tricies-semel).
 > Precede questo lo **Sprint 27** (§6.1-vicies-novies) ⚠️⚠️ **da leggere prima
 > di fidarsi di qualunque controllo su `%APPDATA%\PersonalAutomationTool` fatto dal terminale di
 > Claude**: l'app Claude Desktop è un pacchetto Windows (MSIX), e Windows può virtualizzare
@@ -304,7 +317,12 @@ CARTELLE (crea)  →  [tecnico copia i log dal treno]  →  PDF (rinomina)
 ### 2.5 Propagazione degli aggiornamenti
 
 **`Core.AppWatcher`** — singolo `FileSystemWatcher` statico su `LOG & DUMP`, `IncludeSubdirectories = true`,
-debounce 300 ms, poi `Dispatcher.InvokeAsync` dell'evento statico `OnLogDumpFolderChanged`.
+`NotifyFilter = FileName | DirectoryName`, buffer interno 64 KB, eventi raggruppati da `Core.Debouncer`
+(500 ms, un solo timer riarmato), poi `Dispatcher.InvokeAsync` dell'evento statico `OnLogDumpFolderChanged`
+con **ogni sottoscrittore isolato** nel proprio try/catch (l'errore va in `crash.log`, gli altri si
+aggiornano comunque). Avviato da `App.AvviaAsync` **dopo** `AppConfig.Initialize()` — non più dal
+costruttore di `MainWindow` — e ricreato da solo se va in errore. ⚠️ Nella 2.0.0 distribuita **non partiva
+mai**: vedi §6.1-tricies-semel.
 
 Sottoscrittori: `HomeViewModel`, `ExcelViewModel`, `CartelleView` (Loaded/Unloaded), `PdfView` (Loaded/Unloaded).
 
@@ -323,7 +341,8 @@ Sottoscrittori: `HomeViewModel`, `ExcelViewModel`, `CartelleView` (Loaded/Unload
 
 > ⚠️ **Dallo Sprint 16 (§6.1-duodevicies) tutti i percorsi scrivibili passano da `Core.AppPaths`, non
 > più da `AppDomain.CurrentDomain.BaseDirectory`.** La cartella dati è
-> **`%APPDATA%\PersonalAutomationTool\`** (`AppPaths.DataFolder`), i database stanno in
+> **`%LOCALAPPDATA%\iscot-autotool\`** (`AppPaths.DataFolder`, dalla 2.0.1 — fino alla 2.0.0 era
+> `%APPDATA%\PersonalAutomationTool\`, migrata in automatico e lasciata intatta: §6.1-tricies-semel), i database stanno in
 > `AppPaths.DatabaseFolder`. Non ricomporre a mano un percorso di configurazione o di database: in
 > pubblicazione **single-file** `BaseDirectory` è la cartella temporanea di estrazione del bundle, che
 > cambia a ogni release, e usarla significa perdere i dati dei tecnici in silenzio. Il motivo completo,
@@ -331,7 +350,7 @@ Sottoscrittori: `HomeViewModel`, `ExcelViewModel`, `CartelleView` (Loaded/Unload
 
 | Store | Percorso | Contenuto |
 |---|---|---|
-| `train_software.db` | `AppPaths.DatabaseFolder` (`%APPDATA%\PersonalAutomationTool\modules\database\`) | tabella `flotte(tipo, treno, loco, software)` — mappa loco → treno e versione SW. Contiene anche `renamer_log` |
+| `train_software.db` | `AppPaths.DatabaseFolder` (`%LOCALAPPDATA%\iscot-autotool\modules\database\`) | tabella `flotte(tipo, treno, loco, software)` — mappa loco → treno e versione SW. Contiene anche `renamer_log` |
 | `emails.db` | idem | `indirizzi_email(id, nome, email, categoria)` — rubrica |
 | `destinatari.json` | `AppPaths.DataFolder` | destinatari To/Cc per **treno × azione**; auto-generato al primo avvio |
 | `shortcuts.json` | `AppPaths.DataFolder` | macro-testi "Nulla Riscontrato", "SIM-GIT", … per treno |
@@ -339,6 +358,7 @@ Sottoscrittori: `HomeViewModel`, `ExcelViewModel`, `CartelleView` (Loaded/Unload
 | `info_ticket.json` | dentro ogni cartella madre di `LOG & DUMP` | avvisi/avarie/interventi per locomotore |
 | `hitachi_paths.json` | `AppPaths.DataFolder` | cartella Hitachi base per treno, usata da `ExcelViewModel` (Sposta/Riporta Report); auto-generato al primo avvio — vedi §6.1 |
 | `verifiche_paths.json` | `AppPaths.DataFolder` | cartelle principale/OLD per flotta del modulo VERIFICHE (§6.1-quindecies); auto-generato al primo avvio |
+| `crash.log` | `AppPaths.DataFolder` (`CrashReporter.PercorsoLog`) | log degli errori di `Core.CrashReporter`: eccezioni non gestite con stack trace completo e "anomalie gestite" (es. watcher non avviabile); ruotato in `crash.old.log` oltre 1 MB. **È la prima cosa da chiedere al committente dopo un crash** (§6.1-tricies-semel) |
 
 `DatabaseManager` incapsula SQLite (`Microsoft.Data.Sqlite`) e serializza gli accessi con un `lock`
 **per istanza** (era statico e condiviso fra tutte le istanze fino al §6.1-bis: si veda lì per il
@@ -701,7 +721,11 @@ calcolate non contengano duplicati. **Non semplificare in una passata sola.**
   la sessione e i loro timer/sottoscrizioni non vengono mai rilasciati (accettabile solo grazie a questo).
 - `info_ticket.json` è il ponte fra il modulo EMAIL e l'autocompilazione del modulo EXCEL:
   è scritto sia da `ChiusuraTicketDialog.SaveCache()` sia da `EmailService.SaveCacheJson()`.
-- `AppConfig.Initialize()` **deve** essere chiamata prima di ogni altra cosa in `App.OnStartup`.
+- `AppConfig.Initialize()` **deve** essere chiamata prima di ogni altra cosa in `App.OnStartup`, e
+  comunque **prima di qualunque `await`**. ⚠️ **`App.xaml` non deve avere `StartupUri`**: con un
+  `OnStartup` asincrono WPF apre quella finestra quando `OnStartup` *ritorna*, cioè al primo `await`,
+  prima dell'inizializzazione. È il difetto che ha rotto la 2.0.0 distribuita (§6.1-tricies-semel).
+  `MainWindow` si crea a mano, in fondo a `App.AvviaAsync`.
 
 ### 5.9 Regole di lavoro sul codice
 - Il codice, i commenti e i messaggi utente sono **in italiano**. Mantenere la lingua.
@@ -3765,6 +3789,144 @@ pacchetto eseguito e verificato come sopra, release pubblicata e ricontrollata d
 > test ha scritto nella vista **virtualizzata** di `%APPDATA%` propria della sessione Claude: il seed è
 > stato verificato per davvero, ma la cartella dati reale del committente non è stata toccata.
 
+### 6.1-tricies-semel Sprint 29 — EMERGENZA post-distribuzione 2.0.0: avvio fuori ordine, auto-refresh spento, nessun log degli errori ⭐⭐⭐
+
+**Segnalazione.** Dopo la distribuzione dell'eseguibile stand-alone 2.0.0: l'app si avvia (splash
+visibile), ma "qualsiasi azione successiva" provoca la chiusura forzata, senza alcun messaggio; e
+l'aggiornamento in tempo reale non funziona.
+
+#### ⚠️ La causa radice — da leggere prima di toccare `App.xaml` / `App.xaml.cs`
+
+`App.xaml` aveva `StartupUri="MainWindow.xaml"` e dallo Sprint 25 `OnStartup` era `async void`. **WPF apre
+la finestra di `StartupUri` quando `OnStartup` *ritorna*** — non dentro `base.OnStartup`, come assumeva il
+commento dello Sprint 20. Un `async void` ritorna al primo `await` che non si completa in modo sincrono:
+con l'eseguibile che si chiama davvero `PersonalAutomationTool.exe`, `AutoUpdateService` esegue la
+chiamata HTTP a GitHub, l'`await` cede il controllo e WPF costruisce `MainWindow` **durante** il controllo
+aggiornamenti, **prima** di `AppConfig.Initialize()`.
+
+Dimostrato con un harness WPF usa-e-getta (fuori dal repository) che riproduce la sequenza esatta:
+
+| Modalità | `MainWindow` costruita… | `Application.MainWindow` a regime |
+|---|---|---|
+| ASYNC — exe col nome reale, chiamata di rete | **prima** di `AppConfig.Initialize()` | **`null`** |
+| SYNC — exe rinominato, `VerificaEAggiornaAsync` ritorna subito | dopo | `MainWindow` |
+
+**Perché nessuno lo aveva visto.** Lo smoke test dello Sprint 28 rinominava l'eseguibile proprio per
+disattivare l'auto-update: in quel caso `VerificaEAggiornaAsync` restituisce un `Task` già completato,
+l'`await` prosegue in modo sincrono e l'ordine risulta giusto **per caso**. Build e test non toccano
+`App`. **Lezione: uno smoke test che disattiva un pezzo del flusso di avvio non verifica l'avvio.**
+
+Conseguenze, **tutte riprodotte sul binario 2.0.0 reale** pilotando la UI con UI Automation (script
+PowerShell usa-e-getta, fuori dal repository):
+
+1. **Auto-refresh spento per l'intera sessione.** Il costruttore di `MainWindow` chiamava
+   `AppWatcher.Initialize()` con `LogAndDumpFolder == ""` → `Directory.CreateDirectory("")` lanciava →
+   `catch` con il solo `Debug.WriteLine` → nessun watcher. Misurato: cartella creata in LOG & DUMP, riga
+   mai comparsa in HOME.
+2. **HOME vuota.** `HomeViewModel` caricava l'elenco con la cartella vuota: 0 righe su 3 cartelle treno
+   reali, e senza watcher non si aggiornava più.
+3. **EMAIL inerte.** Chiudere lo splash azzera `Application.MainWindow` (lo splash era la prima finestra
+   creata); `MainWindow`, già costruita, non viene più riassegnata. Ogni
+   `Application.Current.MainWindow is MainWindow` (`EmailView.NavigateTo`, `TrainViewHelper.NavigateBack`,
+   `ETR421View`) falliva: il clic su un treno non faceva nulla.
+4. **Percorsi relativi.** Con GitHub irraggiungibile (proxy verso un indirizzo non instradabile → timeout
+   di 4 s: lo scenario d'officina) le viste aperte in quei secondi lavoravano con
+   `AppPaths.DataFolder == ""`: la schermata DATABASE apriva `modules\database\emails.db` **creato accanto
+   all'eseguibile**, e lo teneva per tutta la sessione (le viste sono in cache). Su una cartella non
+   scrivibile — condivisione di rete, `Program Files` — diventa `UnauthorizedAccessException`.
+
+**Il crash di processo non si è riprodotto su questa macchina** con la sola navigazione. Le cause
+plausibili sul campo sono quelle sopra (viste aperte durante la finestra di avvio, cartelle non
+scrivibili) più gli `async void` senza `try` corretti sotto; nessuna lasciava traccia. Da qui la priorità
+del log degli errori: **se il committente segnala ancora un crash, la prima cosa da chiedere è
+`%LOCALAPPDATA%\iscot-autotool\crash.log`** (con il vincolo di §6.1-vicies-novies: letto da lui, non da una
+sessione Claude).
+
+#### Correzioni
+
+| # | Dove | Cosa |
+|---|---|---|
+| 1 | `main/App.xaml` | **`StartupUri` rimosso**, con un commento che vieta di reintrodurlo |
+| 2 | `main/App.xaml.cs` | `CrashReporter.Attiva(this)` nel costruttore di `App`, prima di `InitializeComponent`. `OnStartup` → `AvviaAsync()` dentro un try/catch fatale: istanza singola → splash → `AppConfig.Initialize()` (**prima di qualunque `await`**) → `SQLitePCL.Batteries_V2.Init()` + `raw.sqlite3_libversion_number()` (errore visibile, non fatale) → auto-update → `AppWatcher.Initialize()` → `new MainWindow()`, `MainWindow = …`, `Show()`. `OnExit` chiama `AppWatcher.Stop()` |
+| 3 | `core/CrashReporter.cs` (nuovo) | `DispatcherUnhandledException`: gestita, avviso a video e app aperta — fatale con `Shutdown(1)` solo se non esiste alcuna finestra. `AppDomain.UnhandledException`: avviso `DefaultDesktopOnly` prima della terminazione. `TaskScheduler.UnobservedTaskException`: `SetObserved`, avviso consegnato al dispatcher (il thread del finalizzatore non va bloccato). Log con versione, eseguibile, OS, runtime, percorsi in uso e `Exception.ToString()` completo; rotazione a 1 MB in `crash.old.log`; ripiego su `%TEMP%`; il logger non lancia mai. Un solo avviso non fatale alla volta. `RegistraAnomalia` per i problemi gestiti che prima finivano solo su `Debug` |
+| 4 | `core/Debouncer.cs` (nuovo) | Un solo `Timer` riarmato con `Change` (prima: un `Timer` creato e distrutto **per ogni evento** del file system); eccezioni dell'azione intercettate — su un thread del pool chiuderebbero il processo |
+| 5 | `core/AppWatcher.cs` | Cartella vuota → `InvalidOperationException`, mai più spento in silenzio. `NotifyFilter = FileName \| DirectoryName`: LastWrite/CreationTime producevano solo record "Changed", mai sottoscritti, che riempivano il buffer. `InternalBufferSize` 64 KB. Debounce **500 ms** (erano 300: margine per Excel e SharePoint, che scrivono via file temporaneo + rinomina). Ogni sottoscrittore isolato nel proprio try/catch. `Error` → log, ricaricamento e ricreazione del watcher dopo 2 s. `Stop()` |
+| 6 | `core/AppPaths.cs` | Cartella dati **`%LOCALAPPDATA%\iscot-autotool`** (era `%APPDATA%\PersonalAutomationTool`, vedi sotto). `SpecialFolderOption.DoNotVerify`; un percorso non assoluto → eccezione |
+| 7 | `core/AppConfig.cs` | `RisolviDesktop()`: `GetFolderPath(Desktop)` restituisce `""` se la cartella non esiste fisicamente (Desktop su OneDrive non ancora sincronizzato), e LOG & DUMP sarebbe diventata un percorso relativo |
+| 8 | `.csproj` | Seed `.db` anche come `EmbeddedResource` (`Seed.train_software.db`, `Seed.emails.db`, allineati ad `AppPaths.SeedIncorporati`); **`<Version>2.0.1`** |
+| 9 | Moduli | try/catch con avviso a video dove un'eccezione arrivava al dispatcher da un `async void` o dal costruttore di una vista: `HomeViewModel.OnAnnullaRinomina`; `PdfView.LoadFolders` (avviso se aperta dal tecnico, solo log se chiamata dall'auto-refresh) e `BtnAnnullaRinomina_Click`; comando "Verifica Eseguita" di `VerificheViewModel`; `TrainViewHelper.LoadCartelle`. `MainWindow` non avvia più il watcher |
+
+#### Cartella dati: perché questa volta è stata spostata (lo Sprint 28 l'aveva escluso)
+
+Richiesta esplicita del committente (dati e `crash.log` sotto `%LOCALAPPDATA%\iscot-autotool`), più un
+motivo tecnico: `%APPDATA%` è il profilo *roaming*, nei domini aziendali spesso reindirizzato su una
+condivisione di rete — il posto sbagliato per un database SQLite. Il timore dello Sprint 28, orfanare lo
+stato dei tecnici, è neutralizzato da `AppPaths.Prepara`, che completa la cartella nuova da **tre origini
+in ordine di precedenza, copiando solo ciò che manca**: (1) `%APPDATA%\PersonalAutomationTool` della 2.0.0,
+**letta e mai modificata né cancellata**; (2) cartella di installazione / estrazione del bundle; (3) seed
+incorporati nell'assembly, scritti via file temporaneo + rinomina (mai un `.db` troncato).
+
+> ⚠️ **Conseguenza da conoscere.** Un tecnico che rilanci una **2.0.0** dopo aver usato la 2.0.1 lavora
+> sulla vecchia cartella, che non riceve le modifiche successive. L'auto-update rende il caso transitorio.
+
+**Verificato a runtime, non solo nei test:** al primo avvio della 2.0.1 la cartella nuova conteneva
+`destinatari.json`, `hitachi_paths.json`, `shortcuts.json` — che la 2.0.1 non aveva ancora generato — e un
+`train_software.db` da **45 056 B**, la dimensione del DB nella cartella 2.0.0 di questo ambiente e **non**
+quella del seed attuale (53 248 B): è arrivato dalla migrazione, non dal seed.
+
+#### Ipotesi del prompt valutate e trovate già a posto (nessuna modifica)
+
+- **Database aperto dentro il bundle o in `Program Files`**: no, dallo Sprint 16 vive in una cartella dell'utente.
+- **Template "rapportino di turno.xlsx" e `paths_config.json`**: a runtime non esistono. Il rapportino è
+  disegnato in PDF vettoriale con il logo come risorsa incorporata (§6.1-quaterdecies); le configurazioni
+  sono `hitachi_paths.json` / `verifiche_paths.json`, e passano già da `AppPaths`.
+- **`ObservableCollection` modificate da thread secondari**: auditate tutte. HOME, PDF, VERIFICHE, EXCEL e
+  PASSAGGIO CONSEGNE le modificano dopo un `await` sul contesto UI o via `Dispatcher.InvokeAsync`. L'unico
+  lavoro in background su oggetti legati alla UI è `ExcelViewModel.AutoFillReportFieldsAsync`, che assegna
+  solo proprietà **scalari** (`ExcelFieldViewModel.FieldValue`; `Options` è una `List<string>`), che WPF
+  marshalla da sé: debito di §6.5, non causa di crash. `BindingOperations.EnableCollectionSynchronization`
+  **non** introdotto: avrebbe mascherato un problema inesistente.
+- **Excel/Outlook via COM**: `ExecuteScriviReport`, `ExecuteSpostaReport`, `ExecuteRiportaReport` e
+  `CartelleView.BtnCrea_Click` avevano già `catch` specifici (`IOException`, violazione di condivisione)
+  con avviso a video.
+
+#### Verifica
+
+`dotnet clean` + `dotnet build` sull'intera `.sln` → **0 errori, 0 warning**. `dotnet test` → **573/573**
+(538 → 573, +35): 12 `CrashReporterTests`; 5 `DebouncerTests`; 8 `AppWatcherTests` con un
+`FileSystemWatcher` reale (raffica di 52 eventi → al massimo 2 notifiche, sottoscrittore che lancia che non
+blocca gli altri e finisce nel log, cartella vuota → eccezione); +10 `AppPathsTests` (precedenza della
+migrazione, cartella 2.0.0 intatta, seed incorporati, Desktop sempre assoluto). `dotnet publish` con lo
+stesso comando di §6.1-tricies → **0 warning**, `PersonalAutomationTool.exe` da **85 149 610 B**,
+`ProductVersion 2.0.1+9cd38b6…`, `.pdb` rimosso.
+
+**Smoke test UI sul pacchetto pubblicato, con il nome file reale** — quindi sul percorso asincrono
+dell'auto-update, proprio quello rotto:
+
+| Controllo | 2.0.0 | 2.0.1, rete normale | 2.0.1, GitHub irraggiungibile |
+|---|---|---|---|
+| Finestra principale compare dopo | 1,1 s (durante il controllo) | 1,5 s | 5,0 s (dopo il timeout di 4 s) |
+| Cartelle treno in HOME all'avvio | **0** | 3 | 3 |
+| Cartella creata in LOG & DUMP → riga in HOME | **mai** (atteso 8 s) | 0,7 s | 0,7 s |
+| Cartella rimossa → riga sparita | — | 0,7 s | 0,7 s |
+| EMAIL → ETR700 apre la vista | **no** | sì | sì |
+| DATABASE apre | `…\Roaming\PersonalAutomationTool\…`; offline con clic immediati: `modules\database\emails.db` **relativo** | `…\Local\iscot-autotool\modules\database\emails.db` | idem |
+| Tutti i 9 moduli + vista ETR700 visitati, processo vivo | sì | sì | sì |
+| File creati accanto all'exe / `crash.log` | — | nessuno / assente | nessuno / assente |
+
+> ⚠️ **Non verificato in questo ambiente:** (1) il crash di processo segnalato dal committente, che qui non
+> si è riprodotto con la sola navigazione — il `crash.log` della macchina interessata resta la prova
+> decisiva; (2) gli avvisi a video del `CrashReporter` durante un crash reale (verificate da xUnit la
+> formattazione e la scrittura del log, non la finestra); (3) Excel e Outlook reali; (4) la migrazione sulla
+> cartella `%APPDATA%` **reale** del committente: per §6.1-vicies-novies lo smoke test ha girato nella vista
+> virtualizzata della sessione Claude.
+>
+> ⚠️ **Release non ancora pubblicata.** Serve il tag `v2.0.1` con l'`.exe` come asset perché l'auto-update
+> porti la correzione alle macchine già installate. Le 2.0.0 la scaricheranno (il loro percorso di
+> aggiornamento non dipende dal difetto), **ma durante il download mostrano già la finestra principale**,
+> che si chiude da sola a download finito: avvisare i tecnici di attendere il riavvio.
+> `Release_Dist/PersonalAutomationTool.zip` e `RELEASE_NOTES.md` sono ancora quelli della 2.0.0.
+
 ### 6.2 Le 4 macro-aree della roadmap strategica
 
 Elaborata come risposta alla domanda "se fossi il Lead Architect, cosa faresti dopo l'audit
@@ -3994,11 +4156,15 @@ all'interfaccia, rivalutare a quel punto.
 - [ ] **`ExcelViewModel.AutoFillReportFieldsAsync` muta i ViewModel da un thread di background.**
       Funziona perché WPF marshalla automaticamente i `PropertyChanged` scalari sul dispatcher, ma è
       fragile: basta introdurre una mutazione di `ObservableCollection` per far esplodere tutto.
-      Da consolidare portando le assegnazioni sul dispatcher.
+      Da consolidare portando le assegnazioni sul dispatcher. *(Sprint 29: riverificato che oggi le
+      mutazioni in background sono solo scalari — nessuna `ObservableCollection` — quindi non è una causa
+      di crash; resta debito.)*
 - [ ] **`TrainViewHelper.NavigateBack()`** crea `new EmailView()` invece di riusare la cache di
       `MainWindow`: la cache resta popolata con un'istanza ormai orfana.
-- [ ] **`AppWatcher`** non espone alcun modo per fermarsi o rilasciare il `FileSystemWatcher`.
-      Valutare anche `InternalBufferSize` (il default di 8 KB può perdere eventi in caso di raffiche).
+- [x] **`AppWatcher`** non esponeva alcun modo per fermarsi o rilasciare il `FileSystemWatcher`, né un
+      `InternalBufferSize` adeguato. **Chiuso nello Sprint 29** (§6.1-tricies-semel): `Stop()` chiamato da
+      `App.OnExit`, buffer a 64 KB, `NotifyFilter` ridotto a `FileName | DirectoryName`, ricreazione
+      automatica sull'evento `Error`.
 - [~] **Test automatici — avviati su tre livelli, non completi.** `PersonalAutomationTool.Tests`
       (§6.1/§6.1-bis/§6.1-ter/§6.1-quater): 19 test Tier 1 (`LogDumpFolderName`), 11 Tier 2
       (`PdfRenamePlanner`, alberi di cartelle reali), 2 golden-file (`EmailService.BuildHtmlBody`),
@@ -4023,7 +4189,7 @@ all'interfaccia, rivalutare a quel punto.
       nome fisso `Rapportino di Turno.pdf`, §6.1-sedecies), 7 `ComponiCorpoConFirmaTests`
       sull'invariante §5.5, **26 `PassaggioConsegneEmailServiceTests`** nuovi (§6.1-sedecies: le quattro
       fasce orarie del saluto, il colore per ciascuno dei 3 stati, la struttura del corpo HTML), più le
-      asserzioni sullo snapshot, 6 `AzioneDestinatariTests`), **56 per l'archiviazione VERIFICHE** (§6.1-quindecies: 21 `VerificheArchivioNamingTests` sui nomi reali dei fogli storici e sul pattern del file, 35 `VerificheArchivioServiceTests` end-to-end su workbook con la struttura reale), **15 `AppPathsTests`** (§6.1-duodevicies: migrazione dello stato scrivibile verso `%APPDATA%`, copia dei soli file mancanti senza mai sovrascrivere), **22 `PathHealthCheckServiceTests`** (§6.1-undevicies: le tre classificazioni di stato, `CheckDirectory`/`CheckFile` su percorsi reali, la garanzia che un percorso mancante non venga mai creato dalla sola verifica), **6 `EmailServiceBuildSubjectTests`** (§6.1-vicies: il bug del software duplicato con due ticket, Tier 2 su cartelle vere), **6 `SingleInstanceGuardTests`** (§6.1-vicies-bis: mutex con nome iniettabile, mai quello reale di produzione — stesso principio di `RenamerLog`), **29 `AutoUpdateServiceTests`** (§6.1-vicies-septies: `TryParseVersion`/`IsRemoteVersionNewer` su tag validi, malformati e sul caso di regressione a quattro componenti) — **538 in tutto** (212 → 181 dopo la rimozione del vecchio modulo,
+      asserzioni sullo snapshot, 6 `AzioneDestinatariTests`), **56 per l'archiviazione VERIFICHE** (§6.1-quindecies: 21 `VerificheArchivioNamingTests` sui nomi reali dei fogli storici e sul pattern del file, 35 `VerificheArchivioServiceTests` end-to-end su workbook con la struttura reale), **15 `AppPathsTests`** (§6.1-duodevicies: migrazione dello stato scrivibile verso `%APPDATA%`, copia dei soli file mancanti senza mai sovrascrivere), **22 `PathHealthCheckServiceTests`** (§6.1-undevicies: le tre classificazioni di stato, `CheckDirectory`/`CheckFile` su percorsi reali, la garanzia che un percorso mancante non venga mai creato dalla sola verifica), **6 `EmailServiceBuildSubjectTests`** (§6.1-vicies: il bug del software duplicato con due ticket, Tier 2 su cartelle vere), **6 `SingleInstanceGuardTests`** (§6.1-vicies-bis: mutex con nome iniettabile, mai quello reale di produzione — stesso principio di `RenamerLog`), **29 `AutoUpdateServiceTests`** (§6.1-vicies-septies: `TryParseVersion`/`IsRemoteVersionNewer` su tag validi, malformati e sul caso di regressione a quattro componenti) — **573 in tutto** (212 → 181 dopo la rimozione del vecchio modulo,
       → 202 con la copertura di `MatchesTrain`, → 286 con il modulo riscritto, → 364 con il pop-up di
       stato e il corpo email dinamico di §6.1-sedecies, → 379 con `Core.AppPaths` e la distribuzione
       stand-alone di §6.1-duodevicies, → 407 con l'health-check percorsi di §6.1-undevicies e le
@@ -4031,7 +4197,8 @@ all'interfaccia, rivalutare a quel punto.
       software duplicato di §6.1-vicies, → 429 con i pulsanti "-4"/"+4" di §6.1-vicies-semel, → 435 con
       il pattern istanza singola di §6.1-vicies-bis, → 509 con le combo digitabili e le correzioni
       `xml:space` di §6.1-vicies-quinquies/§6.1-vicies-sexies, → 538 con l'auto-update zero-click di
-      §6.1-vicies-septies).
+      §6.1-vicies-septies, → 573 con `CrashReporter`, `Debouncer`, `AppWatcher` e la migrazione della
+      cartella dati di §6.1-tricies-semel).
       Restano
       da coprire: `ExtractLocosFromFolder`, `AreTrainTypesCompatible` (Tier 1, non
       dipendono da `LogDumpFolderName`, possono procedere in parallelo a §6.3) — **`MatchesTrain` è

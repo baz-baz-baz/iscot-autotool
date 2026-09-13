@@ -21,7 +21,7 @@
       della release (es. tag "v1.0.5" -> <Version>1.0.5</Version>), altrimenti l'eseguibile
       pubblicato non riconoscerà se stesso come aggiornato e riproporrà l'update all'infinito.
     -->
-    <Version>2.0.0</Version>
+    <Version>2.0.1</Version>
   </PropertyGroup>
 
   <!--
@@ -93,6 +93,18 @@
     <None Update="modules\database\*.db">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <!--
+    Gli stessi database seed, incorporati anche come risorsa: Core.AppPaths li scrive nella cartella dati
+    (%LOCALAPPDATA%\iscot-autotool) quando nessun'altra origine li fornisce. Così il primo avvio non
+    dipende dalla cartella temporanea di estrazione del bundle single-file, né dal fatto che
+    IncludeAllContentForSelfExtract resti attivo. LogicalName esplicito e allineato ad
+    AppPaths.SeedIncorporati: un nome derivato dal percorso cambierebbe rinominando la cartella.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="modules\database\train_software.db" LogicalName="Seed.train_software.db" />
+    <EmbeddedResource Include="modules\database\emails.db" LogicalName="Seed.emails.db" />
   </ItemGroup>
 
   <!--

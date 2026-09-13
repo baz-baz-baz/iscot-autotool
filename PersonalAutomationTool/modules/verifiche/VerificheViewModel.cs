@@ -68,7 +68,23 @@ namespace PersonalAutomationTool.Modules.Verifiche
         {
             Instance = this;
             VerificaEseguitaCommand = new RelayCommand(
-                async param => await EseguiVerificaEseguitaAsync(param as VerificheModel),
+                async param =>
+                {
+                    // La lambda è di fatto un async void: senza questo try, un errore fuori dal blocco di
+                    // archiviazione (verifiche_paths.json illeggibile, dialog, ricaricamento) arrivava al
+                    // dispatcher e chiudeva l'applicazione.
+                    try
+                    {
+                        await EseguiVerificaEseguitaAsync(param as VerificheModel);
+                    }
+                    catch (Exception ex)
+                    {
+                        IsBusy = false;
+                        StatoOperazione = string.Empty;
+                        MessageBox.Show($"Errore imprevisto durante \"Verifica Eseguita\":\n{ex.Message}",
+                            "Verifica Eseguita", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                },
                 _ => !IsBusy);
 
             _ = ReloadAllDataAsync();
