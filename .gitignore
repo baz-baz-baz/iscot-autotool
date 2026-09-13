@@ -12,6 +12,10 @@
 [Rr]elease/
 [Rr]eleases/
 [Pp]ublish/
+# Cartella di consegna di "dotnet publish -o ./Release_Dist": NON coperta da [Rr]elease/,
+# che vale solo per una cartella di nome esattamente "Release". Senza questa riga
+# l'eseguibile pubblicato (~85 MB) comparirebbe come file non tracciato nel repository.
+Release_Dist/
 x64/
 x86/
 [Ww][Ii][Nn]32/

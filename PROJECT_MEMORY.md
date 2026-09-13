@@ -4,7 +4,19 @@
 > Contiene tutto ciò che serve per lavorare sul progetto senza doverlo ri-esplorare da zero: architettura,
 > vincoli, invarianti da non rompere e stato del lavoro svolto.
 >
-> **Ultimo aggiornamento:** 13 settembre 2026 — Sprint 27 (§6.1-vicies-novies) ⚠️⚠️ **da leggere prima
+> **Ultimo aggiornamento:** 13 settembre 2026 — Sprint 28 (§6.1-tricies): **release di produzione
+> 2.0.0**. `dotnet clean` + `dotnet test` (538/538) + `dotnet publish -r win-x64 -o ./Release_Dist` →
+> un unico `PersonalAutomationTool.exe` da **81,2 MB**, `FileVersion 2.0.0.0`, icona verificata
+> riestraendola dal binario. Il `.csproj` non è stato toccato (era già completo dallo Sprint 16); il
+> `.pdb` prodotto accanto all'exe **va rimosso prima della consegna**, e `Release_Dist/` è stata
+> aggiunta al `.gitignore` perché `[Rr]elease/` non la copriva. ⚠️ **`<Version>` nel `.csproj` e il tag
+> Git della release devono coincidere** (oggi `2.0.0` → tag `v2.0.0`, con l'`.exe` allegato come
+> asset): se divergono, l'auto-update di §6.1-vicies-septies o reinstalla in loop o non si accorge mai
+> della nuova versione. Pacchetto **eseguito**, non solo compilato: con la cartella dati azzerata
+> l'`.exe` si avvia e seeda `train_software.db` con le 278 righe e i 54 `ETR1001FH` di §6.1-vicies-novies.
+> Trucco utile: **rinominare l'eseguibile disattiva l'auto-update** (controlla il proprio nome file),
+> quindi è il modo pulito per provare un pacchetto di release in locale.
+> Precede questo lo **Sprint 27** (§6.1-vicies-novies) ⚠️⚠️ **da leggere prima
 > di fidarsi di qualunque controllo su `%APPDATA%\PersonalAutomationTool` fatto dal terminale di
 > Claude**: l'app Claude Desktop è un pacchetto Windows (MSIX), e Windows può virtualizzare
 > silenziosamente `%APPDATA%` per i processi lanciati da dentro questa sessione, reindirizzandoli a una
@@ -3635,6 +3647,93 @@ hanno subito alcuna modifica involontaria.
 > ⚠️ **Non verificato in questo ambiente**: l'aspetto a schermo della nuova riga `TxtPercorsoFile`
 > (manca un rasterizzatore WPF) — confermato però dal committente con uno screenshot reale durante
 > questa stessa sessione, quindi la verifica manuale è già stata fatta, solo non da questo ambiente.
+
+### 6.1-tricies Sprint 28 — Release di produzione 2.0.0: procedura di consegna verificata sul pacchetto reale ⭐
+
+**Obiettivo.** Consegnare ai colleghi **un unico `.exe`** avviabile su qualunque PC Windows anche datato,
+senza runtime .NET, senza installazione e senza diritti di amministratore.
+
+#### Il `.csproj` non è stato toccato: era già completo
+
+Tutte le proprietà richieste erano già in place dallo Sprint 16 (§6.1-duodevicies), nel
+`PropertyGroup` condizionato a `'$(RuntimeIdentifier)' != ''`: `SelfContained`, `PublishSingleFile`,
+`PublishReadyToRun`, `IncludeNativeLibrariesForSelfExtract`, `IncludeAllContentForSelfExtract`,
+`EnableCompressionInSingleFile`, `PublishTrimmed=false`, più `<ApplicationIcon>Resources\app_icon.ico`.
+**Verificato, non assunto**: l'icona è stata riestratta dal binario pubblicato
+(`[System.Drawing.Icon]::ExtractAssociatedIcon`) e i metadati letti da `VersionInfo`.
+
+#### ⚠️ Il vincolo che lega `<Version>` al tag Git — l'unico passo manuale che può rompere l'auto-update
+
+`<Version>` nel `.csproj` è ciò che `AutoUpdateService` (§6.1-vicies-septies) confronta con il
+`tag_name` dell'ultima release GitHub. Per questa consegna vale **2.0.0**, quindi la release su
+`github.com/baz-baz-baz/iscot-autotool` va taggata **`v2.0.0`** e deve avere l'`.exe` allegato come
+asset. Se i due numeri divergono l'errore non è visibile in fase di build:
+- tag **maggiore** di `<Version>` → ogni avvio riscarica e reinstalla lo stesso aggiornamento, all'infinito;
+- tag **minore o uguale** → i client non vedranno mai la nuova versione.
+
+#### Comando di pubblicazione e forma della consegna
+
+```bash
+dotnet clean
+dotnet test
+dotnet publish PersonalAutomationTool/PersonalAutomationTool.csproj -c Release -r win-x64 \
+  --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true \
+  -p:IncludeAllContentForSelfExtract=true -o ./Release_Dist
+```
+
+`dotnet publish` deposita in `Release_Dist` **anche il `.pdb`** (i simboli di debug): va **rimosso
+prima della consegna**, così che la cartella contenga esattamente un file. Aggiunta la regola
+`Release_Dist/` al `.gitignore`: `[Rr]elease/` **non** la copriva — quel pattern vale solo per una
+cartella di nome esattamente "Release", quindi senza la nuova riga gli 85 MB dell'eseguibile
+sarebbero comparsi come file non tracciati nel repository.
+
+**Risultato misurato:** `PersonalAutomationTool.exe`, **85 121 205 byte (81,2 MB)**, `FileVersion`
+`2.0.0.0`, `ProductVersion` `2.0.0+<commit>`.
+
+> Nota: `[Reflection.AssemblyName]::GetAssemblyName()` sull'eseguibile pubblicato solleva
+> `BadImageFormatException`. **Non è un difetto della build**: un bundle single-file è un apphost
+> nativo, non un assembly gestito, e non espone un manifesto di assembly. Usare `VersionInfo` (come
+> sopra) per leggerne i metadati.
+
+#### Smoke test sul pacchetto pubblicato, non solo compilato
+
+Stessa disciplina dello Sprint 16, che proprio così scoprì il difetto dei percorsi scrivibili.
+L'eseguibile è stato **copiato con un altro nome** prima di essere lanciato: `AutoUpdateService`
+procede solo se `Path.GetFileName(Environment.ProcessPath)` è esattamente
+`"PersonalAutomationTool.exe"`, quindi rinominarlo **disattiva l'auto-update** e rende il test
+ripetibile senza chiamate di rete né rischio di hot-swap. È il modo pulito per provare un pacchetto di
+release in locale.
+
+Con la cartella dati spostata da parte (primo avvio da zero), risultato:
+
+| Verifica | Esito |
+|---|---|
+| Avvio senza crash | processo vivo dopo 20 s, finestra `Personal Automation Tool`, 181 MB di working set |
+| Seed del database dal bundle | `modules\database\train_software.db` creato in `%APPDATA%`, **278 righe in `flotte`, 54 `ETR1001FH`** — cioè il seed aggiornato di §6.1-vicies-novies viaggia davvero dentro l'`.exe` |
+| `emails.db` | seedato, 12 288 byte |
+| Configurazioni scrivibili | `verifiche_paths.json` creato al primo avvio; `hitachi_paths.json`, `destinatari.json`, `shortcuts.json` nascono al primo salvataggio — tutti sotto `AppPaths.DataFile(...)`, quindi in una cartella scrivibile dall'utente |
+
+#### Percorso dello stato scrivibile: `%APPDATA%\PersonalAutomationTool`, **non** `%LocalAppData%\iscot-autotool`
+
+La richiesta di release citava `%LocalAppData%\iscot-autotool` come esempio. **Non è stato cambiato
+nulla**, deliberatamente: `AppPaths` usa `%APPDATA%` (Roaming) dallo Sprint 16 e spostare la cartella
+oggi orfanerebbe lo stato di ogni installazione esistente — `destinatari.json` con gli indirizzi reali
+compilati a mano in testa (§6.1-quaterdecies), più i due database con le modifiche fatte dai tecnici
+da DatabaseView. Il requisito sostanziale ("scrivibile dall'utente, niente errori di sola lettura,
+niente diritti di amministratore") è già soddisfatto: è **solo** la cartella a essere diversa
+dall'esempio.
+
+#### Verifica
+
+`dotnet clean` → `dotnet test` → **538/538 superati**, 0 errori e 0 warning. Pubblicazione completata,
+pacchetto eseguito e verificato come sopra.
+
+> ⚠️ **Non verificabile da questo ambiente:** l'avvio su una macchina d'officina reale **senza runtime
+> .NET** — il caso d'uso per cui esiste l'intero profilo self-contained. Lo smoke test qui è girato su
+> una macchina che il runtime ce l'ha, quindi prova il bundle ma non l'assenza di prerequisiti. Resta
+> la verifica manuale del punto 32 di §7.1. Inoltre, per la lezione di §6.1-vicies-novies, lo smoke
+> test ha scritto nella vista **virtualizzata** di `%APPDATA%` propria della sessione Claude: il seed è
+> stato verificato per davvero, ma la cartella dati reale del committente non è stata toccata.
 
 ### 6.2 Le 4 macro-aree della roadmap strategica
 
