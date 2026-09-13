@@ -3723,10 +3723,40 @@ da DatabaseView. Il requisito sostanziale ("scrivibile dall'utente, niente error
 niente diritti di amministratore") è già soddisfatto: è **solo** la cartella a essere diversa
 dall'esempio.
 
+#### La release è stata pubblicata: `v2.0.0`, e cosa serve sapere per rifarlo
+
+Pubblicata il **13 settembre 2026** su `github.com/baz-baz-baz/iscot-autotool` — è la **prima** release
+del repository, quindi la prima che attiva davvero l'auto-update sui client. Verificata dall'API
+pubblica (nessuna autenticazione necessaria in lettura): `tag_name` `v2.0.0`, non draft e non
+prerelease (altrimenti non comparirebbe in `/releases/latest`, che è l'endpoint interrogato da
+`AutoUpdateService`), tag su `ef7d824c4a2865c25f2d6696a381ad4c98d308d5` — esattamente il commit
+riportato nel `ProductVersion` del binario — e un solo asset `.exe` da **85 121 205 byte**, identico
+al file locale. L'asset risponde **HTTP 200 a una richiesta non autenticata**: è la condizione da cui
+dipende l'intera catena, e vale perché il repository è **pubblico** (su un repository privato
+l'API risponderebbe 404 a un client non autenticato e l'auto-update non funzionerebbe mai — da
+ricontrollare se la visibilità del repository dovesse cambiare).
+
+**Quattro inciampi incontrati nel farlo, tutti destinati a ripresentarsi:**
+
+1. **Il token di `gh` vive in `%APPDATA%\GitHub CLI\hosts.yml`**, cioè nel ramo di percorso
+   virtualizzato per le sessioni Claude (§6.1-vicies-novies): dopo un `gh auth login` eseguito dal
+   committente, `gh` lanciato dal terminale di Claude continua a rispondere *"not logged into any
+   GitHub hosts"*, perché legge la copia ombra. **Il comando `gh release create` va quindi eseguito
+   dal committente**; Claude può preparare tutto (build, note, comando) e verificare l'esito a
+   posteriori dall'API pubblica, ma non pubblicare. Non è un limite da aggirare: significa che le
+   credenziali non sono raggiungibili, che è il comportamento corretto.
+2. **PowerShell richiede l'operatore di chiamata `&`** per eseguire un percorso quotato:
+   `& "C:\Program Files\GitHub CLI\gh.exe" auth login`. Senza `&`, la stringa viene interpretata come
+   espressione e l'errore è fuorviante (*"Token 'auth' imprevisto"*).
+3. **`--target` vuole lo SHA completo a 40 caratteri** (o un nome di branch): con uno SHA abbreviato
+   l'API risponde `HTTP 422 - Release.target_commitish is invalid`.
+4. Una finestra di terminale aperta **prima** dell'installazione di `gh` non ne ha il PATH: o se ne
+   apre una nuova, o si usa il percorso completo con `&`.
+
 #### Verifica
 
 `dotnet clean` → `dotnet test` → **538/538 superati**, 0 errori e 0 warning. Pubblicazione completata,
-pacchetto eseguito e verificato come sopra.
+pacchetto eseguito e verificato come sopra, release pubblicata e ricontrollata dall'API.
 
 > ⚠️ **Non verificabile da questo ambiente:** l'avvio su una macchina d'officina reale **senza runtime
 > .NET** — il caso d'uso per cui esiste l'intero profilo self-contained. Lo smoke test qui è girato su
