@@ -4,7 +4,16 @@
 > Contiene tutto ciò che serve per lavorare sul progetto senza doverlo ri-esplorare da zero: architettura,
 > vincoli, invarianti da non rompere e stato del lavoro svolto.
 >
-> **Ultimo aggiornamento:** 23 agosto 2026 — sessione di audit e ottimizzazione per hardware Windows datato,
+> **Ultimo aggiornamento:** 13 settembre 2026 — Sprint 25 (§6.1-vicies-septies): **auto-update
+> zero-click all'avvio**. All'apertura, l'app confronta da sola la propria versione (`<Version>` nel
+> `.csproj`, ora obbligatoria da allineare a ogni release) con l'ultima release su
+> `github.com/baz-baz-baz/iscot-autotool`; se più recente la scarica e si sostituisce da sola tramite
+> uno script `.cmd` di hot-swap lanciato appena prima di uscire, senza alcuna conferma dell'utente e
+> senza mai bloccare l'avvio se la rete manca. Nessuna interazione con il pattern istanza singola di
+> §6.1-vicies-bis: il `Mutex` viene rilasciato esplicitamente da `App.xaml.cs` prima di terminare, così
+> il binario riavviato dallo script lo trova libero. **Non verificato in questo ambiente** il flusso
+> end-to-end con una release GitHub reale — vedi il riquadro finale di §6.1-vicies-septies.
+> Prima di questo, sessione di audit e ottimizzazione per hardware Windows datato,
 > secondo giro con le modifiche a comportamento visibile approvate dal committente (§4-bis), terzo giro
 > con l'avvio dello Sprint 1 della roadmap strategica (§6.1: `LogDumpFolderName`, primo progetto di test,
 > prima estrazione di percorsi hardcoded), quarto giro con lo **Sprint 2** (§6.1-bis: cache `flotte` in
@@ -3332,6 +3341,130 @@ autocompletamento per prefisso funzionante, apertura/chiusura del menu). Nessun'
 digitabile esisteva prima in questa applicazione: è il primo caso, quindi merita una verifica visiva
 al prossimo turno, non solo i test automatici.
 
+### 6.1-vicies-septies Sprint 25 — Auto-update zero-click all'avvio ⭐
+
+**Richiesta del committente.** Nessun intervento manuale per distribuire una nuova release alle
+workstation d'officina (§6.1-duodevicies): all'avvio, l'app deve controllare da sola se
+`github.com/baz-baz-baz/iscot-autotool` ha una release più recente, scaricarla, sostituire
+l'eseguibile e riavviarsi già aggiornata — senza alcun popup di conferma, e senza mai bloccare
+l'avvio se la rete manca o GitHub è irraggiungibile.
+
+#### Architettura: tre pezzi, stessa separazione di responsabilità di §6.1-vicies-bis
+
+| File | Compito |
+|---|---|
+| `core/AutoUpdateService.cs` | Confronto versioni, chiamata alla GitHub Releases API, download dell'asset `.exe`, scrittura e avvio dello script di hot-swap. Non conosce `SingleInstanceGuard`: non tocca il `Mutex`. |
+| `main/UpdateSplashWindow.xaml(.cs)` | Guscio senza logica di decisione (stessa categoria di `RenamePreviewDialog`, §2.2): una `ProgressBar` indeterminata e una riga di testo aggiornata da `AutoUpdateService` tramite `IProgress<string>`. |
+| `main/App.xaml.cs` | Orchestrazione: mostra lo splash, attende il controllo, decide se aprire `MainWindow` o terminare per lasciare spazio all'aggiornamento. |
+
+#### Perché il controllo gira `async void` dentro `OnStartup`, e cosa cambia con `ShutdownMode`
+
+Il requisito "prima o contestualmente all'apertura della finestra principale" impone che il controllo
+sia **atteso** prima che `MainWindow` esista, non lanciato fire-and-forget in parallelo: se lo splash
+sparisse e MainWindow apparisse mentre in background si scopre che serve un aggiornamento, il
+tecnico si troverebbe a lavorare su una finestra che sta per essere chiusa a forza. `OnStartup`
+diventa quindi `async void` (pattern comune in WPF per un avvio con un'attesa prima della finestra
+principale: l'alternativa, un `OnStartup` sincrono con `.Result`/`.Wait()`, bloccherebbe il thread UI
+e romperebbe l'animazione della `ProgressBar` dello splash) e chiama `base.OnStartup(e)` — che, per
+via di `StartupUri="MainWindow.xaml"` in `App.xaml`, è il punto in cui WPF crea davvero `MainWindow`
+— solo **dopo** l'`await`.
+
+**Il dettaglio non ovvio: `ShutdownMode`.** Il default di WPF è `OnLastWindowClose`. Mostrando lo
+splash come prima (e per un momento unica) finestra, chiuderlo prima di aprire `MainWindow` avrebbe
+fatto terminare l'intera applicazione da sola — "ultima finestra chiusa" essendo vero in quell'istante
+per definizione. Corretto impostando `ShutdownMode = ShutdownMode.OnExplicitShutdown` **prima** di
+mostrare lo splash e ripristinando `OnLastWindowClose` subito dopo averlo chiuso, appena prima di
+`base.OnStartup(e)`.
+
+#### Confronto versioni: `AutoUpdateService.TryParseVersion` / `IsRemoteVersionNewer`
+
+Estratte come funzioni pure `internal` (stesso trattamento di `MappaEccezione`, `SpostaOra`,
+`GetReportOldFolder` nelle sessioni precedenti) proprio per essere testabili senza rete. Due
+attenzioni non ovvie:
+
+- **Normalizzazione a quattro componenti prima del confronto.** `Version` tratta i componenti non
+  specificati come `-1`, non come `0`: senza normalizzare, un tag GitHub a tre componenti
+  (`"v1.2.0"`) risulterebbe sempre "più vecchio" della versione a quattro componenti che un assembly
+  .NET riporta di default (`1.2.0.0`), anche a parità di versione — un aggiornamento fantasma
+  riproposto a ogni avvio. Corretto normalizzando entrambi i lati a `(Major, Minor, Build, Revision)`
+  con `Math.Max(_, 0)` prima di confrontarli.
+- **Nessun tag interpretabile → nessun aggiornamento, mai un'eccezione.** Un tag malformato,
+  `null`/vuoto, o un prefisso `"v"` mancante/doppio sono tutti trattati come "non è una versione":
+  `IsRemoteVersionNewer` ritorna `false` invece di propagare, coerente con il requisito di resilienza
+  del punto 3.
+
+#### `Core.AppPaths.NomeCartellaApplicazione` non serve qui: perché l'auto-update usa `%LocalAppData%`, non `%APPDATA%`
+
+I file scaricati durante l'aggiornamento (`update_PersonalAutomationTool.exe`, lo script
+`apply_update.cmd`) sono **scratch temporaneo**, non stato applicativo persistente: non c'entrano con
+`AppPaths.DataFolder` (§6.1-duodevicies), che esiste per i dati scrivibili dell'utente
+(`destinatari.json`, i database). Vivono in
+`%LocalAppData%\PersonalAutomationTool\updates\`, ripuliti a ogni tentativo (i residui di un
+download precedente interrotto vengono cancellati **prima** di scaricare il nuovo file, best-effort:
+un file ancora bloccato non impedisce il tentativo corrente).
+
+#### Il file `.exe` non può sostituire se stesso: lo script di hot-swap
+
+Windows mappa in memoria l'eseguibile in esecuzione — non si può sovrascrivere, solo sostituire da un
+**altro** processo dopo che questo è terminato. Un file `apply_update.cmd` (batch, non PowerShell:
+vedi il commento in testa a `AutoUpdateService.ScriptHotSwap` sul perché — i criteri di esecuzione
+PowerShell più restrittivi possibili su una macchina aziendale non si applicano a un file batch)
+scritto su disco al momento del download e lanciato **prima** di uscire:
+
+1. Attende (fino a 30s) che il PID di questo processo non compaia più in `tasklist`.
+2. Copia il nuovo eseguibile sopra quello vecchio, ritentando (fino a 15s) se il file risulta ancora
+   occupato per una frazione di secondo dopo l'uscita (antivirus, handle in chiusura).
+3. Riavvia l'eseguibile ormai aggiornato con `start`.
+4. Si autocancella con l'idioma batch `(goto) 2>nul & del "%~f0"` — `cmd.exe` carica l'intero file
+   prima di eseguirlo, quindi può cancellare se stesso mentre il `goto` fallisce silenziosamente sul
+   file ormai rimosso.
+
+Lanciato con `UseShellExecute = true` e `WindowStyle = Hidden`: nessuna finestra `cmd.exe` visibile,
+nessuna quotatura complicata del tipo `cmd /c ""..." "..." "..."` (necessaria solo passando per
+`cmd.exe` esplicitamente) perché `Process.Start` esegue direttamente il file `.cmd`.
+
+#### Nessun conflitto con il pattern istanza singola (§6.1-vicies-bis)
+
+`App.xaml.cs` rilascia esplicitamente `_singleInstanceGuard` (il `Mutex` con nome fisso) **prima** di
+chiamare `Shutdown()`, quando `VerificaEAggiornaAsync` ritorna `true`. Quando lo script di hot-swap
+riavvia il binario aggiornato — solo dopo aver confermato che questo processo è già terminato — il
+nome del mutex è già libero: il nuovo processo lo trova e diventa lui l'istanza primaria, invece di
+attivare (e poi dover richiudere) una finestra che sta per sparire. La prova che il rilascio esplicito
+del mutex renda immediatamente possibile una nuova istanza primaria con lo stesso nome è già in
+`SingleInstanceGuardTests.DopoIlDisposeDellaPrima_UnaNuovaIstanzaPuoDiventarePrimaria` — nessun nuovo
+test necessario per questa parte, la garanzia esiste già.
+
+#### ⚠️ Prerequisito operativo per ogni release, da non dimenticare
+
+`Assembly.GetExecutingAssembly().GetName().Version` legge la proprietà MSBuild `<Version>`, aggiunta
+in questo sprint al `.csproj` (default `1.0.0`, prima assente: senza di essa l'SDK userebbe il fisso
+`1.0.0.0` per ogni build, e l'auto-update non vedrebbe mai una versione locale "vecchia"). **Prima di
+ogni `dotnet publish` di release, `<Version>` va allineata al tag Git della release** (tag `v1.0.5` →
+`<Version>1.0.5</Version>`): un mancato allineamento non causa un errore visibile, ma un binario
+pubblicato che non riconosce se stesso come già aggiornato e riproporrebbe l'update all'infinito, o
+— peggio — uno che si crede più recente di quanto sia realmente e non si aggiorna mai.
+
+#### Verifica
+
+`dotnet build` sull'intera `.sln` → **0 errori, 0 warning**. `dotnet test` → **538/538** (509 → 538,
++29 `AutoUpdateServiceTests`: `TryParseVersion` su tag validi con prefisso `"v"`/maiuscolo, suffissi
+di pre-release e build metadata, spazi iniziali/finali; su tag malformati (`null`, vuoto, `"v"` da
+solo, un solo componente, testo non numerico); `IsRemoteVersionNewer` sulle terne remoto/locale/esito
+atteso richieste dalla specifica (`v1.2.0` vs `1.2.1`, versioni uguali, formati errati), più il caso
+di regressione mirato sulla normalizzazione a quattro componenti (`"v1.2.0"` vs `"1.2.0.0"` devono
+risultare equivalenti, non "aggiornabili"). Pubblicato per intero il pacchetto reale con
+`dotnet publish -r win-x64 -c Release`: **85 MB**, `FileVersionInfo` conferma `1.0.0.0` dalla nuova
+proprietà `<Version>`, nessuna differenza nel profilo di distribuzione di §6.1-duodevicies.
+
+> ⚠️ **Non verificato in questo ambiente** (servirebbe una release reale pubblicata su GitHub e due
+> macchine, o due copie dello stesso eseguibile a versioni diverse): il flusso end-to-end completo —
+> l'app che scarica davvero un asset da GitHub, lo script `.cmd` che sostituisce l'eseguibile e
+> riavvia, il comportamento offline reale (Wi-Fi disattivato, non solo un timeout simulato). Verifica
+> manuale consigliata al prossimo turno con accesso a Internet: pubblicare due tag di test
+> (`<Version>` diverse) come release GitHub, copiare il primo `.exe` su una macchina, avviarlo con il
+> secondo tag già pubblicato come "latest" e osservare lo splash, il download, la sostituzione e il
+> riavvio automatico.
+
 ### 6.2 Le 4 macro-aree della roadmap strategica
 
 Elaborata come risposta alla domanda "se fossi il Lead Architect, cosa faresti dopo l'audit
@@ -3590,13 +3723,15 @@ all'interfaccia, rivalutare a quel punto.
       nome fisso `Rapportino di Turno.pdf`, §6.1-sedecies), 7 `ComponiCorpoConFirmaTests`
       sull'invariante §5.5, **26 `PassaggioConsegneEmailServiceTests`** nuovi (§6.1-sedecies: le quattro
       fasce orarie del saluto, il colore per ciascuno dei 3 stati, la struttura del corpo HTML), più le
-      asserzioni sullo snapshot, 6 `AzioneDestinatariTests`), **56 per l'archiviazione VERIFICHE** (§6.1-quindecies: 21 `VerificheArchivioNamingTests` sui nomi reali dei fogli storici e sul pattern del file, 35 `VerificheArchivioServiceTests` end-to-end su workbook con la struttura reale), **15 `AppPathsTests`** (§6.1-duodevicies: migrazione dello stato scrivibile verso `%APPDATA%`, copia dei soli file mancanti senza mai sovrascrivere), **22 `PathHealthCheckServiceTests`** (§6.1-undevicies: le tre classificazioni di stato, `CheckDirectory`/`CheckFile` su percorsi reali, la garanzia che un percorso mancante non venga mai creato dalla sola verifica), **6 `EmailServiceBuildSubjectTests`** (§6.1-vicies: il bug del software duplicato con due ticket, Tier 2 su cartelle vere), **6 `SingleInstanceGuardTests`** (§6.1-vicies-bis: mutex con nome iniettabile, mai quello reale di produzione — stesso principio di `RenamerLog`) — **435 in tutto** (212 → 181 dopo la rimozione del vecchio modulo,
+      asserzioni sullo snapshot, 6 `AzioneDestinatariTests`), **56 per l'archiviazione VERIFICHE** (§6.1-quindecies: 21 `VerificheArchivioNamingTests` sui nomi reali dei fogli storici e sul pattern del file, 35 `VerificheArchivioServiceTests` end-to-end su workbook con la struttura reale), **15 `AppPathsTests`** (§6.1-duodevicies: migrazione dello stato scrivibile verso `%APPDATA%`, copia dei soli file mancanti senza mai sovrascrivere), **22 `PathHealthCheckServiceTests`** (§6.1-undevicies: le tre classificazioni di stato, `CheckDirectory`/`CheckFile` su percorsi reali, la garanzia che un percorso mancante non venga mai creato dalla sola verifica), **6 `EmailServiceBuildSubjectTests`** (§6.1-vicies: il bug del software duplicato con due ticket, Tier 2 su cartelle vere), **6 `SingleInstanceGuardTests`** (§6.1-vicies-bis: mutex con nome iniettabile, mai quello reale di produzione — stesso principio di `RenamerLog`), **29 `AutoUpdateServiceTests`** (§6.1-vicies-septies: `TryParseVersion`/`IsRemoteVersionNewer` su tag validi, malformati e sul caso di regressione a quattro componenti) — **538 in tutto** (212 → 181 dopo la rimozione del vecchio modulo,
       → 202 con la copertura di `MatchesTrain`, → 286 con il modulo riscritto, → 364 con il pop-up di
       stato e il corpo email dinamico di §6.1-sedecies, → 379 con `Core.AppPaths` e la distribuzione
       stand-alone di §6.1-duodevicies, → 407 con l'health-check percorsi di §6.1-undevicies e le
       cartelle "Report Interventi OLD" aggiunte in coda allo stesso sprint, → 413 con la correzione del
       software duplicato di §6.1-vicies, → 429 con i pulsanti "-4"/"+4" di §6.1-vicies-semel, → 435 con
-      il pattern istanza singola di §6.1-vicies-bis).
+      il pattern istanza singola di §6.1-vicies-bis, → 509 con le combo digitabili e le correzioni
+      `xml:space` di §6.1-vicies-quinquies/§6.1-vicies-sexies, → 538 con l'auto-update zero-click di
+      §6.1-vicies-septies).
       Restano
       da coprire: `ExtractLocosFromFolder`, `AreTrainTypesCompatible` (Tier 1, non
       dipendono da `LogDumpFolderName`, possono procedere in parallelo a §6.3) — **`MatchesTrain` è

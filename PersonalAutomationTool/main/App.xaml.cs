@@ -1,3 +1,4 @@
+using System;
 using System.Windows;
 
 namespace PersonalAutomationTool;
@@ -14,7 +15,7 @@ public partial class App : Application
     /// </summary>
     private PersonalAutomationTool.Core.SingleInstanceGuard? _singleInstanceGuard;
 
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         // Pattern istanza singola (§6.1-vicies-bis di PROJECT_MEMORY.md): deve girare PRIMA di
         // base.OnStartup, perché è dentro base.OnStartup che WPF crea e mostra la finestra di
@@ -27,6 +28,43 @@ public partial class App : Application
             Shutdown();
             return;
         }
+
+        // Auto-update zero-click (PROJECT_MEMORY.md, sprint auto-update): niente MainWindow finché
+        // il controllo aggiornamenti — con timeout breve, mai bloccante oltre pochi secondi — non è
+        // concluso. ShutdownMode passa a OnExplicitShutdown perché il default (OnLastWindowClose)
+        // chiuderebbe l'intera applicazione quando lo splash si chiude, dato che a quel punto è
+        // l'unica finestra aperta: MainWindow non esiste ancora, viene creata solo dentro
+        // base.OnStartup subito sotto. Ripristinato al valore di default appena MainWindow è aperta.
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        var splash = new UpdateSplashWindow();
+        splash.Show();
+
+        bool aggiornamentoAvviato = false;
+        try
+        {
+            aggiornamentoAvviato = await PersonalAutomationTool.Core.AutoUpdateService
+                .VerificaEAggiornaAsync(new Progress<string>(splash.SetStatus));
+        }
+        catch
+        {
+            // Difesa ulteriore anche se AutoUpdateService non dovrebbe mai propagare: un controllo
+            // di aggiornamento silenzioso non deve mai impedire l'avvio normale dell'app.
+        }
+
+        if (aggiornamentoAvviato)
+        {
+            // Il nuovo eseguibile è già scaricato e l'helper di sostituzione è già stato avviato:
+            // libera subito il mutex, così quando l'helper riavvia il binario aggiornato (dopo aver
+            // atteso la fine di QUESTO processo) trova il nome libero e diventa lui l'istanza
+            // primaria, invece di attivare una finestra che sta per sparire.
+            _singleInstanceGuard.Dispose();
+            splash.Close();
+            Shutdown();
+            return;
+        }
+
+        splash.Close();
+        ShutdownMode = ShutdownMode.OnLastWindowClose;
 
         base.OnStartup(e);
         PersonalAutomationTool.Core.AppConfig.Initialize();

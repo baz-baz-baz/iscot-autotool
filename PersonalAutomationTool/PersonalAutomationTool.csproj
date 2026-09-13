@@ -13,6 +13,15 @@
       e per questo il file e' dichiarato anche come <Resource> piu' sotto.
     -->
     <ApplicationIcon>Resources\app_icon.ico</ApplicationIcon>
+    <!--
+      Versione confrontata da AutoUpdateService (core/AutoUpdateService.cs) con il tag_name
+      dell'ultima release GitHub. Senza questa proprietà l'SDK userebbe il default fisso "1.0.0.0"
+      per ogni build, e l'auto-update non vedrebbe mai una versione locale "vecchia".
+      OBBLIGATORIO a ogni release: prima di "dotnet publish", allineare questo numero al tag Git
+      della release (es. tag "v1.0.5" -> <Version>1.0.5</Version>), altrimenti l'eseguibile
+      pubblicato non riconoscerà se stesso come aggiornato e riproporrà l'update all'infinito.
+    -->
+    <Version>2.0.0</Version>
   </PropertyGroup>
 
   <!--

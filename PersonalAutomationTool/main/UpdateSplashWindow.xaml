@@ -1,0 +1,30 @@
+<Window x:Class="PersonalAutomationTool.UpdateSplashWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="Personal Automation Tool"
+        Height="140" Width="360"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="False"
+        Topmost="True"
+        Background="White"
+        Icon="pack://application:,,,/Resources/app_icon.ico">
+    <!--
+        Feedback minimale mostrato durante il controllo aggiornamenti all'avvio (§4, punto 1 della
+        richiesta di auto-update): nessun bordo, nessuna barra del titolo, non in taskbar — deve
+        leggersi come un breve lampeggio, non come una finestra applicativa vera e propria. Chiusa da
+        App.xaml.cs non appena AutoUpdateService.VerificaEAggiornaAsync ritorna, prima di aprire
+        MainWindow (o, se un aggiornamento è in corso, prima di terminare il processo).
+    -->
+    <Border BorderBrush="#E2E8F0" BorderThickness="1">
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+            <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}"
+                         IsIndeterminate="True" Width="40" Height="40" Foreground="#1976D2" />
+            <TextBlock x:Name="TxtStato" Text="Verifica aggiornamenti..." Margin="0,16,0,0"
+                       FontSize="14" FontWeight="SemiBold" Foreground="#34495E"
+                       HorizontalAlignment="Center" />
+        </StackPanel>
+    </Border>
+</Window>
