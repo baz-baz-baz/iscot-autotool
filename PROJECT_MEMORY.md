@@ -3927,6 +3927,172 @@ dell'auto-update, proprio quello rotto:
 > che si chiude da sola a download finito: avvisare i tecnici di attendere il riavvio.
 > `Release_Dist/PersonalAutomationTool.zip` e `RELEASE_NOTES.md` sono ancora quelli della 2.0.0.
 
+### 6.1-tricies-bis Sprint 30 — sincronizzazione forzata del seed dati (`flotte`, `indirizzi_email`) all'aggiornamento ⭐⭐
+
+**Richiesta.** Hotfix architetturale, **codice preparato e testato ma release NON pubblicata**: restano
+altri bugfix da consolidare prima del prossimo tag Git (vincolo esplicito del committente per questo
+sprint).
+
+#### Il difetto: `EstraiSeedMancanti` protegge lo storico, ma congela anche l'anagrafica
+
+`AppPaths.EstraiSeedMancanti` (§6.1-duodevicies) scrive un `.db` seed **solo se il file non esiste
+ancora** nella cartella dati — la regola giusta per non perdere `renamer_log`/`renamer_queue`, ma
+sbagliata per `flotte` e `indirizzi_email`: un tecnico che aggiorna l'app tramite l'Auto-Updater
+continua a lavorare sul `train_software.db`/`emails.db` già presenti sul suo PC, senza mai ricevere gli
+aggiornamenti di catalogo o di rubrica fatti sulla macchina di sviluppo. Il commento in `AppPaths.cs`
+(righe 168-181) lo dichiarava già come "rovescio consapevole della medaglia" dello Sprint 16 — questo
+sprint lo risolve senza toccare quella regola per lo storico.
+
+**Non era teorico.** Verificato su questa stessa macchina, prima del fix: `%LOCALAPPDATA%\iscot-autotool\modules\database\train_software.db`
+aveva `flotte` fermo a **228 righe**, mentre il seed nel repository (aggiornato allo Sprint 27,
+§6.1-vicies-novies) ne conta già **278** — la stessa identica discrepanza descritta nella richiesta,
+mai emersa perché questa macchina non aveva ancora ricevuto una release con il nuovo Auto-Updater dopo
+l'ultimo aggiornamento del seed.
+
+#### Il meccanismo di versione: `PRAGMA user_version`, non una tabella nuova
+
+Ogni `.db` porta la propria versione in `PRAGMA user_version` (nativo SQLite, nessuno schema
+aggiuntivo da mantenere/migrare). I due seed nel repository (`PersonalAutomationTool/modules/database/train_software.db`
+ed `emails.db`, `EmbeddedResource` dal `.csproj`, `LogicalName` `Seed.train_software.db`/`Seed.emails.db`)
+sono stati stampati a **`user_version = 1`** — un'operazione che tocca solo l'header SQLite, verificata
+byte-identica nel resto del file (`git diff --stat` → `0 insertions, 0 deletions`, dimensione invariata:
+53 248 B e 12 288 B) e con tutte le righe delle tabelle intatte (`flotte`: 278, `indirizzi_email`: 22).
+Un database mai versionato risulta a 0: è il caso di ogni installazione precedente a questo fix, quindi
+la sincronizzazione scatta da sola al primo avvio dopo l'aggiornamento, senza bisogno di alcuna
+migrazione esplicita.
+
+#### `DatabaseSeedSyncService.cs` — nuovo servizio, `DatabaseManager` non toccato
+
+Classe a parte in `modules/database/`, non un innesto in `DatabaseManager` (che resta il wrapper CRUD
+puro usato ovunque nell'app): stessa filosofia di `AppPaths`/`FlotteCache`/`RenamerLog`, un servizio
+per responsabilità. Punto d'ingresso pubblico `SincronizzaAllAvvio()`, chiamato da `App.xaml.cs`
+(`AvviaAsync`) subito dopo `InizializzaSqliteNativo()` e prima di qualunque modulo (FlotteCache,
+RubricaDialog, DatabaseView) che legga questi database; un fallimento non blocca l'avvio
+(`CrashReporter.Segnala(..., fatale: false)`, stessa politica del resto della sequenza di avvio).
+
+Per ogni file registrato in `AppPaths.SeedIncorporatiGestiti` con tabelle master note
+(`TabelleMasterPerFile`: `train_software.db` → `flotte`; `emails.db` → `indirizzi_email`):
+1. estrae la risorsa seed incorporata in un file temporaneo (necessario perché `ATTACH DATABASE`
+   richiede un percorso su disco, non uno stream — stesso motivo per cui i seed sono incorporati come
+   risorsa invece che letti da una cartella "loose", §6.1-duodevicies) e lo ripulisce sempre, anche in
+   caso di errore;
+2. confronta `PRAGMA user_version` locale vs seed: se il locale non è indietro, non fa nulla
+   (`EsitoSincronizzazioneSeed.NonNecessaria`);
+3. se indietro, esegue un backup preventivo best-effort (`<nome>_backup_v<versionePrecedente>_<timestamp>.db`,
+   un `IOException`/`UnauthorizedAccessException` sul backup non blocca il resto — stessa filosofia di
+   `AppPaths.TrasferisciFileMancanti`);
+4. `ATTACH DATABASE @seed AS seed_master` (percorso legato come parametro, non concatenato) dentro una
+   singola transazione (`BEGIN IMMEDIATE` … `COMMIT`/`ROLLBACK`): per ogni tabella master,
+   `DELETE FROM <tabella>` seguito da `INSERT INTO <tabella> SELECT * FROM seed_master.<tabella>`,
+   poi `PRAGMA user_version = <versioneSeed>`. Un errore in qualunque punto fa `ROLLBACK`: o tutte le
+   righe della tabella arrivano dal seed, o il database resta come prima. `DETACH DATABASE` gira sempre
+   nel `finally`, sia dopo commit sia dopo rollback — un attach lasciato aperto farebbe fallire il
+   prossimo avvio.
+5. il `DatabaseManager` è dentro un `using`: la connessione (e il pool, `SqliteConnection.ClearPool`)
+   viene rilasciata subito dopo, stessa garanzia verificata da `DatabaseManagerLockTests`.
+
+**Cosa viene toccato, cosa no.** Solo `flotte` e `indirizzi_email`. `renamer_log`, `renamer_queue` e
+`renamer_config` non vengono mai referenziati da questa classe: restano intatti indipendentemente da
+quante volte la sincronizzazione gira. Verificato esplicitamente da un test dedicato
+(`TabelleDiStoricoLocale_RestanoInalterateDopoLaSincronizzazione`).
+
+#### Verifica
+
+`dotnet build` sull'intera `.sln` → **0 errori, 0 warning**. `dotnet test` → **582/582** (573 → 582,
++9 `DatabaseSeedSyncServiceTests`): il caso del bug report (vecchio `emails.db` con destinatari
+obsoleti/mancanti → dopo la sincronizzazione la tabella riflette fedelmente il seed), non-necessità
+quando la versione è già allineata, non-regressione se il locale è **più avanti** del seed, isolamento
+delle tabelle di storico locale, produzione del backup preventivo, rilascio della connessione (file
+spostabile subito dopo), nessun file temporaneo residuo, ed estrazione dalla risorsa incorporata reale
+dell'assembly (non un file preparato a mano).
+
+**Riproduzione end-to-end sui dati reali di questa macchina** (fuori dalla suite xUnit, su una
+**copia** del `train_software.db` reale, non l'originale): `flotte` passa da **228 a 278 righe** dopo
+la sincronizzazione, `VersioneLocale`/`VersioneSeed` letti correttamente come 0/1, `renamer_config`
+(1 riga, il template del tecnico) resta invariato. È la controprova diretta che il fix risolve lo
+stesso identico sintomo descritto nella richiesta, non solo lo scenario sintetico dei test.
+
+> ⚠️ **Release non pubblicata, per vincolo esplicito di questo sprint.** Il codice è pronto e la
+> sincronizzazione scatterà da sola al prossimo avvio dopo l'aggiornamento (ogni `.db` locale
+> preesistente è a `user_version` 0). Prima del prossimo tag Git: (1) consolidare gli altri bugfix in
+> sospeso; (2) allineare `<Version>` nel `.csproj` al tag come da procedura (§6.1-tricies); (3) se un
+> futuro aggiornamento di `flotte`/`indirizzi_email` deve raggiungere le macchine già installate,
+> **incrementare `PRAGMA user_version` nei due seed** (oggi `1`) insieme ai dati — senza
+> l'incremento la sincronizzazione non scatta, anche con un seed diverso.
+
+### 6.1-tricies-ter Sprint 31 — bug segnalato dal committente: "Aggiorna ticket" ignorava il secondo ticket sui treni a doppia motrice (E404P/ETR500) ⭐⭐
+
+**Richiesta.** In HOME, "Aggiorna ticket" su un E404P (due motrici, quattro sottocartelle LOG+DUMP)
+con entrambi i campi "Cambio ticket" compilati rinominava **tutte e quattro** le cartelle con il
+primo ticket, ignorando il secondo.
+
+#### Causa radice: non è un bug di binding XAML
+
+Verificati per primi i due `TextBox` di "Cambio ticket" (`HomeView.xaml`, riga 54-55): sono legati a
+**due proprietà distinte** (`OldTicket` e `NewTicket`, usate internamente come "Ticket 1"/"Ticket 2" —
+commento già presente in `HomeViewModel.OnAggiornaTicket`), `Text` è `TwoWay` per default WPF
+(`FrameworkPropertyMetadataOptions.BindsTwoWayByDefault` sulla proprietà `TextBox.Text`, nessun
+`Mode="TwoWay"` esplicito necessario), `UpdateSourceTrigger=PropertyChanged` su entrambi, nessuna
+duplicazione di `DataContext`. **Il binding era corretto**, nessuna modifica a `HomeView.xaml`.
+
+Il difetto era nella logica di assegnazione, dentro `OnAggiornaTicket`: le sottocartelle venivano
+raggruppate per il **ticket attualmente scritto nel nome** (`Name.Split(' ').FirstOrDefault()`,
+poi le prime due voci distinte diventavano "gruppo 1"/"gruppo 2"). Nel caso reale — quattro cartelle
+tutte con lo stesso ticket segnaposto, es. `SRX DUMP E404P 634 …`, `SRX DUMP E404P 635 …`, `SRX LOG
+E404P 634 …`, `SRX LOG E404P 635 …` — quel raggruppamento produce **un solo gruppo** ("SRX"), quindi
+solo il ramo "primo ticket trovato" scattava mai: `ticket2` restava un ramo morto. Il campo giusto per
+distinguere le due motrici non è il ticket corrente (identico per costruzione finché nessuno ha ancora
+assegnato ticket separati), ma la **loco**, già estratta con la grammatica ufficiale da
+`LogDumpFolderName.TryParse` (`core/Naming/LogDumpFolderName.cs`) — usata altrove (`PdfRenamePlanner`)
+ma non ancora qui, esattamente uno dei "sette punti da migrare uno alla volta" annotati nel commento di
+classe di `LogDumpFolderName`.
+
+#### `HomeTicketRenamePlanner.cs` — nuova classe, stesso principio di `PdfRenamePlanner`
+
+Estratta la logica di decisione da `OnAggiornaTicket` in `modules/home/HomeTicketRenamePlanner.cs`,
+funzione pura senza dipendenze WPF (intervento 2.1 della roadmap, "separare decidere da eseguire" —
+già applicato a `PdfRenamePlanner`, non ancora a questo comando). `CreatePlan(parentFolderPath,
+ticket1, ticket2, knownTypes)`:
+1. Analizza ogni sottocartella con `LogDumpFolderName.TryParse`; quelle che non rispettano la
+   grammatica vengono escluse dal piano (mai rinominate "alla cieca" come poteva capitare con lo split
+   ingenuo precedente).
+2. Calcola le loco **distinte**, ordinate numericamente quando entrambe lo sono (es. `99` prima di
+   `150`, non l'ordine alfabetico che le invertirebbe), altrimenti alfabeticamente.
+3. Se **entrambi** i ticket sono compilati **e** ci sono almeno due loco distinte: la prima loco
+   (in ordine) riceve `ticket1`, tutte le altre `ticket2`. Altrimenti (cassa singola, o un solo campo
+   compilato) il ticket compilato si applica a tutte le cartelle — la richiesta esplicita del
+   committente per ETR700/ETR1000.
+4. Sostituisce **solo il primo token** (il ticket) del nome esistente, lasciando LOG/DUMP, tipo, loco,
+   software, data e utente byte-identici — nessuna ricostruzione via `LogDumpFolderName.Format()`, che
+   normalizzerebbe anche la spaziatura dove non serve e rischierebbe di produrre un nome diverso da
+   quello scritto da `CartelleView`.
+
+`ticket1`/`ticket2` arrivano già normalizzati con il prefisso "SR" da `NormalizeTicketPrefix`
+(invariato, bug precedente già chiuso — nessuna regressione: la sostituzione è totale sul primo token,
+mai una concatenazione, quindi "SRSR..." resta impossibile per costruzione, verificato anche da un
+test dedicato).
+
+`OnAggiornaTicket` ora si limita a chiamare `HomeTicketRenamePlanner.CreatePlan` dentro lo stesso
+`Task.Run` che prima conteneva la logica inline: l'anteprima (`RenamePreviewDialog.Confirm`) e
+l'esecuzione (`Directory.Move` in loop) restano sulla stessa variabile `plan`, quindi coincidono per
+costruzione — non c'è un secondo percorso di codice che possa disallinearsi. `RenamerLog.RecordBatch`
+riceve lo stesso `plan` invariato: l'"Annulla ultima rinomina" copre già entrambi i ticket, perché
+non distingue in base a quale ticket ha generato una coppia (vecchio, nuovo) — nessuna modifica
+necessaria lì.
+
+#### Verifica
+
+`dotnet build` sull'intera `.sln` → **0 errori, 0 warning**. `dotnet test` → **591/591** (582 → 591,
++9 `HomeTicketRenamePlannerTests`, Tier 2 su cartelle reali come `PdfRenamePlannerTests`): lo scenario
+esatto del bug report (E404P a due motrici, entrambi i ticket compilati → le cartelle della prima loco
+ricevono Ticket 1, quelle della seconda Ticket 2); cassa singola (ETR700) con entrambi i ticket
+compilati → tutte le cartelle ricevono Ticket 1; solo il primo ticket compilato → applicato a tutte;
+nessun ticket compilato → piano vuoto; idempotenza (rilanciare con lo stesso ticket non genera
+un'operazione "vecchio == nuovo"); ordinamento numerico delle loco (non alfabetico); una cartella con
+nome non conforme viene esclusa senza bloccare le altre; cartella madre inesistente → piano vuoto;
+chiamate ripetute con lo stesso input producono lo stesso piano (proxy della garanzia
+anteprima/esecuzione). Nessuna modifica a `HomeView.xaml`: il binding era già corretto.
+
 ### 6.2 Le 4 macro-aree della roadmap strategica
 
 Elaborata come risposta alla domanda "se fossi il Lead Architect, cosa faresti dopo l'audit

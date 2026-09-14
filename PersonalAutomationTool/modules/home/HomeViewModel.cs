@@ -233,60 +233,19 @@ namespace PersonalAutomationTool.Modules.Home
                 if (string.IsNullOrWhiteSpace(ticket1) && string.IsNullOrWhiteSpace(ticket2))
                     return;
 
-                // Calcola il piano (nessuna scrittura) su thread pool: la logica di decisione è
-                // identica a prima, solo separata dall'esecuzione per poter mostrare l'anteprima
-                // (intervento 4.1, Sprint 3) prima di spostare qualunque cartella.
+                // Calcola il piano (nessuna scrittura) su thread pool: la stessa identica funzione
+                // pura usata poi per l'esecuzione, non solo per poter mostrare l'anteprima
+                // (intervento 4.1, Sprint 3) prima di spostare qualunque cartella, ma anche perché
+                // separarla da OnAggiornaTicket la rende testabile senza WPF (vedi
+                // HomeTicketRenamePlanner). La vecchia euristica qui — raggruppare le cartelle per il
+                // ticket attualmente scritto nel nome — falliva sui treni a doppia motrice quando le
+                // quattro cartelle condividevano lo stesso ticket segnaposto (es. tutte "SRX …"): un
+                // solo gruppo, quindi ticket2 veniva sempre ignorato. HomeTicketRenamePlanner
+                // distingue le due motrici dalla loco (LogDumpFolderName.TryParse), non dal ticket.
                 var plan = await System.Threading.Tasks.Task.Run(() =>
                 {
-                    var operations = new System.Collections.Generic.List<(string OldPath, string NewPath)>();
-                    var subDirs = Directory.GetDirectories(path);
-
-                    // Trova i ticket correnti (assumendo che il ticket sia la prima parola nel nome della cartella)
-                    var currentTickets = subDirs
-                        .Select(d => new DirectoryInfo(d).Name.Split(' ').FirstOrDefault())
-                        .Where(t => !string.IsNullOrEmpty(t))
-                        .Distinct()
-                        .OrderBy(t => t) // Ordina alfabeticamente per coerenza
-                        .ToList();
-
-                    foreach (var subDir in subDirs)
-                    {
-                        var dirInfo = new DirectoryInfo(subDir);
-                        var parts = dirInfo.Name.Split(' ');
-                        if (parts.Length > 0)
-                        {
-                            string currentTicket = parts[0];
-                            string? newTicketForThisDir = null;
-
-                            // Assegna il nuovo ticket in base a se è il primo o il secondo ticket trovato
-                            if (currentTickets.Count > 0 && currentTicket == currentTickets[0] && !string.IsNullOrWhiteSpace(ticket1))
-                            {
-                                newTicketForThisDir = ticket1;
-                            }
-                            else if (currentTickets.Count > 1 && currentTicket == currentTickets[1] && !string.IsNullOrWhiteSpace(ticket2))
-                            {
-                                newTicketForThisDir = ticket2;
-                            }
-                            // Se il treno ha un solo ticket ma l'utente ha compilato ticket1 e ticket2,
-                            // il ticket1 viene applicato a tutte le cartelle di quel ticket.
-
-                            if (!string.IsNullOrEmpty(newTicketForThisDir))
-                            {
-                                parts[0] = newTicketForThisDir;
-                                string newName = string.Join(" ", parts);
-                                string? parentFolder = dirInfo.Parent?.FullName;
-                                if (parentFolder != null)
-                                {
-                                    string newPath = Path.Combine(parentFolder, newName);
-                                    if (dirInfo.FullName != newPath)
-                                    {
-                                        operations.Add((dirInfo.FullName, newPath));
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    return operations;
+                    var knownTypes = FlotteCache.GetDistinctTipiOrderByLengthDesc();
+                    return HomeTicketRenamePlanner.CreatePlan(path, ticket1, ticket2, knownTypes);
                 });
 
                 if (plan.Count == 0)

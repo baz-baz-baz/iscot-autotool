@@ -99,6 +99,21 @@ public partial class App : Application
             // 2. Motore SQLite nativo, con un fallimento visibile invece che inghiottito più tardi.
             InizializzaSqliteNativo();
 
+            // 2-bis. Allineamento forzato delle tabelle anagrafiche master (flotte, destinatari mail)
+            // al seed incorporato in questa release. Senza questo passo un aggiornamento tramite
+            // Auto-Updater lasciava intatto il vecchio train_software.db/emails.db già presente sul PC
+            // del tecnico — EstraiSeedMancanti (sopra, dentro AppConfig.Initialize) scrive un seed solo
+            // se il file non esiste ancora. Deve girare dopo l'init nativo di SQLite e prima di
+            // qualunque modulo (FlotteCache, RubricaDialog, DatabaseView) che legga questi database.
+            try
+            {
+                PersonalAutomationTool.Modules.Database.DatabaseSeedSyncService.SincronizzaAllAvvio();
+            }
+            catch (Exception ex)
+            {
+                CrashReporter.Segnala(ex, "Sincronizzazione seed database (DatabaseSeedSyncService)", fatale: false);
+            }
+
             // 3. Auto-update zero-click (§6.1-vicies-septies): niente MainWindow finché il controllo — con
             //    timeout breve, mai bloccante oltre pochi secondi — non è concluso.
             bool aggiornamentoAvviato = false;
