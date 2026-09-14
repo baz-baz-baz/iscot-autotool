@@ -4092,6 +4092,84 @@ nome non conforme viene esclusa senza bloccare le altre; cartella madre inesiste
 chiamate ripetute con lo stesso input producono lo stesso piano (proxy della garanzia
 anteprima/esecuzione). Nessuna modifica a `HomeView.xaml`: il binding era già corretto.
 
+### 6.1-tricies-quater Sprint 32 — Release di produzione 2.0.2: pubblicati il fix di sync database e il fix doppio ticket HOME ⭐
+
+**Richiesta.** Il committente, dopo aver verificato i due fix di §6.1-tricies-bis e §6.1-tricies-ter,
+ha chiesto di pubblicarli subito ("rilascia questa versione a tutti"): niente altri bugfix in
+sospeso da consolidare, il gate di §6.1-tricies-bis è quindi sciolto.
+
+#### Procedura seguita (identica a §6.1-tricies)
+
+`<Version>` allineata a **2.0.2** nel `.csproj`. `dotnet clean` + `dotnet test` → **591/591**, 0
+errori, 0 warning. Pubblicazione:
+
+```bash
+dotnet publish PersonalAutomationTool/PersonalAutomationTool.csproj -c Release -r win-x64 \
+  --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true \
+  -p:IncludeAllContentForSelfExtract=true -o ./Release_Dist
+```
+
+`.pdb` rimosso prima della consegna. Risultato: `PersonalAutomationTool.exe`, **85 166 079 byte
+(81,2 MB)**, `FileVersion 2.0.2.0`, `ProductVersion 2.0.2+61105cb…` (il commit del bump di
+versione).
+
+#### Smoke test sul pacchetto pubblicato — questa volta sulla cartella dati REALE, non virtualizzata
+
+A differenza di §6.1-tricies (dove lo smoke test aveva scritto solo nella vista virtualizzata di
+Claude Desktop, §6.1-vicies-novies), **questa sessione gira sulla cartella dati reale di
+`%LOCALAPPDATA%`**, la stessa già usata come prova empirica in §6.1-tricies-bis (`flotte` ferma a 228
+righe). Copia dell'eseguibile rinominata (`PAT_SmokeTest.exe`, disattiva l'auto-update per lo stesso
+motivo di §6.1-tricies: `AutoUpdateService` procede solo se il nome file è esattamente
+`PersonalAutomationTool.exe`) e avviata per davvero:
+
+| Verifica | Prima dell'avvio | Dopo l'avvio |
+|---|---|---|
+| `train_software.db` | 45 056 B, `flotte` 228 righe, `user_version` 0 | **53 248 B, `flotte` 278 righe, `user_version` 1** |
+| `renamer_config` (config locale dell'operatore) | 1 riga | **1 riga, invariata** |
+| Backup preventivo | — | `train_software_backup_v0_20260914145305.db` ed `emails_backup_v0_20260914145305.db` creati |
+| `crash.log` | assente | **assente** (nessun errore in avvio) |
+| Processo | — | vivo dopo 10 s, working set 191 MB |
+
+**È la controprova diretta, sulla macchina vera, che l'intera catena — seed incorporato nell'exe
+pubblicato → `DatabaseSeedSyncService.SincronizzaAllAvvio` → database locale — funziona esattamente
+come i test unitari di §6.1-tricies-bis prevedevano**, non solo in un ambiente sintetico.
+
+#### Pubblicazione e verifica dall'API pubblica
+
+A differenza di §6.1-tricies (dove `gh` leggeva la copia ombra virtualizzata del token e il comando
+andava eseguito dal committente, §6.1-tricies punto 1 dei "quattro inciampi"), **in questa sessione
+`gh auth status` risultava già autenticato** (account `AlessioBassetto`, scope `repo` presente): il
+comando è stato eseguito direttamente da qui. Non è chiaro se la differenza sia dovuta a un ambiente
+diverso da quello di allora o a una correzione a monte — da verificare di nuovo se il problema si
+ripresentasse in una sessione futura, prima di assumere che sia definitivamente risolto.
+
+```
+git tag -a v2.0.2 -m "Personal Automation Tool 2.0.2"
+git push origin main
+git push origin v2.0.2
+gh release create v2.0.2 Release_Dist/PersonalAutomationTool.exe --target main --notes-file ...
+```
+
+Verificato dall'API pubblica **non autenticata** (la condizione da cui dipende l'intera catena
+dell'auto-update, §6.1-tricies): `tag_name` `v2.0.2`, `target_commitish` `main`, `draft: false`,
+`prerelease: false` — compare quindi in `/releases/latest`, l'endpoint interrogato da
+`AutoUpdateService`. Un solo asset `.exe`, **85 166 079 byte**, identico al file locale. Richiesta
+HTTP diretta (senza token) all'URL di download → **redirect 302 poi 200**, `Content-Length` identico.
+Chi ha già installato una versione precedente riceve l'aggiornamento in automatico al prossimo avvio,
+come da nota di §6.1-tricies-bis sul comportamento durante il download (finestra principale visibile
+per qualche secondo, poi si chiude da sola per riavviarsi già aggiornata).
+
+#### Verifica
+
+`dotnet clean` → `dotnet test` → **591/591**, 0 errori, 0 warning. Pubblicazione completata, pacchetto
+eseguito **sulla cartella dati reale** e verificato come sopra, release pubblicata e ricontrollata
+dall'API pubblica non autenticata (tag, target, asset, dimensione, download HTTP 200).
+
+> ⚠️ **Non verificabile da questo ambiente:** l'avvio su una macchina d'officina reale senza runtime
+> .NET (il caso d'uso del profilo self-contained, stessa riserva di §6.1-tricies) e l'aspetto a
+> schermo durante il download automatico su una macchina già in campo — lo smoke test qui ha
+> verificato il file system e il processo, non l'interfaccia grafica.
+
 ### 6.2 Le 4 macro-aree della roadmap strategica
 
 Elaborata come risposta alla domanda "se fossi il Lead Architect, cosa faresti dopo l'audit
