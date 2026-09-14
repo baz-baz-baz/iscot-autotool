@@ -4012,13 +4012,12 @@ la sincronizzazione, `VersioneLocale`/`VersioneSeed` letti correttamente come 0/
 (1 riga, il template del tecnico) resta invariato. È la controprova diretta che il fix risolve lo
 stesso identico sintomo descritto nella richiesta, non solo lo scenario sintetico dei test.
 
-> ⚠️ **Release non pubblicata, per vincolo esplicito di questo sprint.** Il codice è pronto e la
-> sincronizzazione scatterà da sola al prossimo avvio dopo l'aggiornamento (ogni `.db` locale
-> preesistente è a `user_version` 0). Prima del prossimo tag Git: (1) consolidare gli altri bugfix in
-> sospeso; (2) allineare `<Version>` nel `.csproj` al tag come da procedura (§6.1-tricies); (3) se un
-> futuro aggiornamento di `flotte`/`indirizzi_email` deve raggiungere le macchine già installate,
-> **incrementare `PRAGMA user_version` nei due seed** (oggi `1`) insieme ai dati — senza
-> l'incremento la sincronizzazione non scatta, anche con un seed diverso.
+> **Aggiornamento (§6.1-tricies-quater): pubblicata nella 2.0.2**, insieme al fix di
+> §6.1-tricies-ter. La sincronizzazione scatterà da sola al primo avvio dopo l'aggiornamento su ogni
+> installazione esistente (ogni `.db` locale preesistente è a `user_version` 0). Promemoria per un
+> futuro aggiornamento di `flotte`/`indirizzi_email`: va **incrementato `PRAGMA user_version`** nei
+> due seed (oggi `1`) insieme ai dati — senza l'incremento la sincronizzazione non scatta, anche con
+> un seed diverso.
 
 ### 6.1-tricies-ter Sprint 31 — bug segnalato dal committente: "Aggiorna ticket" ignorava il secondo ticket sui treni a doppia motrice (E404P/ETR500) ⭐⭐
 
