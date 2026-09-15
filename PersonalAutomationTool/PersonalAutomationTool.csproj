@@ -21,7 +21,7 @@
       della release (es. tag "v1.0.5" -> <Version>1.0.5</Version>), altrimenti l'eseguibile
       pubblicato non riconoscerà se stesso come aggiornato e riproporrà l'update all'infinito.
     -->
-    <Version>2.0.3</Version>
+    <Version>2.0.4</Version>
   </PropertyGroup>
 
   <!--
