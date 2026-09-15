@@ -52,9 +52,16 @@ namespace PersonalAutomationTool.Modules.Excel
         private static readonly XNamespace S = Ns;
 
         /// <summary>
-        /// Scrive i valori indicati nella riga <paramref name="rowNumber"/> del primo foglio.
+        /// Scrive i valori indicati nella riga <paramref name="rowNumber"/> del foglio
+        /// <paramref name="sheetName"/>, risolto **per nome esatto** (case-insensitive, con trim) e
+        /// mai per posizione — vedi <see cref="GetWorksheetPartByName"/>.
         /// </summary>
         /// <param name="filePath">Percorso del workbook (.xlsx o .xlsm) da modificare sul posto.</param>
+        /// <param name="sheetName">
+        /// Nome esatto del foglio interventi, così come appare nella scheda in Excel (es. "Interventi
+        /// ETR500"). Se il workbook non contiene un foglio con questo nome, l'operazione fallisce con
+        /// <see cref="InvalidOperationException"/> invece di scrivere su un foglio diverso.
+        /// </param>
         /// <param name="rowNumber">Riga di destinazione, 1-based.</param>
         /// <param name="valuesByColumn">
         /// Valori da scrivere, indicizzati per numero di colonna 1-based. Una colonna assente dal
@@ -62,9 +69,10 @@ namespace PersonalAutomationTool.Modules.Excel
         /// comportamento del percorso Interop, che salta le celle senza valore per non sovrascrivere
         /// formule o formattazione preesistenti.
         /// </param>
-        public static void WriteRow(string filePath, int rowNumber, IReadOnlyDictionary<int, string?> valuesByColumn)
+        public static void WriteRow(string filePath, string sheetName, int rowNumber, IReadOnlyDictionary<int, string?> valuesByColumn)
         {
             ArgumentException.ThrowIfNullOrEmpty(filePath);
+            ArgumentException.ThrowIfNullOrEmpty(sheetName);
             ArgumentNullException.ThrowIfNull(valuesByColumn);
             if (rowNumber < 1) throw new ArgumentOutOfRangeException(nameof(rowNumber));
 
@@ -72,7 +80,7 @@ namespace PersonalAutomationTool.Modules.Excel
                 .Where(kv => !string.IsNullOrWhiteSpace(kv.Value))
                 .ToDictionary(kv => kv.Key, kv => kv.Value!);
 
-            TransformSheet(filePath, (reader, writer) => WriteRowCore(reader, writer, rowNumber, values));
+            TransformSheet(filePath, sheetName, (reader, writer) => WriteRowCore(reader, writer, rowNumber, values));
         }
 
         /// <summary>
@@ -82,20 +90,22 @@ namespace PersonalAutomationTool.Modules.Excel
         /// numero di riga, perché <c>XLWorkbook</c> carica l'intero workbook.
         /// </summary>
         /// <param name="filePath">Percorso del workbook.</param>
+        /// <param name="sheetName">Nome esatto del foglio interventi (vedi <see cref="WriteRow"/>).</param>
         /// <param name="keyColumns">Colonne 1-based che qualificano una riga come "compilata".</param>
         /// <returns>L'indice 1-based dell'ultima riga compilata, oppure 0 se non ne esistono.</returns>
-        public static int FindLastFilledRow(string filePath, IReadOnlyCollection<int> keyColumns)
+        public static int FindLastFilledRow(string filePath, string sheetName, IReadOnlyCollection<int> keyColumns)
         {
             ArgumentException.ThrowIfNullOrEmpty(filePath);
+            ArgumentException.ThrowIfNullOrEmpty(sheetName);
             ArgumentNullException.ThrowIfNull(keyColumns);
             if (keyColumns.Count == 0) return 0;
 
             var wanted = new HashSet<int>(keyColumns);
 
             using var document = SpreadsheetDocument.Open(filePath, isEditable: false);
-            var worksheetPart = GetFirstWorksheetPart(document.WorkbookPart
-                    ?? throw new InvalidOperationException("Workbook privo di WorkbookPart: pacchetto non valido."))
-                ?? throw new InvalidOperationException("Nessun foglio di lavoro trovato nel workbook.");
+            var workbookPart = document.WorkbookPart
+                ?? throw new InvalidOperationException("Workbook privo di WorkbookPart: pacchetto non valido.");
+            var worksheetPart = GetWorksheetPartByName(workbookPart, sheetName);
 
             using var stream = worksheetPart.GetStream(FileMode.Open, FileAccess.Read);
             using var reader = XmlReader.Create(stream, new XmlReaderSettings { CloseInput = false });
@@ -155,13 +165,16 @@ namespace PersonalAutomationTool.Modules.Excel
         /// collaterale della scrittura.
         /// </para>
         /// </summary>
+        /// <param name="filePath">Percorso del workbook.</param>
+        /// <param name="sheetName">Nome esatto del foglio interventi (vedi <see cref="WriteRow"/>).</param>
         /// <returns>Il numero di righe vuote rimosse.</returns>
-        public static int CompactEmptyRows(string filePath)
+        public static int CompactEmptyRows(string filePath, string sheetName)
         {
             ArgumentException.ThrowIfNullOrEmpty(filePath);
+            ArgumentException.ThrowIfNullOrEmpty(sheetName);
 
             int removed = 0;
-            TransformSheet(filePath, (reader, writer) => removed = CompactCore(reader, writer));
+            TransformSheet(filePath, sheetName, (reader, writer) => removed = CompactCore(reader, writer));
             return removed;
         }
 
@@ -175,14 +188,13 @@ namespace PersonalAutomationTool.Modules.Excel
         /// <c>MemoryStream</c>: su un foglio da 59 MB quest'ultimo sarebbe un'allocazione sul Large
         /// Object Heap a ogni salvataggio, la categoria di problema già affrontata in §6.1-sexies.
         /// </summary>
-        private static void TransformSheet(string filePath, Action<XmlReader, XmlWriter> transform)
+        private static void TransformSheet(string filePath, string sheetName, Action<XmlReader, XmlWriter> transform)
         {
             using var document = SpreadsheetDocument.Open(filePath, isEditable: true);
             var workbookPart = document.WorkbookPart
                 ?? throw new InvalidOperationException("Workbook privo di WorkbookPart: pacchetto non valido.");
 
-            var worksheetPart = GetFirstWorksheetPart(workbookPart)
-                ?? throw new InvalidOperationException("Nessun foglio di lavoro trovato nel workbook.");
+            var worksheetPart = GetWorksheetPartByName(workbookPart, sheetName);
 
             string tempPath = Path.Combine(Path.GetTempPath(), "pat_sheet_" + Guid.NewGuid().ToString("N") + ".xml");
             try
@@ -545,7 +557,21 @@ namespace PersonalAutomationTool.Modules.Excel
         }
 
         /// <summary>
-        /// Il foglio corrispondente alla prima scheda del workbook.
+        /// Il foglio il cui nome, in <c>workbook.xml</c>, corrisponde a <paramref name="sheetName"/>
+        /// — confronto case-insensitive e con trim, **mai per posizione**.
+        ///
+        /// <para>
+        /// <b>Perché non per posizione.</b> Il bug che questo metodo corregge: "Scrivi report" su ETR500
+        /// finiva nel foglio "istruzioni" invece che in "Interventi ETR500". Causa reale, verificata sul
+        /// file aziendale — non un'ipotesi: la prima scheda del workbook (ordine di <c>&lt;sheets&gt;</c>)
+        /// è <c>"Grafico1"</c>, un <b>foglio grafico</b> (<c>ChartsheetPart</c>), non un
+        /// <c>WorksheetPart</c>. La vecchia logica, non trovando lì un foglio di lavoro, ripiegava su
+        /// <c>WorksheetParts.FirstOrDefault()</c> — l'ordine delle relazioni nel pacchetto, non quello
+        /// delle schede — che su quel file restituiva "istruzioni" invece del foglio interventi. Lo
+        /// stesso schema (foglio grafico o "Foglio1" prima del foglio interventi in
+        /// <c>&lt;sheets&gt;</c>) si ripete su ETR1000 I-F. **Nessuna posizione è quindi affidabile**:
+        /// l'unico ancoraggio corretto è il nome del foglio, esplicito in ogni chiamata.
+        /// </para>
         ///
         /// <para>
         /// <b>Legge <c>workbook.xml</c> come XML grezzo invece di usare il DOM dell'SDK</b>
@@ -555,41 +581,38 @@ namespace PersonalAutomationTool.Modules.Excel
         /// <c>ScritturaRiga_LUnicaParteModificataEIlFoglio</c>, che elencava <c>xl/workbook.xml</c>
         /// fra le parti alterate: un effetto collaterale invisibile a un'ispezione del codice.
         /// </para>
-        ///
-        /// <para>
-        /// <b>E non è nemmeno l'ordine delle parti.</b> <c>WorksheetParts</c> le restituisce
-        /// nell'ordine delle relazioni, che non è quello delle schede: sul report reale il primo
-        /// elemento è <c>sheet2.xml</c> ("istruzioni", 12 KB) e non il foglio degli interventi.
-        /// Scrivere lì dentro significherebbe scrivere nel foglio sbagliato.
-        /// </para>
         /// </summary>
-        private static WorksheetPart? GetFirstWorksheetPart(WorkbookPart workbookPart)
+        /// <exception cref="InvalidOperationException">
+        /// Nessun foglio con questo nome nel workbook, oppure il nome corrisponde a una parte che non
+        /// è un foglio di lavoro (es. un foglio grafico). Deliberatamente esplicita: ricadere in
+        /// silenzio su un foglio diverso è esattamente il difetto che questo metodo elimina.
+        /// </exception>
+        private static WorksheetPart GetWorksheetPartByName(WorkbookPart workbookPart, string sheetName)
         {
-            try
+            using var stream = workbookPart.GetStream(FileMode.Open, FileAccess.Read);
+            var document = XDocument.Load(stream);
+
+            XNamespace rel = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+            string trimmedName = sheetName.Trim();
+
+            string? relationshipId = document.Root?
+                .Element(S + "sheets")?
+                .Elements(S + "sheet")
+                .FirstOrDefault(sheet => string.Equals(
+                    sheet.Attribute("name")?.Value?.Trim(), trimmedName, StringComparison.OrdinalIgnoreCase))
+                ?.Attribute(rel + "id")?.Value;
+
+            if (string.IsNullOrEmpty(relationshipId))
             {
-                using var stream = workbookPart.GetStream(FileMode.Open, FileAccess.Read);
-                var document = XDocument.Load(stream);
-
-                XNamespace rel = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
-
-                string? relationshipId = document.Root?
-                    .Element(S + "sheets")?
-                    .Elements(S + "sheet")
-                    .FirstOrDefault()?
-                    .Attribute(rel + "id")?.Value;
-
-                if (!string.IsNullOrEmpty(relationshipId) &&
-                    workbookPart.GetPartById(relationshipId) is WorksheetPart part)
-                {
-                    return part;
-                }
-            }
-            catch
-            {
-                // Workbook non interpretabile come XML: si ripiega sull'ordine delle parti.
+                throw new InvalidOperationException($"Foglio interventi non trovato nel file Excel: '{sheetName}'.");
             }
 
-            return workbookPart.WorksheetParts.FirstOrDefault();
+            if (workbookPart.GetPartById(relationshipId) is not WorksheetPart part)
+            {
+                throw new InvalidOperationException($"Il foglio '{sheetName}' non è un foglio di lavoro valido nel file Excel.");
+            }
+
+            return part;
         }
 
         private static int ParseRowIndex(string? value) =>

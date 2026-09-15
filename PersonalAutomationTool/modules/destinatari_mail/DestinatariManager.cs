@@ -125,12 +125,65 @@ namespace PersonalAutomationTool.Modules.DestinatariMail
                 return data;
             }
 
-            if (MigrateLegacyTrainName(data, "ETR1000FH", "ETR1001FH"))
+            bool changed = MigrateLegacyTrainName(data, "ETR1000FH", "ETR1001FH");
+            changed |= ApplyKnownRecipientUpdates(data);
+
+            if (changed)
             {
                 SaveConfig(data);
             }
 
             return data;
+        }
+
+        /// <summary>
+        /// Destinatari "Passaggio di consegne" aggiornati dal committente (Sprint 33,
+        /// PROJECT_MEMORY.md §6.1-tricies-quinquies) per E404P, ETR700 ed ETR1000. Coppia
+        /// vecchio/nuovo valore, non solo il nuovo: serve per riconoscere — e aggiornare — solo le
+        /// voci ancora al valore di default precedente, esattamente come <see cref="MigrateLegacyTrainName"/>
+        /// fa per il rename di flotta. Un <c>destinatari.json</c> già personalizzato a mano dal
+        /// tecnico su questa azione resta intatto.
+        /// </summary>
+        private static readonly (string TrainName, string ActionName, string OldTo, string OldCc, string NewTo, string NewCc)[] KnownRecipientUpdates =
+        [
+            ("E404P", "Passaggio di consegne",
+                "vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com",
+                "Service_ISCOT_IMC_AV_Milano@it.iscot.com",
+                "Service_ISCOT_IMC_AV_Milano@it.iscot.com",
+                "vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com; matteo.masciocchi@iscot.it"),
+            ("ETR700", "Passaggio di consegne",
+                "etr700_analisidiagssb_sts@hitachirail.com",
+                "Service_ISCOT_IMC_AV_Milano@it.iscot.com; vincenzo.loporchio@hitachirail.com; salvatore.cascegna@hitachirail.com; francesco.montanaro@hitachirail.com; team-adv@advservicesrl.it; salvatore.demartino@hitachirail.com; mario.arcini@hitachirail.com",
+                "Service_ISCOT_IMC_AV_Milano@it.iscot.com",
+                "vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com; matteo.masciocchi@iscot.it; mario.arcini@hitachirail.com"),
+            ("ETR1000", "Passaggio di consegne",
+                "etr1000_analisidiagssb_sts@hitachirail.com",
+                "Service_ISCOT_IMC_AV_Milano@it.iscot.com; vincenzo.loporchio@hitachirail.com; salvatore.cascegna@hitachirail.com; francesco.montanaro@hitachirail.com; team-adv@advservicesrl.it; salvatore.demartino@hitachirail.com; mario.arcini@hitachirail.com",
+                "Service_ISCOT_IMC_AV_Milano@it.iscot.com",
+                "vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com; matteo.masciocchi@iscot.it; mario.arcini@hitachirail.com"),
+        ];
+
+        /// <summary>
+        /// Applica <see cref="KnownRecipientUpdates"/> alle voci ancora al valore precedente.
+        /// Restituisce <see langword="true"/> se ha modificato almeno un'azione.
+        /// </summary>
+        internal static bool ApplyKnownRecipientUpdates(ObservableCollection<TrainConfig> config)
+        {
+            bool changed = false;
+
+            foreach (var (trainName, actionName, oldTo, oldCc, newTo, newCc) in KnownRecipientUpdates)
+            {
+                var train = config.FirstOrDefault(t => t.TrainName.Equals(trainName, StringComparison.OrdinalIgnoreCase));
+                var action = train?.Actions.FirstOrDefault(a => a.ActionName.Equals(actionName, StringComparison.OrdinalIgnoreCase));
+                if (action == null) continue;
+                if (action.ToRecipients != oldTo || action.CcRecipients != oldCc) continue;
+
+                action.ToRecipients = newTo;
+                action.CcRecipients = newCc;
+                changed = true;
+            }
+
+            return changed;
         }
 
         /// <summary>
@@ -199,7 +252,7 @@ namespace PersonalAutomationTool.Modules.DestinatariMail
                     TrainName = "E404P",
                     Actions =
                     [
-                        new() { ActionName = "Passaggio di consegne", ToRecipients = "vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com", CcRecipients = "Service_ISCOT_IMC_AV_Milano@it.iscot.com" },
+                        new() { ActionName = "Passaggio di consegne", ToRecipients = "Service_ISCOT_IMC_AV_Milano@it.iscot.com", CcRecipients = "vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com; matteo.masciocchi@iscot.it" },
                         new() { ActionName = "Chiusura Ticket", ToRecipients = "etr500_analisidiagssb_asts@hitachirail.com", CcRecipients = "Service_ISCOT_IMC_AV_Milano@it.iscot.com; team-adv@advservicesrl.it; vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com; salvatore.cascegna@hitachirail.com; francesco.montanaro@hitachirail.com" },
                         new() { ActionName = "Log Dump", ToRecipients = "etr500_analisidiagssb_sts@hitachirail.com", CcRecipients = "vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com; salvatore.cascegna@hitachirail.com; francesco.montanaro@hitachirail.com; salvatore.demartino@hitachirail.com; Service_ISCOT_IMC_AV_Milano@it.iscot.com" },
                         new() { ActionName = "Scadenza 6 Mesi", ToRecipients = "vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com", CcRecipients = "Service_ISCOT_IMC_AV_Milano@it.iscot.com" },
@@ -214,7 +267,7 @@ namespace PersonalAutomationTool.Modules.DestinatariMail
                     TrainName = "ETR700",
                     Actions =
                     [
-                        new() { ActionName = "Passaggio di consegne", ToRecipients = "etr700_analisidiagssb_sts@hitachirail.com", CcRecipients = "Service_ISCOT_IMC_AV_Milano@it.iscot.com; vincenzo.loporchio@hitachirail.com; salvatore.cascegna@hitachirail.com; francesco.montanaro@hitachirail.com; team-adv@advservicesrl.it; salvatore.demartino@hitachirail.com; mario.arcini@hitachirail.com" },
+                        new() { ActionName = "Passaggio di consegne", ToRecipients = "Service_ISCOT_IMC_AV_Milano@it.iscot.com", CcRecipients = "vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com; matteo.masciocchi@iscot.it; mario.arcini@hitachirail.com" },
                         new() { ActionName = "Chiusura Ticket", ToRecipients = "etr700_analisidiagssb_sts@hitachirail.com", CcRecipients = "Service_ISCOT_IMC_AV_Milano@it.iscot.com; vincenzo.loporchio@hitachirail.com; salvatore.cascegna@hitachirail.com; francesco.montanaro@hitachirail.com; team-adv@advservicesrl.it; salvatore.demartino@hitachirail.com; mario.arcini@hitachirail.com" }
                     ]
                 },
@@ -223,7 +276,7 @@ namespace PersonalAutomationTool.Modules.DestinatariMail
                     TrainName = "ETR1000",
                     Actions =
                     [
-                        new() { ActionName = "Passaggio di consegne", ToRecipients = "etr1000_analisidiagssb_sts@hitachirail.com", CcRecipients = "Service_ISCOT_IMC_AV_Milano@it.iscot.com; vincenzo.loporchio@hitachirail.com; salvatore.cascegna@hitachirail.com; francesco.montanaro@hitachirail.com; team-adv@advservicesrl.it; salvatore.demartino@hitachirail.com; mario.arcini@hitachirail.com" },
+                        new() { ActionName = "Passaggio di consegne", ToRecipients = "Service_ISCOT_IMC_AV_Milano@it.iscot.com", CcRecipients = "vincenzo.loporchio@hitachirail.com; alfredo.foti@hitachirail.com; matteo.masciocchi@iscot.it; mario.arcini@hitachirail.com" },
                         new() { ActionName = "Chiusura Ticket", ToRecipients = "etr1000_analisidiagssb_sts@hitachirail.com", CcRecipients = "Service_ISCOT_IMC_AV_Milano@it.iscot.com; vincenzo.loporchio@hitachirail.com; salvatore.cascegna@hitachirail.com; francesco.montanaro@hitachirail.com; team-adv@advservicesrl.it; salvatore.demartino@hitachirail.com; mario.arcini@hitachirail.com" },
                         new() { ActionName = "Scadenza 6 mesi", ToRecipients = "etr1000_analisidiagssb_sts@hitachirail.com", CcRecipients = "Service_ISCOT_IMC_AV_Milano@it.iscot.com; vincenzo.loporchio@hitachirail.com; salvatore.cascegna@hitachirail.com; francesco.montanaro@hitachirail.com; team-adv@advservicesrl.it; salvatore.demartino@hitachirail.com; mario.arcini@hitachirail.com" },
                         new() { ActionName = "Scadenza 12 mesi", ToRecipients = "etr1000_analisidiagssb_sts@hitachirail.com", CcRecipients = "Service_ISCOT_IMC_AV_Milano@it.iscot.com; vincenzo.loporchio@hitachirail.com; salvatore.cascegna@hitachirail.com; francesco.montanaro@hitachirail.com; team-adv@advservicesrl.it; salvatore.demartino@hitachirail.com; mario.arcini@hitachirail.com" },

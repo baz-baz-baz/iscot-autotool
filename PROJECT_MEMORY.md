@@ -4170,6 +4170,167 @@ dall'API pubblica non autenticata (tag, target, asset, dimensione, download HTTP
 > schermo durante il download automatico su una macchina già in campo — lo smoke test qui ha
 > verificato il file system e il processo, non l'interfaccia grafica.
 
+### 6.1-tricies-quinquies Sprint 33 — bug critico bloccante: "Scrivi report" su ETR500 scriveva nel foglio "istruzioni" ⭐⭐⭐
+
+**Richiesta.** Il committente ha segnalato che "Scrivi report" sulla flotta ETR500 inserisce i dati
+nel foglio "istruzioni" invece che nel foglio operativo, ipotizzando un accesso posizionale
+(`WorksheetParts.First()` o foglio attivo di default) in `ReportInterventiWriter`, e ha chiesto
+un'analisi completa su tutte e quattro le flotte, non solo un patch mirato su ETR500.
+
+#### Causa radice: non è l'ipotesi del committente, ma un caso che quella stessa protezione non copriva
+
+`GetFirstWorksheetPart` (introdotta allo Sprint 22, §6.1-vicies-quater) **non era** un accesso
+posizionale ingenuo: risolveva già il primo `<sheet>` per **ordine di scheda** (leggendo
+`workbook.xml` come XML grezzo, non `WorksheetParts.First()` — quello era il bug che quella stessa
+funzione aveva corretto, vedi §6.1-vicies-quater) e solo se il `r:id` non risolveva a un
+`WorksheetPart` ripiegava su `WorksheetParts.FirstOrDefault()`. Il difetto era nel presupposto
+implicito: che la prima scheda di **ogni** report fosse sempre il foglio Interventi.
+
+Verificato sui quattro file aziendali reali di questa macchina (`%USERPROFILE%\Hitachi Group\SSB_SST
+- Interventi …`, non un'ipotesi — `xl/workbook.xml` e `xl/_rels/workbook.xml.rels` letti dai file
+correnti):
+
+| Flotta (`SelectedTrain`) | Ordine schede reale | Foglio Interventi | Bug presente? |
+|---|---|---|---|
+| E404P (ETR500) | **"Grafico1" (chartsheet)**, "Interventi ETR500", "istruzioni" | "Interventi ETR500" | **Sì** |
+| ETR1000 I-F | **"Grafico1" (chartsheet)**, "Interventi ETR1000 FR", "Foglio1", "istruzioni" | "Interventi ETR1000 FR" | **Sì** (stesso schema, non ancora segnalato) |
+| ETR700 | "Interventi ETR700", "Foglio1", "istruzioni" | "Interventi ETR700" | No (già prima scheda) |
+| ETR1000 / 1000FH | "Interventi ETR1000", "istruzioni" | "Interventi ETR1000" | No (già prima scheda) |
+
+Su ETR500 ed ETR1000 I-F la prima scheda è un **foglio grafico** (`ChartsheetPart`, non
+`WorksheetPart`): `workbookPart.GetPartById(rId1) is WorksheetPart part` fallisce, e il codice
+ripiegava su `WorksheetParts.FirstOrDefault()` — l'ordine delle **relazioni** nel pacchetto, non
+quello delle schede — che sui file reali restituiva il foglio "istruzioni" (`worksheets/sheet2.xml`
+elencato prima di `sheet1.xml` in `xl/_rels/workbook.xml.rels`). Su ETR700 ed ETR1000/1000FH il
+foglio Interventi è la prima scheda **e** un `WorksheetPart` vero, quindi la risoluzione riusciva già
+prima di questo sprint: non è un caso che il committente abbia segnalato solo ETR500, ma non è
+nemmeno vero — come l'audit chiedeva di verificare — che le altre flotte fossero al sicuro per
+costruzione: ETR1000 I-F ha lo stesso schema e sarebbe stato il prossimo a manifestarsi.
+
+Il percorso di **lettura** delle intestazioni (`ExcelViewModel.LoadExcelFieldsAsync`, ClosedXML
+`workbook.Worksheets.FirstOrDefault()`) non è invece mai stato affetto: `IXLWorkbook.Worksheets`
+espone solo i fogli di lavoro reali, saltando i fogli grafico — per questo i campi del form
+comparivano corretti anche quando la scrittura andava nel foglio sbagliato, e il sintomo si vedeva
+solo dopo "Scrivi report", aprendo il file.
+
+#### `ReportInterventiWriter.GetWorksheetPartByName` — risoluzione per nome, nessun ripiego posizionale
+
+`GetFirstWorksheetPart` è stata **rimossa**, non corretta: qualunque forma di "primo foglio" —
+ordine di scheda o ordine di relazione — resta un'ipotesi sulla struttura del file, ed è esattamente
+il tipo di ipotesi che ha causato questo bug. Al suo posto, `GetWorksheetPartByName(workbookPart,
+sheetName)`:
+1. Cerca in `workbook.xml` (letto come XML grezzo, per lo stesso motivo di sempre — vedi
+   §6.1-vicies-quater — non toccare il DOM dell'SDK) l'elemento `<sheet>` il cui attributo `name`
+   corrisponde a `sheetName` **case-insensitive e con trim**.
+2. Risolve il `r:id` trovato con `workbookPart.GetPartById`.
+3. Se nessuna scheda corrisponde, o se la parte risolta non è un `WorksheetPart` (es. il nome
+   punta a un foglio grafico), solleva `InvalidOperationException` con il nome cercato —
+   esplicita e controllata, mai un ripiego silenzioso su un foglio diverso.
+
+`WriteRow`, `FindLastFilledRow` e `CompactEmptyRows` ora richiedono tutte un parametro `sheetName`
+esplicito (breaking change interno, tre chiamanti in produzione, tutti in `ExcelViewModel`).
+
+#### `ReportSheetNames.cs` — nome del foglio per flotta, verificato sui file reali
+
+Nuova classe `Modules.Excel.ReportSheetNames.GetInterventiSheetName(selectedTrain)`, uno `switch`
+che mappa i quattro valori di `SelectedTrain` ai nomi di foglio della tabella sopra — **non
+indovinati**: estratti dai quattro file `Report Interventi *.xlsx` correnti su questa macchina
+(15/09/2026, gli stessi usati per la tabella). Un valore di `SelectedTrain` non riconosciuto solleva
+`InvalidOperationException` invece di scrivere su un foglio indovinato. `ExecuteScriviReport` in
+`ExcelViewModel` risolve il nome prima del `Task.Run` e lo passa a entrambe le chiamate
+(`FindLastFilledRow`, `WriteRow`); un'eccezione qui rientra nel `catch (Exception ex)` già presente
+attorno al metodo, che la mostra in una `MessageBox` invece di lasciare l'app in uno stato
+inconsistente.
+
+> ⚠️ **Se in futuro cambia il nome di una scheda** (es. il committente rinomina "Interventi ETR500"
+> nel file aziendale), `ReportSheetNames` va aggiornata di conseguenza: è l'unico punto che conosce
+> quei nomi, per costruzione — non serve toccare `ReportInterventiWriter`.
+
+#### Verifica
+
+Nuovo `PersonalAutomationTool.Tests\Modules\Excel\ReportTemplateBuilder.CreateMultiSheet`: workbook
+a due fogli con "istruzioni" **prima**, in ordine di scheda, del foglio Interventi — la forma esatta
+del file ETR500 reale (foglio grafico escluso, irrilevante per il test: basta che il foglio
+Interventi non sia il primo). Quattro test nuovi in `ReportInterventiWriterTests.cs`:
+`ScritturaRiga_ScriveSoloNelFoglioInterventi_NonInIstruzioni` (scrittura sul foglio giusto, foglio
+istruzioni byte-per-byte immutato), `ScritturaRiga_FoglioNonTrovato_SollevaEccezioneENonModificaIlFile`
+(nome inesistente → eccezione, file bit-per-bit invariato — nessuna scrittura parziale prima
+dell'eccezione), `FindLastFilledRow_FoglioNonTrovato_SollevaEccezione`, e
+`ScritturaRiga_NomeFoglioConSpaziESpazioNonSensibileAMaiuscole_TrovaComunqueIlFoglio` (robustezza del
+confronto nome). `dotnet build` sull'intera `.sln` → **0 errori, 0 warning**. `dotnet test` →
+**595/595** (591 → 595, +4), incluse tutte le suite di integrità strutturale di §6.1-vicies-quater
+(nessuna riscritta, solo esteso il parametro `sheetName` ai loro `WriteRow`/`FindLastFilledRow`/
+`CompactEmptyRows` tramite le costanti `SheetName` già esposte da `ReportTemplateBuilder` e
+`BloatedReportBuilder`).
+
+> ⚠️ **Non verificabile da questo ambiente:** l'apertura in Excel del file ETR500 reale dopo "Scrivi
+> report" (stessa riserva di §6.1-vicies-quater(a)-(b), qui più urgente perché è il bug segnalato) —
+> da fare al prossimo turno in officina prima di chiudere lo sprint.
+
+#### La seconda richiesta del committente — aggiornamento database Destinatari Mail — chiarita dopo un giro di domande, `mario.arcini@hitachirail.com` aggiunto al seed
+
+Prima verifica: `emails.db` locale (`%LOCALAPPDATA%\iscot-autotool\modules\database\emails.db`) e
+quello del progetto erano **byte per byte identici** (22 righe, `user_version` 1 su entrambi, stesso
+per i due backup preventivi già presenti sulla macchina — vedi §6.1-tricies-quater); stesso esito per
+`destinatari.json`, identico alla configurazione di default hardcoded in
+`DestinatariManager.GenerateDefaultConfig`. Nessuna "nuova sezione" trovata da nessuna parte: **non è
+stata inventata** una sezione plausibile per non lasciare la richiesta senza risposta — il committente
+è stato ricontattato per i valori esatti.
+
+Risposta ottenuta: l'indirizzo aggiunto è `mario.arcini@hitachirail.com`, un contatto che **esisteva
+già** nelle liste CC hardcoded di `destinatari.json` (ETR700, ETR1000, ETR1000IF, ETR1001FH — tutte
+tranne E404P) ma **non** come scheda propria nella Rubrica (`indirizzi_email`): comparire in un CC
+automatico e comparire nel dialog di selezione manuale (`RubricaDialog`, ricerca per nome/email) sono
+due cose diverse, ed era la seconda a mancare. Inserito nel seed del progetto
+(`PersonalAutomationTool\modules\database\emails.db`) con `categoria = "Hitachi Rail"` — la stessa dei
+colleghi con cui condivide le liste CC (Salvatore DeMartino, Francesco Montanaro, Salvatore Cascegna,
+Vincenzo Loporchio) — e `PRAGMA user_version` portato da 1 a 2, così
+`DatabaseSeedSyncService.SincronizzaAllAvvio` lo distribuisce a ogni macchina al primo avvio della
+prossima release (stesso meccanismo di §6.1-tricies-bis, nessun codice nuovo necessario: la modifica è
+**solo dati**). Nessuna modifica a `RubricaDialog`/`DatabaseView`: la query su `indirizzi_email` non ha
+filtri fissi sulla colonna `categoria`, quindi la nuova riga compare già oggi in entrambe le schermate
+non appena il database viene sincronizzato — coerente con quanto già annotato qui sopra prima della
+risposta del committente.
+
+La seconda parte della richiesta ("i passaggi di consegne ho modificato totalmente i destinatari") è
+stata chiarita in un secondo giro: il committente ha fornito i nuovi destinatari "Passaggio di
+consegne" per **tre** delle cinque flotte gestite da `destinatari.json` — E404P (ETR500), ETR700 ed
+ETR1000 (l'etichetta `TrainName`, non "ETR1000 / 1000FH"). ETR1000IF ed ETR1001FH **non sono state
+menzionate** e restano ai valori precedenti — nessuna estensione non richiesta.
+
+| Flotta | `ToRecipients` nuovo | `CcRecipients` nuovo |
+|---|---|---|
+| E404P | `Service_ISCOT_IMC_AV_Milano@it.iscot.com` | `vincenzo.loporchio@…; alfredo.foti@…; matteo.masciocchi@iscot.it` |
+| ETR700 | `Service_ISCOT_IMC_AV_Milano@it.iscot.com` | `vincenzo.loporchio@…; alfredo.foti@…; matteo.masciocchi@iscot.it; mario.arcini@…` |
+| ETR1000 | `Service_ISCOT_IMC_AV_Milano@it.iscot.com` | `vincenzo.loporchio@…; alfredo.foti@…; matteo.masciocchi@iscot.it; mario.arcini@…` |
+
+A differenza di `indirizzi_email` (SQLite, sincronizzata a forza da `DatabaseSeedSyncService` per
+versione — vedi sopra), `destinatari.json` **non ha alcun meccanismo di sync forzato**: `AppPaths`
+copia il file solo se manca del tutto sulla macchina di destinazione, mai lo sovrascrive. Aggiornare
+`DestinatariManager.GenerateDefaultConfig` da solo avrebbe quindi corretto solo le installazioni
+nuove, lasciando invariate tutte le macchine già provisionate — compresa questa. Applicato invece lo
+stesso schema già usato per il rename "ETR1000FH"→"ETR1001FH" (`MigrateLegacyTrainName`): nuovo
+`ApplyKnownRecipientUpdates`, chiamato da `LoadConfig` insieme alla migrazione esistente, che
+aggiorna un'azione **solo se il suo valore corrente coincide esattamente con il vecchio default noto**
+— una personalizzazione fatta a mano dal tecnico su "Passaggio di consegne" (valore diverso sia dal
+vecchio sia dal nuovo default) resta intatta per costruzione, stessa filosofia di
+`MigrateLegacyTrainName`. `GenerateDefaultConfig` aggiornata in parallelo per le installazioni nuove.
+Applicato anche a mano al `destinatari.json` di questa macchina (era ancora al vecchio default,
+verificato prima di modificarlo), così il cambiamento è visibile subito senza attendere un riavvio.
+
+Nota anche per chi riprende: i nomi di classe citati nella richiesta originale (`DestinatarioModel.cs`,
+`DestinatariViewModel.cs`) **non esistono** in questo codebase — il lettore reale di `indirizzi_email`
+è `RubricaContact`, classe interna a `modules/destinatari_mail/RubricaDialog.xaml.cs`; i destinatari
+"Passaggio di consegne" vivono invece in `destinatari.json`/`DestinatariManager`, un sistema JSON
+completamente separato dal database SQLite.
+
+Nuovi test in `PersonalAutomationTool.Tests\Modules\DestinatariMail\DestinatariManagerRecipientUpdateTests.cs`
+(stesso schema backup/restore di `DestinatariManagerEtr1001FhTests`): i tre nuovi default sono quelli
+attesi; un `destinatari.json` ancora al vecchio valore viene aggiornato **e persistito su disco**; una
+personalizzazione del tecnico (valore diverso da vecchio e nuovo) non viene toccata; ETR1000IF ed
+ETR1001FH restano invariate anche quando sono ancora al vecchio valore condiviso con ETR1000. `dotnet
+build` → 0 errori, 0 warning. `dotnet test` → **601/601** (595 → 601, +6).
+
 ### 6.2 Le 4 macro-aree della roadmap strategica
 
 Elaborata come risposta alla domanda "se fossi il Lead Architect, cosa faresti dopo l'audit
@@ -4807,3 +4968,16 @@ non può proteggerle. Ogni modifica al parsing va verificata su casi reali presi
     devono essere state toccate da questo intervento.
     **(e)** Premere "Pulisci": anche il testo digitato nella nuova ComboBox deve svuotarsi, come gli
     altri campi.
+39. **EXCEL / "Scrivi report" scrive nel foglio giusto** (§6.1-tricies-quinquies) ⭐⭐⭐ *il bug critico
+    bloccante segnalato dal committente: la verifica che conta più di tutte in questo sprint, va fatta
+    su un file reale, non sul template di test.*
+    **(a)** Su una **copia** di un Report Interventi ETR500 reale, selezionare la flotta E404P, "Scrivi
+    report" e aprire la copia in Excel: la riga nuova deve comparire nel foglio "Interventi ETR500",
+    **non** in "istruzioni" — controllare entrambe le schede. Ripetere su ETR1000 I-F (stesso schema:
+    foglio grafico prima del foglio Interventi): la riga deve finire in "Interventi ETR1000 FR".
+    **(b)** Ripetere su ETR700 ed ETR1000/1000FH (dove il bug non si manifestava): la riga deve
+    continuare a comparire nel foglio Interventi come prima, nessuna regressione.
+    **(c)** Rinominare temporaneamente, su una copia, il foglio Interventi (es. "Interventi ETR500" →
+    "Interventi ETR500 OLD") e premere "Scrivi report": deve comparire un messaggio d'errore leggibile
+    ("Foglio interventi non trovato…"), **non** un crash né una scrittura silenziosa in un foglio
+    diverso. Ripristinare il nome dopo la prova.

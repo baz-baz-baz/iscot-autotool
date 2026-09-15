@@ -153,6 +153,60 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
             workbookPart.Workbook.Save();
         }
 
+        /// <summary>
+        /// Crea un workbook a **due fogli**, che riproduce la forma del report reale che ha causato il
+        /// bug ETR500 (PROJECT_MEMORY.md): una scheda "istruzioni" **prima**, in ordine di tabulazione,
+        /// del foglio Interventi. Un writer che risolve il foglio per posizione invece che per nome
+        /// scriverebbe qui nel foglio sbagliato — esattamente ciò che
+        /// <c>ScritturaRiga_ScriveSoloNelFoglioInterventi_NonInIstruzioni</c> verifica.
+        /// </summary>
+        /// <param name="filePath">Percorso del file da creare.</param>
+        /// <param name="targetSheetName">Nome del foglio Interventi (secondo in ordine di scheda).</param>
+        /// <param name="instructionsSheetName">Nome del foglio istruzioni (primo in ordine di scheda).</param>
+        internal static void CreateMultiSheet(string filePath, string targetSheetName, string instructionsSheetName = "Istruzioni")
+        {
+            using var document = SpreadsheetDocument.Create(filePath, SpreadsheetDocumentType.Workbook);
+
+            var workbookPart = document.AddWorkbookPart();
+            workbookPart.Workbook = new Workbook();
+
+            var stylesPart = workbookPart.AddNewPart<WorkbookStylesPart>();
+            stylesPart.Stylesheet = BuildStylesheet();
+            stylesPart.Stylesheet.Save();
+
+            // BuildSheetData() referenzia le stringhe condivise "Milano"/"Correttiva" per indice:
+            // la parte deve esistere perché il pacchetto resti valido, come in Create().
+            var sharedStringPart = workbookPart.AddNewPart<SharedStringTablePart>();
+            sharedStringPart.SharedStringTable = new SharedStringTable(
+                new SharedStringItem(new Text("Milano")),
+                new SharedStringItem(new Text("Correttiva")));
+            sharedStringPart.SharedStringTable.Save();
+
+            // --- Foglio istruzioni: contenuto arbitrario che deve restare intatto. ---
+            var instructionsPart = workbookPart.AddNewPart<WorksheetPart>();
+            var instructionsSheetData = new SheetData();
+            instructionsSheetData.AppendChild(BuildRow(1, (1, "A1", "Leggere attentamente prima di compilare", 1U)));
+            instructionsSheetData.AppendChild(BuildRow(2, (1, "A2", "Non modificare le altre schede", 0U)));
+            var instructionsWorksheet = new Worksheet(new SheetFormatProperties { DefaultRowHeight = 15D }, instructionsSheetData);
+            instructionsPart.Worksheet = instructionsWorksheet;
+            instructionsPart.Worksheet.Save();
+
+            // --- Foglio Interventi: stessa forma di Create() (intestazioni + 3 righe dati). ---
+            var targetPart = workbookPart.AddNewPart<WorksheetPart>();
+            var targetSheetData = BuildSheetData();
+            var targetWorksheet = new Worksheet(new SheetFormatProperties { DefaultRowHeight = 15D }, targetSheetData);
+            targetPart.Worksheet = targetWorksheet;
+            targetPart.Worksheet.Save();
+
+            // L'ordine delle schede è deliberato: "istruzioni" prima, il foglio Interventi dopo — la
+            // forma esatta del report ETR500 reale che scriveva nel foglio sbagliato.
+            workbookPart.Workbook.AppendChild(new Sheets(
+                new Sheet { Id = workbookPart.GetIdOfPart(instructionsPart), SheetId = 1U, Name = instructionsSheetName },
+                new Sheet { Id = workbookPart.GetIdOfPart(targetPart), SheetId = 2U, Name = targetSheetName }));
+
+            workbookPart.Workbook.Save();
+        }
+
         private static Stylesheet BuildStylesheet()
         {
             return new Stylesheet(

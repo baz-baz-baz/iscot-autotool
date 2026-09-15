@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -78,7 +78,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
         {
             var (working, pristine) = CreateTemplatePair("vba");
 
-            ReportInterventiWriter.WriteRow(working, rowNumber: 5, RigaDiProva);
+            ReportInterventiWriter.WriteRow(working, ReportTemplateBuilder.SheetName, rowNumber: 5, RigaDiProva);
 
             var before = ReadPackageEntries(pristine);
             var after = ReadPackageEntries(working);
@@ -95,7 +95,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
         {
             var (working, pristine) = CreateTemplatePair("styles");
 
-            ReportInterventiWriter.WriteRow(working, rowNumber: 5, RigaDiProva);
+            ReportInterventiWriter.WriteRow(working, ReportTemplateBuilder.SheetName, rowNumber: 5, RigaDiProva);
 
             var before = ReadPackageEntries(pristine);
             var after = ReadPackageEntries(working);
@@ -112,7 +112,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
         {
             var (working, pristine) = CreateTemplatePair("table_rels");
 
-            ReportInterventiWriter.WriteRow(working, rowNumber: 5, RigaDiProva);
+            ReportInterventiWriter.WriteRow(working, ReportTemplateBuilder.SheetName, rowNumber: 5, RigaDiProva);
 
             var before = ReadPackageEntries(pristine);
             var after = ReadPackageEntries(working);
@@ -129,7 +129,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
         {
             var (working, pristine) = CreateTemplatePair("parts");
 
-            ReportInterventiWriter.WriteRow(working, rowNumber: 5, RigaDiProva);
+            ReportInterventiWriter.WriteRow(working, ReportTemplateBuilder.SheetName, rowNumber: 5, RigaDiProva);
 
             var before = ReadPackageEntries(pristine).Keys.OrderBy(k => k, StringComparer.Ordinal);
             var after = ReadPackageEntries(working).Keys.OrderBy(k => k, StringComparer.Ordinal);
@@ -142,7 +142,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
         {
             var (working, pristine) = CreateTemplatePair("only_sheet");
 
-            ReportInterventiWriter.WriteRow(working, rowNumber: 5, RigaDiProva);
+            ReportInterventiWriter.WriteRow(working, ReportTemplateBuilder.SheetName, rowNumber: 5, RigaDiProva);
 
             var before = ReadPackageEntries(pristine);
             var after = ReadPackageEntries(working);
@@ -219,7 +219,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
         {
             var (working, pristine) = CreateTemplatePair("struct_" + elementName);
 
-            ReportInterventiWriter.WriteRow(working, rowNumber: 5, RigaDiProva);
+            ReportInterventiWriter.WriteRow(working, ReportTemplateBuilder.SheetName, rowNumber: 5, RigaDiProva);
 
             var beforeElement = ReadSheetXml(pristine).Root!.Element(S + elementName);
             var afterElement = ReadSheetXml(working).Root!.Element(S + elementName);
@@ -236,7 +236,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
         {
             var (working, _) = CreateTemplatePair("valid");
 
-            ReportInterventiWriter.WriteRow(working, rowNumber: 5, RigaDiProva);
+            ReportInterventiWriter.WriteRow(working, ReportTemplateBuilder.SheetName, rowNumber: 5, RigaDiProva);
 
             // Se l'ordine degli elementi o dei riferimenti fosse errato, l'apertura fallirebbe.
             using var document = SpreadsheetDocument.Open(working, isEditable: false);
@@ -258,7 +258,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
         {
             var (working, pristine) = CreateTemplatePair("diff");
 
-            ReportInterventiWriter.WriteRow(working, rowNumber: 5, RigaDiProva);
+            ReportInterventiWriter.WriteRow(working, ReportTemplateBuilder.SheetName, rowNumber: 5, RigaDiProva);
 
             var beforeSheet = ReadSheetXml(pristine).Root!;
             var afterSheet = ReadSheetXml(working).Root!;
@@ -295,7 +295,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
         {
             var (working, pristine) = CreateTemplatePair("formula");
 
-            ReportInterventiWriter.WriteRow(working, rowNumber: 5, RigaDiProva);
+            ReportInterventiWriter.WriteRow(working, ReportTemplateBuilder.SheetName, rowNumber: 5, RigaDiProva);
 
             static XElement? CellOf(XDocument doc, string reference) =>
                 doc.Root!.Element(S + "sheetData")!.Elements(S + "row")
@@ -317,7 +317,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
             // formattazione: lo scrittore chirurgico deve comportarsi allo stesso modo.
             var (working, _) = CreateTemplatePair("skip_empty");
 
-            ReportInterventiWriter.WriteRow(working, rowNumber: 5, RigaDiProva);
+            ReportInterventiWriter.WriteRow(working, ReportTemplateBuilder.SheetName, rowNumber: 5, RigaDiProva);
 
             var newRow = ReadSheetXml(working).Root!
                 .Element(S + "sheetData")!.Elements(S + "row")
@@ -334,7 +334,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
         {
             var (working, _) = CreateTemplatePair("styleinherit");
 
-            ReportInterventiWriter.WriteRow(working, rowNumber: 5, RigaDiProva);
+            ReportInterventiWriter.WriteRow(working, ReportTemplateBuilder.SheetName, rowNumber: 5, RigaDiProva);
 
             var sheet = ReadSheetXml(working).Root!.Element(S + "sheetData")!;
             var previousRow = sheet.Elements(S + "row").First(r => r.Attribute("r")?.Value == "4");
@@ -353,7 +353,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
         {
             var (working, _) = CreateTemplatePair("date");
 
-            ReportInterventiWriter.WriteRow(working, rowNumber: 5, RigaDiProva);
+            ReportInterventiWriter.WriteRow(working, ReportTemplateBuilder.SheetName, rowNumber: 5, RigaDiProva);
 
             var cell = ReadSheetXml(working).Root!
                 .Element(S + "sheetData")!.Elements(S + "row")
@@ -371,7 +371,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
         {
             var (working, pristine) = CreateTemplatePair("inline");
 
-            ReportInterventiWriter.WriteRow(working, rowNumber: 5, RigaDiProva);
+            ReportInterventiWriter.WriteRow(working, ReportTemplateBuilder.SheetName, rowNumber: 5, RigaDiProva);
 
             var cell = ReadSheetXml(working).Root!
                 .Element(S + "sheetData")!.Elements(S + "row")
@@ -399,7 +399,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
             var (working, _) = CreateTemplatePair("lru_leading_space");
             var valori = new Dictionary<int, string?> { [2] = " CPUE ALM N B61C.0100003" };
 
-            ReportInterventiWriter.WriteRow(working, rowNumber: 5, valori);
+            ReportInterventiWriter.WriteRow(working, ReportTemplateBuilder.SheetName, rowNumber: 5, valori);
 
             var textElement = ReadSheetXml(working).Root!
                 .Element(S + "sheetData")!.Elements(S + "row")
@@ -420,7 +420,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
             var (working, _) = CreateTemplatePair("lru_no_space");
             var valori = new Dictionary<int, string?> { [2] = "ARMADIO ALA B61A.000014" };
 
-            ReportInterventiWriter.WriteRow(working, rowNumber: 5, valori);
+            ReportInterventiWriter.WriteRow(working, ReportTemplateBuilder.SheetName, rowNumber: 5, valori);
 
             var textElement = ReadSheetXml(working).Root!
                 .Element(S + "sheetData")!.Elements(S + "row")
@@ -440,9 +440,9 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
 
             // Inserimento volutamente fuori ordine: lo schema OpenXML richiede comunque che gli
             // elementi <row> risultino ordinati per indice crescente.
-            ReportInterventiWriter.WriteRow(working, rowNumber: 7, RigaDiProva);
-            ReportInterventiWriter.WriteRow(working, rowNumber: 5, RigaDiProva);
-            ReportInterventiWriter.WriteRow(working, rowNumber: 6, RigaDiProva);
+            ReportInterventiWriter.WriteRow(working, ReportTemplateBuilder.SheetName, rowNumber: 7, RigaDiProva);
+            ReportInterventiWriter.WriteRow(working, ReportTemplateBuilder.SheetName, rowNumber: 5, RigaDiProva);
+            ReportInterventiWriter.WriteRow(working, ReportTemplateBuilder.SheetName, rowNumber: 6, RigaDiProva);
 
             var rows = ReadSheetXml(working).Root!
                 .Element(S + "sheetData")!.Elements(S + "row")
@@ -464,7 +464,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
         {
             var (working, _) = CreateTemplatePair("overwrite");
 
-            ReportInterventiWriter.WriteRow(working, rowNumber: 3, new Dictionary<int, string?> { [2] = "Bologna" });
+            ReportInterventiWriter.WriteRow(working, ReportTemplateBuilder.SheetName, rowNumber: 3, new Dictionary<int, string?> { [2] = "Bologna" });
 
             var row = ReadSheetXml(working).Root!
                 .Element(S + "sheetData")!.Elements(S + "row")
@@ -512,7 +512,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
             }
 
             // Percorso chirurgico: stessa scrittura logica.
-            ReportInterventiWriter.WriteRow(viaSurgical, rowNumber: 5, new Dictionary<int, string?> { [1] = "Torino" });
+            ReportInterventiWriter.WriteRow(viaSurgical, ReportTemplateBuilder.SheetName, rowNumber: 5, new Dictionary<int, string?> { [1] = "Torino" });
 
             var before = ReadPackageEntries(pristine);
             var afterClosedXml = ReadPackageEntries(viaClosedXml);
@@ -561,5 +561,91 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
         [InlineData("BC12", 55)]
         public void GetColumnNumber_ConverteLettereInNumeri(string reference, int expected) =>
             Assert.Equal(expected, ReportInterventiWriter.GetColumnNumber(reference));
+
+        // -----------------------------------------------------------------------------------
+        // 6. Risoluzione del foglio per nome (bug ETR500: scriveva in "istruzioni")
+        // -----------------------------------------------------------------------------------
+
+        /// <summary>Nome del file .rels-relative della parte a cui corrisponde <paramref name="sheetName"/>, letto dal DOM in sola lettura (mai riscritto in questa modalità).</summary>
+        private static string ResolveWorksheetPartEntryName(string filePath, string sheetName)
+        {
+            using var document = SpreadsheetDocument.Open(filePath, isEditable: false);
+            var workbookPart = document.WorkbookPart!;
+            var sheet = workbookPart.Workbook.Sheets!.Elements<Sheet>()
+                .First(s => string.Equals(s.Name?.Value, sheetName, StringComparison.OrdinalIgnoreCase));
+            var worksheetPart = (WorksheetPart)workbookPart.GetPartById(sheet.Id!.Value!);
+            return worksheetPart.Uri.OriginalString.TrimStart('/');
+        }
+
+        [Fact]
+        public void ScritturaRiga_ScriveSoloNelFoglioInterventi_NonInIstruzioni()
+        {
+            string working = Path.Combine(_root.FullName, "multi_sheet.xlsx");
+            string pristine = Path.Combine(_root.FullName, "multi_sheet.before.xlsx");
+            ReportTemplateBuilder.CreateMultiSheet(working, targetSheetName: "Interventi ETR500", instructionsSheetName: "istruzioni");
+            File.Copy(working, pristine);
+
+            string instructionsEntry = ResolveWorksheetPartEntryName(pristine, "istruzioni");
+            string targetEntry = ResolveWorksheetPartEntryName(pristine, "Interventi ETR500");
+            Assert.NotEqual(instructionsEntry, targetEntry);
+
+            ReportInterventiWriter.WriteRow(working, "Interventi ETR500", rowNumber: 5, RigaDiProva);
+
+            var before = ReadPackageEntries(pristine);
+            var after = ReadPackageEntries(working);
+
+            // Il foglio istruzioni, che sta PRIMA in ordine di scheda, resta byte per byte immacolato.
+            Assert.Equal(before[instructionsEntry], after[instructionsEntry]);
+
+            // Il foglio Interventi, secondo in ordine di scheda, riceve la riga 5.
+            Assert.NotEqual(before[targetEntry], after[targetEntry]);
+
+            using var targetStream = new MemoryStream(after[targetEntry]);
+            var targetDoc = XDocument.Load(targetStream);
+            var newRow = targetDoc.Root!.Element(S + "sheetData")!.Elements(S + "row")
+                .Single(r => r.Attribute("r")?.Value == "5");
+            var b5 = newRow.Elements(S + "c").Single(c => c.Attribute("r")?.Value == "B5");
+            Assert.Equal("Torino", b5.Element(S + "is")!.Element(S + "t")!.Value);
+        }
+
+        [Fact]
+        public void ScritturaRiga_FoglioNonTrovato_SollevaEccezioneENonModificaIlFile()
+        {
+            string working = Path.Combine(_root.FullName, "missing_sheet.xlsx");
+            string pristine = Path.Combine(_root.FullName, "missing_sheet.before.xlsx");
+            ReportTemplateBuilder.CreateMultiSheet(working, targetSheetName: "Interventi ETR500");
+            File.Copy(working, pristine);
+
+            var ex = Assert.Throws<InvalidOperationException>(
+                () => ReportInterventiWriter.WriteRow(working, "Interventi 700", rowNumber: 5, RigaDiProva));
+            Assert.Contains("Interventi 700", ex.Message);
+
+            // Nessuna riscrittura silenziosa su un foglio diverso: il file resta bit-per-bit quello di partenza.
+            Assert.Equal(File.ReadAllBytes(pristine), File.ReadAllBytes(working));
+        }
+
+        [Fact]
+        public void FindLastFilledRow_FoglioNonTrovato_SollevaEccezione()
+        {
+            string working = Path.Combine(_root.FullName, "missing_sheet_find.xlsx");
+            ReportTemplateBuilder.CreateMultiSheet(working, targetSheetName: "Interventi ETR500");
+
+            Assert.Throws<InvalidOperationException>(
+                () => ReportInterventiWriter.FindLastFilledRow(working, "Foglio Inesistente", [2, 3, 4]));
+        }
+
+        [Fact]
+        public void ScritturaRiga_NomeFoglioConSpaziESpazioNonSensibileAMaiuscole_TrovaComunqueIlFoglio()
+        {
+            string working = Path.Combine(_root.FullName, "case_insensitive.xlsx");
+            ReportTemplateBuilder.CreateMultiSheet(working, targetSheetName: "Interventi ETR500");
+
+            // Stesso nome, maiuscole diverse e spazi superflui: deve risolvere comunque il foglio giusto.
+            ReportInterventiWriter.WriteRow(working, "  interventi etr500  ", rowNumber: 5, RigaDiProva);
+
+            string targetEntry = ResolveWorksheetPartEntryName(working, "Interventi ETR500");
+            var doc = XDocument.Load(new MemoryStream(ReadPackageEntries(working)[targetEntry]));
+            Assert.Contains(doc.Root!.Element(S + "sheetData")!.Elements(S + "row"), r => r.Attribute("r")?.Value == "5");
+        }
     }
 }

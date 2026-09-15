@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -115,7 +115,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
             string path = WorkingCopy();
 
             var stopwatch = Stopwatch.StartNew();
-            int lastFilled = ReportInterventiWriter.FindLastFilledRow(path, [2, 3, 4, 7]);
+            int lastFilled = ReportInterventiWriter.FindLastFilledRow(path, BloatedReportBuilder.SheetName, [2, 3, 4, 7]);
             stopwatch.Stop();
             _output.WriteLine($"FindLastFilledRow: {stopwatch.ElapsedMilliseconds} ms");
 
@@ -133,7 +133,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
             //
             // L'intestazione NON è un caso speciale, ed è corretto così: su un report con le sole
             // intestazioni il chiamante ottiene 1 e riparte dalla riga 2, cioè la prima riga utile.
-            Assert.Equal(1, ReportInterventiWriter.FindLastFilledRow(path, [5]));
+            Assert.Equal(1, ReportInterventiWriter.FindLastFilledRow(path, BloatedReportBuilder.SheetName, [5]));
         }
 
         // -----------------------------------------------------------------------------------
@@ -148,7 +148,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
 
             long allocatedBefore = GC.GetTotalAllocatedBytes(precise: true);
             var stopwatch = Stopwatch.StartNew();
-            ReportInterventiWriter.WriteRow(path, FirstFreeRow, Riga);
+            ReportInterventiWriter.WriteRow(path, BloatedReportBuilder.SheetName, FirstFreeRow, Riga);
             stopwatch.Stop();
             long allocated = GC.GetTotalAllocatedBytes(precise: true) - allocatedBefore;
 
@@ -170,7 +170,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
             string path = WorkingCopy();
             var before = SheetRoot(path);
 
-            ReportInterventiWriter.WriteRow(path, FirstFreeRow, Riga);
+            ReportInterventiWriter.WriteRow(path, BloatedReportBuilder.SheetName, FirstFreeRow, Riga);
 
             var after = SheetRoot(path);
 
@@ -210,7 +210,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
             var before = SheetRoot(path).Element(S + "sheetData")!.Elements(S + "row")
                 .First(r => r.Attribute("r")!.Value == "2");
 
-            ReportInterventiWriter.WriteRow(path, FirstFreeRow, Riga);
+            ReportInterventiWriter.WriteRow(path, BloatedReportBuilder.SheetName, FirstFreeRow, Riga);
 
             var after = SheetRoot(path).Element(S + "sheetData")!.Elements(S + "row")
                 .First(r => r.Attribute("r")!.Value == "2");
@@ -230,7 +230,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
             long sizeBefore = SheetPartSize(path);
 
             var stopwatch = Stopwatch.StartNew();
-            int removed = ReportInterventiWriter.CompactEmptyRows(path);
+            int removed = ReportInterventiWriter.CompactEmptyRows(path, BloatedReportBuilder.SheetName);
             stopwatch.Stop();
 
             long sizeAfter = SheetPartSize(path);
@@ -254,7 +254,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
             int informative = BloatedReportBuilder.InformativeEmptyRowIndex(
                 BloatedReportFixture.DataRows, BloatedReportFixture.EmptyRows);
 
-            ReportInterventiWriter.CompactEmptyRows(path);
+            ReportInterventiWriter.CompactEmptyRows(path, BloatedReportBuilder.SheetName);
 
             var rows = SheetRoot(path).Element(S + "sheetData")!.Elements(S + "row").ToList();
 
@@ -273,7 +273,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
             string path = WorkingCopy();
             Assert.Equal("1", SheetRoot(path).Element(S + "sheetFormatPr")!.Attribute("zeroHeight")?.Value);
 
-            ReportInterventiWriter.CompactEmptyRows(path);
+            ReportInterventiWriter.CompactEmptyRows(path, BloatedReportBuilder.SheetName);
 
             var format = SheetRoot(path).Element(S + "sheetFormatPr")!;
             Assert.Equal("0", format.Attribute("zeroHeight")?.Value);
@@ -290,7 +290,7 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
             var before = SheetRoot(path);
             var rowBefore = before.Element(S + "sheetData")!.Elements(S + "row").First(r => r.Attribute("r")!.Value == "2");
 
-            ReportInterventiWriter.CompactEmptyRows(path);
+            ReportInterventiWriter.CompactEmptyRows(path, BloatedReportBuilder.SheetName);
 
             var after = SheetRoot(path);
             var rowAfter = after.Element(S + "sheetData")!.Elements(S + "row").First(r => r.Attribute("r")!.Value == "2");
@@ -308,15 +308,15 @@ namespace PersonalAutomationTool.Tests.Modules.Excel
             string path = WorkingCopy();
 
             var stopwatch = Stopwatch.StartNew();
-            ReportInterventiWriter.WriteRow(path, FirstFreeRow, Riga);
+            ReportInterventiWriter.WriteRow(path, BloatedReportBuilder.SheetName, FirstFreeRow, Riga);
             stopwatch.Stop();
             long bloated = stopwatch.ElapsedMilliseconds;
             long sizeBloated = SheetPartSize(path);
 
-            ReportInterventiWriter.CompactEmptyRows(path);
+            ReportInterventiWriter.CompactEmptyRows(path, BloatedReportBuilder.SheetName);
 
             stopwatch.Restart();
-            ReportInterventiWriter.WriteRow(path, FirstFreeRow + 1, Riga);
+            ReportInterventiWriter.WriteRow(path, BloatedReportBuilder.SheetName, FirstFreeRow + 1, Riga);
             stopwatch.Stop();
             long compacted = stopwatch.ElapsedMilliseconds;
 

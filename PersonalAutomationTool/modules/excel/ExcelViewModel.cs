@@ -1228,6 +1228,12 @@ namespace PersonalAutomationTool.Modules.Excel
 
                 string reportPath = _currentExcelFilePath;
 
+                // Risolto per nome esatto, mai per posizione: il foglio Interventi non è sempre la
+                // prima scheda del workbook (ETR500 ed ETR1000 I-F hanno un foglio grafico o
+                // "Foglio1" prima), e scrivere sul "primo foglio" aveva finito per scrivere
+                // nell'"istruzioni". Vedi ReportSheetNames e ReportInterventiWriter.GetWorksheetPartByName.
+                string sheetName = ReportSheetNames.GetInterventiSheetName(SelectedTrain);
+
                 // Individuazione della riga e scrittura, entrambe in streaming sul solo <sheetData>
                 // del foglio (ReportInterventiWriter). Sostituiscono, dallo Sprint 22, due letture
                 // complete del workbook: la scansione con ClosedXML per ricavare la riga di
@@ -1242,12 +1248,12 @@ namespace PersonalAutomationTool.Modules.Excel
                 {
                     // Colonne chiave che qualificano una riga come compilata: Data (B), Sito (C),
                     // Ticket (D), Loco (G) — le stesse su cui si basava la scansione precedente.
-                    int lastFilled = ReportInterventiWriter.FindLastFilledRow(reportPath, [2, 3, 4, 7]);
+                    int lastFilled = ReportInterventiWriter.FindLastFilledRow(reportPath, sheetName, [2, 3, 4, 7]);
 
                     // Con il foglio privo di dati si riparte dalla riga 2, sotto le intestazioni.
                     int row = Math.Max(lastFilled, 1) + 1;
 
-                    ReportInterventiWriter.WriteRow(reportPath, row, valuesByColumn);
+                    ReportInterventiWriter.WriteRow(reportPath, sheetName, row, valuesByColumn);
                     return row;
                 });
 
