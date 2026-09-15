@@ -4397,6 +4397,135 @@ HTTP 200).
 > rispettivi test unitari in §6.1-tricies-quinquies — e l'apertura in Excel del file ETR500 reale dopo
 > "Scrivi report" (stessa riserva già annotata lì): entrambe da fare al prossimo turno in officina.
 
+### 6.1-tricies-septies Sprint 34 — due anomalie critiche sul Report Interventi: riga di inserimento (ETR1000 I-F) e file che sparisce da SharePoint (ETR500) ⭐⭐⭐
+
+**Richiesta.** Segnalate come emergenza: **(1)** su ETR1000 I-F "Scrivi report" non individua la prima
+riga vuota — sovrascrive righe compilate, oppure annuncia di aver scritto a una riga dove poi non c'è
+nulla; **(2)** su ETR500 il file Excel sparisce dalla cartella attiva durante salvataggio/riporto e non
+risulta più su SharePoint. Ipotesi del committente: conteggio ingenuo dei nodi `<row>` per la prima, e
+un pattern di salvataggio non sicuro (`File.Delete`/`File.Move` prima del completamento) per la seconda.
+
+#### Anomalia 1 — causa radice: non era il conteggio delle righe, era il foglio sbagliato
+
+Misurato sui file aziendali reali, non ipotizzato. Il file ETR1000 I-F corrente ha quattro schede e la
+**prima è un foglio grafico**:
+
+| Flotta | 1ª scheda in `<sheets>` | `WorksheetParts.First()` (il ripiego del codice ≤ 2.0.2) | Tabelle |
+|---|---|---|---|
+| ETR1000 I-F | `Grafico1` → **ChartsheetPart** | **`Foglio1`** (`sheet2.xml`) | 0 |
+| ETR500 | `Grafico1` → **ChartsheetPart** | `istruzioni` | 0 |
+| ETR700 | `Interventi ETR700` ✓ | (`istruzioni`) | 0 |
+
+`Foglio1` è un foglio di servizio quasi vuoto: `FindLastFilledRow` vi restituiva **0**, quindi la riga
+di destinazione era **sempre la 2**. Da cui, esattamente, i due sintomi riferiti: l'applicazione
+annunciava "salvato alla riga 2" mentre in `Interventi ETR1000 FR` non compariva nulla, e ogni
+salvataggio successivo riscriveva la stessa riga 2 — "sovrascrive righe già compilate". **La causa è la
+stessa di §6.1-tricies-quinquies** (risoluzione del foglio per posizione invece che per nome), già
+corretta nella 2.0.3 rilasciata poche ore prima: su una macchina ancora alla 2.0.2 il difetto si
+presenta esattamente così. Verificato end-to-end sul file reale dopo il fix: ultima riga compilata
+**2910**, scrittura alla **2911**, nel foglio giusto, con **una sola parte modificata**
+(`xl/worksheets/sheet1.xml`) e `Foglio1`/`istruzioni`/`Grafico1` byte per byte identici.
+
+#### Anomalia 1 — l'ipotesi del committente era comunque un difetto reale, latente
+
+Il controllo precedente qualificava una riga come compilata se la cella **esisteva e non era
+self-closing**. Sui quattro report di oggi regge (le celle preformattate sono tutte `<c r="B12" s="3"/>`,
+e infatti scansione strutturale e scansione rigorosa danno lo stesso risultato su ETR500, ETR700 ed
+ETR1000 I-F), ma è una proprietà del *file*, non una garanzia: la stessa cella vuota può arrivare in
+almeno cinque forme, e quattro di esse ingannavano il controllo.
+
+`FindLastFilledRow` ora **guarda il valore**, non la struttura: `<c/>`, `<c></c>`, `<v></v>`, una
+stringa inline di soli spazi e una stringa condivisa che punta a una voce vuota contano tutte come
+cella vuota. Le stringhe condivise sono il caso non ovvio: il `<v>` di una cella `t="s"` è un *indice*,
+e l'indice di una stringa vuota è un numero come gli altri. Si caricano in streaming i soli **indici
+vuoti** (una manciata su migliaia di voci), così il controllo rigoroso non costa la frugalità di memoria
+che è l'invariante di questa classe (§6.1-vicies-quater).
+
+#### Anomalia 2 — causa radice: il pacchetto veniva riscritto **sul posto**, dentro la cartella sincronizzata
+
+Due punti distinti, entrambi corretti.
+
+**(a) La scrittura della riga.** `TransformSheet` apriva il file attivo con
+`SpreadsheetDocument.Open(filePath, isEditable: true)` e lo riscriveva con `FeedData`. Un `.xlsx` è un
+archivio ZIP: riscriverlo sul posto significa troncarlo e ricostruirlo, e qualunque interruzione in
+quella finestra — `ERROR_SHARING_VIOLATION` del demone di sincronizzazione, un'eccezione, la chiusura
+dell'app — lascia su SharePoint un archivio incompleto. Ora la sequenza è **transazionale**: copia in
+`%LOCALAPPDATA%\iscot-autotool\temp` → trasformazione **sulla copia** → validazione (esiste, non è
+vuota, si riapre come pacchetto OpenXML, contiene ancora il foglio di destinazione) → solo allora
+`File.Copy(overwrite: true)` sull'originale, con 5 tentativi a backoff esponenziale da 500 ms → il
+temporaneo si cancella **solo** a sostituzione confermata. Se fallisce, il file di lavoro **resta**, con
+il nome del report nel nome del file: contiene la scrittura appena eseguita ed è la via di recupero.
+
+**(b) Gli spostamenti fra LOG & DUMP e SharePoint.** "Sposta report" e "Riporta report" usavano
+`File.Move(source, destination, overwrite: true)`, che rimuove l'origine *come parte* dell'operazione:
+se la scrittura sulla cartella sincronizzata fallisce a metà, il file non è più nell'origine e non è
+ancora nella destinazione. Sostituito con `FileOperationRetry.MoveSafely` — copia, **verifica** (la
+destinazione esiste ed è grande quanto l'originale), e solo allora elimina l'origine. Nel caso peggiore
+il file resta in **entrambi** i posti: uno stato ridondante, non una perdita. L'archivio in `OLD` era
+già una `File.Copy` e resta tale.
+
+#### "Salvato" ora significa "verificato", e lascia una traccia
+
+`WriteRow` restituisce un `ReportRowWriteResult` e **rilegge la riga dal file attivo dopo la
+sostituzione**, confrontandola con la forma realmente attesa in cella (seriale OADate per le date,
+forma canonica per i numeri): se non corrisponde **solleva un'eccezione** invece di lasciar comparire
+un falso successo. È la contromisura diretta al sintomo "dice di aver scritto ma non c'è". Il risultato
+— foglio, riga, se la riga era già occupata, valori prima e dopo — finisce in `crash.log` tramite il
+nuovo `CrashReporter.RegistraDiagnostica`: prima, dal campo, un "ha scritto nel posto sbagliato" non era
+ricostruibile, perché l'unica traccia era una MessageBox con un numero di riga e nessun nome di foglio.
+Il messaggio a video ora dice **foglio e riga**, non solo la riga.
+
+#### Tabelle strutturate (ListObject)
+
+`ExpandTablesToRow` estende `ref` della tabella e `ref` del suo `<autoFilter>` quando la riga scritta
+cade sotto l'ultima riga della tabella. **Non** viene toccato `<tableColumns count>`: quel contatore
+conta le *colonne*, non le righe — incrementarlo a ogni riga (come chiedeva letteralmente la richiesta)
+lo farebbe divergere dal numero di `<tableColumn>` effettivi, ed è proprio ciò che fa dichiarare il file
+danneggiato a Excel. Nessuno dei quattro report aziendali usa oggi una tabella strutturata (zero
+`TableDefinitionPart` su tutti e tre i file ispezionati): il percorso è difensivo, coperto da test
+sintetici.
+
+> **Difetto intercettato dalla suite, non dall'ispezione.** La prima versione di `ExpandTablesToRow`
+> leggeva `tablePart.Table`: il solo accesso a quella proprietà carica il DOM e l'SDK **riscrive la
+> parte alla chiusura**, anche senza modifiche — lo stesso effetto collaterale già scoperto su
+> `workbook.xml` in §6.1-vicies-quater, e di nuovo intercettato da
+> `ScritturaRiga_TabellaERelazioni_RestanoIdentiche`. Corretto leggendo la tabella come XML grezzo e
+> riscrivendola solo quando serve davvero.
+
+#### Verifica
+
+`dotnet build` → **0 errori, 0 warning**. `dotnet test` → **618/618** (601 → 618, +17), suite eseguita
+tre volte per escludere interferenze fra classi che girano in parallelo sulla stessa cartella
+temporanea. I test nuovi (`ReportInterventiWriterSafetyTests`, `GhostRowsReportBuilder`):
+
+- dieci righe compilate seguite da **cinque righe formattate ma vuote, una forma diversa per riga** → la
+  riga di inserimento è la **11**, non la 16 e non la 1; un test per forma dice *quale* sfuggirebbe;
+- due scritture consecutive non si sovrappongono (la seconda va sotto la prima);
+- **errore di I/O durante il salvataggio** (il file di destinazione tenuto aperto, come farebbe il client
+  OneDrive) → eccezione, e il report originale resta **byte per byte identico**, presente e leggibile;
+- il file di lavoro viene rimosso a salvataggio riuscito e **conservato** quando fallisce, con dentro la
+  riga scritta;
+- `MoveSafely` con destinazione bloccata → l'origine resta al suo posto;
+- riga di destinazione già occupata → segnalata nell'esito e nel log;
+- tabella strutturata estesa solo quando la riga le cade sotto, con `tableColumns count` invariato.
+
+Prova **end-to-end sui file aziendali reali** (su copia): ETR1000 I-F → riga 2910 → scrive alla 2911;
+ETR500 (13,7 MB, 1.048.576 righe) → riga 64657 → scrive alla 64658. In entrambi i casi l'unica parte
+modificata è `xl/worksheets/sheet1.xml`, nessuna parte aggiunta o rimossa, valori riletti dal file
+salvato, e la scrittura successiva andrebbe alla riga dopo.
+
+> ⚠️ **Non verificabile da questo ambiente:** il comportamento reale del client OneDrive/SharePoint
+> durante la sostituzione (qui il blocco è simulato tenendo il file aperto, che riproduce
+> `ERROR_SHARING_VIOLATION` ma non la sincronizzazione vera), e l'apertura in Excel dei file scritti.
+> Da fare al prossimo turno in officina.
+
+> **Osservazione laterale, da portare al committente.** Nella cartella ETR1000 I-F reale risultavano
+> **due** "Report Interventi" attivi contemporaneamente (tecnici diversi, orari diversi), mentre
+> `ExecuteSpostaReport` e `CheckAndLoadExistingReportAsync` ne prendono **uno solo**, il più recente per
+> data di modifica. Non è la causa delle due anomalie di questo sprint e non è stato toccato, ma è un
+> comportamento che con due turni sovrapposti può far lavorare due persone su copie diverse dello stesso
+> report. Vale una decisione esplicita (§6.4).
+
 ### 6.2 Le 4 macro-aree della roadmap strategica
 
 Elaborata come risposta alla domanda "se fossi il Lead Architect, cosa faresti dopo l'audit
@@ -5047,3 +5176,25 @@ non può proteggerle. Ogni modifica al parsing va verificata su casi reali presi
     "Interventi ETR500 OLD") e premere "Scrivi report": deve comparire un messaggio d'errore leggibile
     ("Foglio interventi non trovato…"), **non** un crash né una scrittura silenziosa in un foglio
     diverso. Ripristinare il nome dopo la prova.
+40. **EXCEL / riga di inserimento e salvataggio transazionale** (§6.1-tricies-septies) ⭐⭐⭐ *le due
+    anomalie critiche dello Sprint 34. Il calcolo della riga e l'integrità del pacchetto sono coperti da
+    test automatici e da una prova end-to-end sui file reali — **da non ri-verificare a mano**; qui si
+    controlla ciò che dipende da Excel e dal client di sincronizzazione, che questo ambiente non ha.*
+    **(a)** Su una **copia** del report ETR1000 I-F reale, "Scrivi report" due volte di seguito: le due
+    righe devono comparire in "Interventi ETR1000 FR" **una sotto l'altra**, subito dopo l'ultimo
+    intervento, senza sovrascritture. Aprire poi le schede "Foglio1" e "istruzioni": devono essere
+    **invariate**. Il messaggio a video ora riporta il nome del foglio: controllare che sia quello giusto.
+    **(b)** Ripetere su ETR500, ETR700 ed ETR1000/1000FH (nessuna regressione attesa).
+    **(c) La prova che conta per il file sparito**: su una copia in cartella SharePoint, lanciare
+    "Scrivi report" **mentre OneDrive sta sincronizzando** quel file (icona di sync in movimento). Esiti
+    ammessi: il salvataggio riesce dopo qualche secondo di riprove, **oppure** compare un errore — ma in
+    ogni caso il report deve **restare nella cartella**, apribile in Excel. Non deve mai sparire.
+    **(d)** Se un salvataggio fallisce, verificare che in `%LOCALAPPDATA%\iscot-autotool\temp` resti un
+    file `report_temp_<nome del report>_*.xlsx` apribile in Excel e contenente la riga appena inserita:
+    è la copia di recupero. A salvataggio riuscito, invece, quella cartella non deve accumulare nulla.
+    **(e)** Dopo qualche "Scrivi report", aprire `%LOCALAPPDATA%\iscot-autotool\crash.log` e controllare
+    che per ogni salvataggio ci sia una voce `DIAGNOSTICA` con foglio, riga, "riga già occupata" e i
+    valori prima/dopo: è la traccia che permette di diagnosticare dal campo senza forensics sul file.
+    **(f) "Riporta report"** su ETR500: al termine il file deve trovarsi nella cartella Hitachi **e non
+    più** in LOG & DUMP. Se compare il messaggio "copiato correttamente ma non è stato possibile
+    rimuovere la copia di partenza", il report è comunque salvo: va solo eliminata a mano la copia locale.

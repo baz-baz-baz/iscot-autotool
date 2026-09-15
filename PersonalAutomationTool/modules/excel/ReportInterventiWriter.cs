@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Xml;
 using System.Xml.Linq;
 using DocumentFormat.OpenXml.Packaging;
+using PersonalAutomationTool.Core;
 
 namespace PersonalAutomationTool.Modules.Excel
 {
@@ -69,7 +71,7 @@ namespace PersonalAutomationTool.Modules.Excel
         /// comportamento del percorso Interop, che salta le celle senza valore per non sovrascrivere
         /// formule o formattazione preesistenti.
         /// </param>
-        public static void WriteRow(string filePath, string sheetName, int rowNumber, IReadOnlyDictionary<int, string?> valuesByColumn)
+        public static ReportRowWriteResult WriteRow(string filePath, string sheetName, int rowNumber, IReadOnlyDictionary<int, string?> valuesByColumn)
         {
             ArgumentException.ThrowIfNullOrEmpty(filePath);
             ArgumentException.ThrowIfNullOrEmpty(sheetName);
@@ -80,7 +82,38 @@ namespace PersonalAutomationTool.Modules.Excel
                 .Where(kv => !string.IsNullOrWhiteSpace(kv.Value))
                 .ToDictionary(kv => kv.Key, kv => kv.Value!);
 
-            TransformSheet(filePath, sheetName, (reader, writer) => WriteRowCore(reader, writer, rowNumber, values));
+            // Contenuto della riga di destinazione PRIMA di toccarla: se non è vuota lo si scopre qui,
+            // e resta agli atti nel log diagnostico invece di andare perso in una sovrascrittura muta.
+            var before = ReadRowValues(filePath, sheetName, rowNumber, values.Keys);
+
+            TransformSheet(filePath, sheetName,
+                (reader, writer) => WriteRowCore(reader, writer, rowNumber, values),
+                tableRowToInclude: rowNumber);
+
+            // Riletto dal file ATTIVO, non dalla copia di lavoro: è la differenza fra "ho eseguito la
+            // scrittura" e "il report contiene davvero questi valori".
+            var after = ReadRowValues(filePath, sheetName, rowNumber, values.Keys);
+
+            var mismatched = values.Keys
+                .Where(column => !string.Equals(
+                    after.GetValueOrDefault(column, string.Empty),
+                    ToStoredValue(values[column]),
+                    StringComparison.Ordinal))
+                .OrderBy(column => column)
+                .ToList();
+
+            if (mismatched.Count > 0)
+            {
+                // Il difetto segnalato dal committente era esattamente questo: l'applicazione annunciava
+                // "salvato alla riga N" mentre nel foglio non compariva nulla. Con questa verifica quel
+                // caso diventa un errore visibile, non un falso successo.
+                throw new InvalidOperationException(
+                    $"Verifica dopo la scrittura fallita sul foglio '{sheetName}', riga {rowNumber}: " +
+                    string.Join("; ", mismatched.Select(column =>
+                        $"colonna {GetColumnName(column)} attesa '{ToStoredValue(values[column])}', letta '{after.GetValueOrDefault(column, string.Empty)}'")));
+            }
+
+            return new ReportRowWriteResult(sheetName, rowNumber, before, after);
         }
 
         /// <summary>
@@ -106,6 +139,7 @@ namespace PersonalAutomationTool.Modules.Excel
             var workbookPart = document.WorkbookPart
                 ?? throw new InvalidOperationException("Workbook privo di WorkbookPart: pacchetto non valido.");
             var worksheetPart = GetWorksheetPartByName(workbookPart, sheetName);
+            var blankSharedStrings = LoadBlankSharedStringIndexes(workbookPart);
 
             using var stream = worksheetPart.GetStream(FileMode.Open, FileAccess.Read);
             using var reader = XmlReader.Create(stream, new XmlReaderSettings { CloseInput = false });
@@ -128,15 +162,246 @@ namespace PersonalAutomationTool.Modules.Excel
                 if (reader.LocalName != "c" || reader.NamespaceURI != Ns) continue;
                 if (currentRowCounts || currentRow <= lastFilled) continue;
 
-                // Una cella senza contenuto è self-closing: non qualifica la riga come compilata.
+                // Una cella self-closing (<c r="B12" s="3"/>) non ha contenuto per costruzione.
                 if (reader.IsEmptyElement) continue;
                 if (!wanted.Contains(GetColumnNumber(reader.GetAttribute("r")))) continue;
+
+                // **Non basta che la cella esista**: va guardato il valore. Vedi HasRealValue.
+                string? cellType = reader.GetAttribute("t");
+                bool real;
+                using (var cell = reader.ReadSubtree())
+                {
+                    cell.Read(); // posiziona il sotto-lettore su <c>
+                    real = HasRealValue(cell, cellType, blankSharedStrings);
+                }
+                if (!real) continue;
 
                 currentRowCounts = true;
                 lastFilled = currentRow;
             }
 
             return lastFilled;
+        }
+
+        /// <summary>
+        /// Vero se la cella in corso di lettura porta un valore **reale**: non basta che l'elemento
+        /// <c>&lt;c&gt;</c> esista, e non basta nemmeno che non sia self-closing.
+        ///
+        /// <para>
+        /// <b>Perché il controllo strutturale non basta (bug ETR1000 I-F, §6.1-tricies-septies).</b> Le
+        /// righe già formattate in coda all'area dati — bordi, sfondo, convalide pronte per il prossimo
+        /// intervento — sono indistinguibili dalle righe compilate se ci si limita a contare i nodi
+        /// <c>&lt;row&gt;</c> o a guardare se la cella è self-closing. Excel scrive quelle celle come
+        /// <c>&lt;c r="B12" s="3"/&gt;</c>, ma <b>non è garantito</b>: la stessa cella vuota può arrivare
+        /// come <c>&lt;c r="B12" s="3"&gt;&lt;/c&gt;</c>, come <c>&lt;v&gt;&lt;/v&gt;</c>, o come una
+        /// stringa fatta di soli spazi — tre forme che il controllo precedente contava come "riga
+        /// occupata", facendo scivolare in avanti la riga di inserimento su ogni riga preformattata.
+        /// </para>
+        ///
+        /// <para>
+        /// Una stringa condivisa viene risolta tramite <paramref name="blankSharedStrings"/>: il
+        /// <c>&lt;v&gt;</c> di una cella <c>t="s"</c> è un <i>indice</i>, non un testo, e l'indice di una
+        /// stringa vuota è un numero come gli altri — contarlo come valore è l'errore più facile da
+        /// commettere qui.
+        /// </para>
+        /// </summary>
+        /// <param name="cell">Sotto-lettore posizionato sull'elemento <c>&lt;c&gt;</c>.</param>
+        /// <param name="cellType">Attributo <c>t</c> della cella (<c>s</c>, <c>inlineStr</c>, <c>str</c>, <c>b</c>, <c>e</c>, oppure assente per i numeri).</param>
+        /// <param name="blankSharedStrings">Indici delle stringhe condivise vuote o di soli spazi.</param>
+        private static bool HasRealValue(XmlReader cell, string? cellType, HashSet<int> blankSharedStrings)
+        {
+            var (text, sharedIndex) = ReadCellContent(cell, cellType);
+
+            // Una stringa condivisa "piena" di nulla vale quanto una cella vuota.
+            if (sharedIndex is int index) return !blankSharedStrings.Contains(index);
+
+            return !string.IsNullOrWhiteSpace(text);
+        }
+
+        /// <summary>
+        /// Contenuto grezzo della cella su cui è posizionato <paramref name="cell"/>: il testo, oppure
+        /// l'indice della stringa condivisa se la cella è di tipo <c>s</c> (in quel caso il testo va
+        /// risolto a parte, perché vive in <c>sharedStrings.xml</c>).
+        /// </summary>
+        private static (string Text, int? SharedIndex) ReadCellContent(XmlReader cell, string? cellType)
+        {
+            string? sharedIndex = null;
+            var text = new StringBuilder();
+
+            while (cell.Read())
+            {
+                if (cell.NodeType != XmlNodeType.Element || cell.NamespaceURI != Ns) continue;
+
+                if (cell.LocalName == "v")
+                {
+                    string value = cell.ReadElementContentAsString();
+                    if (string.Equals(cellType, "s", StringComparison.Ordinal)) sharedIndex = value;
+                    else text.Append(value);
+                }
+                else if (cell.LocalName == "t")
+                {
+                    // Dentro <is> (stringa inline), anche quando è spezzata in più <r><t>…</t></r>.
+                    text.Append(cell.ReadElementContentAsString());
+                }
+            }
+
+            if (string.Equals(cellType, "s", StringComparison.Ordinal) &&
+                int.TryParse(sharedIndex, NumberStyles.Integer, CultureInfo.InvariantCulture, out int index))
+            {
+                return (string.Empty, index);
+            }
+
+            return (text.ToString(), null);
+        }
+
+        /// <summary>
+        /// Rilegge dal file le colonne indicate della riga <paramref name="rowNumber"/>, risolvendo le
+        /// stringhe condivise. Si ferma appena superata la riga cercata: su un report con un milione di
+        /// righe la verifica costa quanto arrivare alla riga di destinazione, non quanto leggere il foglio.
+        /// </summary>
+        private static Dictionary<int, string> ReadRowValues(string filePath, string sheetName, int rowNumber, IEnumerable<int> columns)
+        {
+            var wanted = new HashSet<int>(columns);
+            var result = new Dictionary<int, string>();
+            if (wanted.Count == 0) return result;
+
+            using var document = SpreadsheetDocument.Open(filePath, isEditable: false);
+            var workbookPart = document.WorkbookPart
+                ?? throw new InvalidOperationException("Workbook privo di WorkbookPart: pacchetto non valido.");
+
+            var worksheetPart = GetWorksheetPartByName(workbookPart, sheetName);
+            var sharedByColumn = new Dictionary<int, int>();
+
+            using (var stream = worksheetPart.GetStream(FileMode.Open, FileAccess.Read))
+            using (var reader = XmlReader.Create(stream, new XmlReaderSettings { CloseInput = false }))
+            {
+                int currentRow = 0;
+
+                while (reader.Read())
+                {
+                    if (reader.NodeType != XmlNodeType.Element) continue;
+
+                    if (reader.LocalName == "row" && reader.NamespaceURI == Ns)
+                    {
+                        currentRow = ParseRowIndex(reader.GetAttribute("r"));
+                        if (currentRow > rowNumber) break; // le righe sono in ordine crescente
+                        continue;
+                    }
+
+                    if (currentRow != rowNumber) continue;
+                    if (reader.LocalName != "c" || reader.NamespaceURI != Ns) continue;
+
+                    int column = GetColumnNumber(reader.GetAttribute("r"));
+                    if (!wanted.Contains(column)) continue;
+
+                    if (reader.IsEmptyElement)
+                    {
+                        result[column] = string.Empty;
+                        continue;
+                    }
+
+                    string? cellType = reader.GetAttribute("t");
+                    using var cell = reader.ReadSubtree();
+                    cell.Read();
+
+                    var (text, sharedIndex) = ReadCellContent(cell, cellType);
+                    if (sharedIndex is int index) sharedByColumn[column] = index;
+                    else result[column] = text;
+                }
+            }
+
+            if (sharedByColumn.Count > 0) ResolveSharedStrings(workbookPart, sharedByColumn, result);
+
+            foreach (int column in wanted) result.TryAdd(column, string.Empty);
+            return result;
+        }
+
+        /// <summary>
+        /// Risolve i soli indici di stringa condivisa effettivamente incontrati nella riga letta,
+        /// scorrendo <c>sharedStrings.xml</c> una volta sola e senza materializzare l'intera tabella.
+        /// </summary>
+        private static void ResolveSharedStrings(WorkbookPart workbookPart, Dictionary<int, int> sharedByColumn, Dictionary<int, string> result)
+        {
+            var texts = new Dictionary<int, string>();
+
+            if (workbookPart.SharedStringTablePart is { } part)
+            {
+                var wantedIndexes = new HashSet<int>(sharedByColumn.Values);
+
+                using var stream = part.GetStream(FileMode.Open, FileAccess.Read);
+                using var reader = XmlReader.Create(stream, new XmlReaderSettings { CloseInput = false });
+
+                int index = -1;
+                while (reader.Read())
+                {
+                    if (reader.NodeType != XmlNodeType.Element || reader.LocalName != "si" || reader.NamespaceURI != Ns) continue;
+
+                    index++;
+                    if (!wantedIndexes.Contains(index)) continue;
+
+                    var text = new StringBuilder();
+                    using (var item = reader.ReadSubtree())
+                    {
+                        item.Read();
+                        while (item.Read())
+                        {
+                            if (item.NodeType == XmlNodeType.Element && item.LocalName == "t" && item.NamespaceURI == Ns)
+                            {
+                                text.Append(item.ReadElementContentAsString());
+                            }
+                        }
+                    }
+
+                    texts[index] = text.ToString();
+                    if (texts.Count == wantedIndexes.Count) break;
+                }
+            }
+
+            foreach (var (column, index) in sharedByColumn)
+            {
+                result[column] = texts.TryGetValue(index, out string? text) ? text : string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Gli indici delle stringhe condivise il cui testo è vuoto o composto di soli spazi, letti in
+        /// streaming da <c>sharedStrings.xml</c>. Si conservano **solo gli indici vuoti** — tipicamente
+        /// una manciata su migliaia di voci — invece dell'intera tabella: è ciò che permette il
+        /// controllo rigoroso senza rinunciare alla frugalità di memoria che è l'invariante di questa
+        /// classe (§6.1-vicies-quater).
+        /// </summary>
+        private static HashSet<int> LoadBlankSharedStringIndexes(WorkbookPart workbookPart)
+        {
+            var blank = new HashSet<int>();
+            if (workbookPart.SharedStringTablePart is not { } part) return blank;
+
+            using var stream = part.GetStream(FileMode.Open, FileAccess.Read);
+            using var reader = XmlReader.Create(stream, new XmlReaderSettings { CloseInput = false });
+
+            int index = -1;
+            bool hasText = false;
+
+            while (reader.Read())
+            {
+                if (reader.NodeType == XmlNodeType.Element && reader.LocalName == "si" && reader.NamespaceURI == Ns)
+                {
+                    if (index >= 0 && !hasText) blank.Add(index);
+                    index++;
+                    hasText = false;
+                    continue;
+                }
+
+                if (index < 0) continue;
+
+                if (reader.NodeType is XmlNodeType.Text or XmlNodeType.CDATA or XmlNodeType.SignificantWhitespace
+                    && !string.IsNullOrWhiteSpace(reader.Value))
+                {
+                    hasText = true;
+                }
+            }
+
+            if (index >= 0 && !hasText) blank.Add(index);
+            return blank;
         }
 
         /// <summary>
@@ -182,45 +447,293 @@ namespace PersonalAutomationTool.Modules.Excel
         // Motore di streaming
         // ---------------------------------------------------------------------------------------
 
+        /// <summary>Tentativi della copia finale sul file attivo: copre l'aggancio del client OneDrive/SharePoint.</summary>
+        private const int SafeSaveMaxAttempts = 5;
+
+        /// <summary>Attesa prima della prima riprova della copia finale; raddoppia a ogni tentativo (500, 1000, 2000, 4000 ms).</summary>
+        private const int SafeSaveInitialDelayMs = 500;
+
         /// <summary>
-        /// Apre il pacchetto, individua il foglio e ne riscrive la parte facendola passare per
-        /// <paramref name="transform"/>. L'output transita da un file temporaneo e non da un
-        /// <c>MemoryStream</c>: su un foglio da 59 MB quest'ultimo sarebbe un'allocazione sul Large
-        /// Object Heap a ogni salvataggio, la categoria di problema già affrontata in §6.1-sexies.
+        /// Solo per i test: accorcia l'attesa fra le riprove. In esercizio quei millisecondi servono ad
+        /// aspettare il client OneDrive/SharePoint che rilascia il file; in una suite che provoca
+        /// <b>volutamente</b> un blocco sarebbero solo secondi di attesa a ogni esecuzione.
+        /// Stesso trattamento di <c>CrashReporter.PercorsoLogSostitutivo</c>.
         /// </summary>
-        private static void TransformSheet(string filePath, string sheetName, Action<XmlReader, XmlWriter> transform)
+        internal static int SafeSaveDelayMsSostitutivo { get; set; } = SafeSaveInitialDelayMs;
+
+        /// <summary>
+        /// Applica <paramref name="transform"/> al foglio <paramref name="sheetName"/> con un
+        /// **salvataggio transazionale**: il file attivo non viene mai aperto in scrittura, né spostato,
+        /// né cancellato. Si lavora su una copia in <see cref="AppPaths.TempFolder"/> e solo una versione
+        /// completa e validata prende il posto dell'originale.
+        ///
+        /// <para>
+        /// <b>Il difetto che questo sostituisce (bug ETR500, §6.1-tricies-septies).</b> La versione
+        /// precedente apriva il file attivo con <c>SpreadsheetDocument.Open(filePath, isEditable: true)</c>
+        /// e lo riscriveva sul posto con <c>FeedData</c>. Su una cartella sincronizzata è la premessa
+        /// perfetta per perdere il file: il pacchetto <c>.xlsx</c> è un archivio ZIP, riscriverlo sul posto
+        /// significa troncarlo e ricostruirlo, e qualunque interruzione in quella finestra — un
+        /// <c>ERROR_SHARING_VIOLATION</c> del demone di sincronizzazione, un'eccezione, la chiusura
+        /// dell'applicazione — lascia sulla cartella SharePoint un archivio incompleto, che il client di
+        /// sync propaga o rifiuta e che Excel non riapre più. Dal punto di vista del tecnico: "il report
+        /// è sparito".
+        /// </para>
+        ///
+        /// <para>
+        /// <b>La sequenza, nell'ordine in cui conta.</b>
+        /// <list type="number">
+        /// <item>Copia del file attivo nella cartella di lavoro (l'originale resta dov'è, intatto).</item>
+        /// <item>Trasformazione applicata <b>alla copia</b>.</item>
+        /// <item>Validazione della copia: esiste, non è vuota, si riapre come pacchetto OpenXML e
+        /// contiene ancora il foglio di destinazione.</item>
+        /// <item>Solo ora la copia sostituisce l'originale, con <c>File.Copy(overwrite: true)</c> e
+        /// riprova a backoff esponenziale sulle violazioni di condivisione.</item>
+        /// <item>Il temporaneo viene rimosso <b>solo</b> a sostituzione confermata; se qualcosa fallisce
+        /// resta su disco e il suo percorso finisce nel messaggio d'errore, perché contiene comunque il
+        /// lavoro appena scritto.</item>
+        /// </list>
+        /// </para>
+        /// </summary>
+        /// <param name="tableRowToInclude">
+        /// Se valorizzato, la riga appena scritta viene inclusa nell'intervallo delle eventuali tabelle
+        /// strutturate del foglio (vedi <see cref="ExpandTablesToRow"/>).
+        /// </param>
+        private static void TransformSheet(string filePath, string sheetName, Action<XmlReader, XmlWriter> transform, int? tableRowToInclude = null)
         {
-            using var document = SpreadsheetDocument.Open(filePath, isEditable: true);
-            var workbookPart = document.WorkbookPart
-                ?? throw new InvalidOperationException("Workbook privo di WorkbookPart: pacchetto non valido.");
+            if (!File.Exists(filePath))
+            {
+                throw new FileNotFoundException($"Report Interventi non trovato: '{filePath}'.", filePath);
+            }
 
-            var worksheetPart = GetWorksheetPartByName(workbookPart, sheetName);
+            // Il nome porta quello del report: se un salvataggio fallisce, il file di lavoro resta su
+            // disco ed è l'unica copia che contiene la scrittura appena eseguita — dev'essere
+            // riconducibile a colpo d'occhio al report da cui proviene, non un GUID anonimo.
+            string workingCopy = AppPaths.TempFile(
+                $"{WorkingCopyPrefix(filePath)}_{Guid.NewGuid():N}{Path.GetExtension(filePath)}");
 
-            string tempPath = Path.Combine(Path.GetTempPath(), "pat_sheet_" + Guid.NewGuid().ToString("N") + ".xml");
+            // L'originale viene solo LETTO: su violazione di condivisione si riprova, non si forza.
+            FileOperationRetry.Execute(
+                () => File.Copy(filePath, workingCopy, overwrite: true),
+                SafeSaveMaxAttempts, SafeSaveDelayMsSostitutivo);
+
+            bool replaced = false;
             try
             {
-                using (var source = worksheetPart.GetStream(FileMode.Open, FileAccess.Read))
-                using (var reader = XmlReader.Create(source, new XmlReaderSettings { CloseInput = false }))
-                using (var destination = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
-                using (var writer = XmlWriter.Create(destination, new XmlWriterSettings
+                using (var document = SpreadsheetDocument.Open(workingCopy, isEditable: true))
                 {
-                    CloseOutput = false,
-                    Indent = false,
-                    Encoding = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false)
-                }))
-                {
-                    writer.WriteStartDocument(standalone: true);
-                    reader.MoveToContent();
-                    transform(reader, writer);
+                    var workbookPart = document.WorkbookPart
+                        ?? throw new InvalidOperationException("Workbook privo di WorkbookPart: pacchetto non valido.");
+
+                    var worksheetPart = GetWorksheetPartByName(workbookPart, sheetName);
+
+                    string sheetXmlPath = Path.Combine(Path.GetTempPath(), "pat_sheet_" + Guid.NewGuid().ToString("N") + ".xml");
+                    try
+                    {
+                        // Lo scambio passa da un file e non da un MemoryStream: su un foglio da 59 MB
+                        // quest'ultimo sarebbe un'allocazione sul Large Object Heap a ogni salvataggio,
+                        // la categoria di problema già affrontata in §6.1-sexies.
+                        using (var source = worksheetPart.GetStream(FileMode.Open, FileAccess.Read))
+                        using (var reader = XmlReader.Create(source, new XmlReaderSettings { CloseInput = false }))
+                        using (var destination = new FileStream(sheetXmlPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                        using (var writer = XmlWriter.Create(destination, new XmlWriterSettings
+                        {
+                            CloseOutput = false,
+                            Indent = false,
+                            Encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)
+                        }))
+                        {
+                            writer.WriteStartDocument(standalone: true);
+                            reader.MoveToContent();
+                            transform(reader, writer);
+                        }
+
+                        using var updated = new FileStream(sheetXmlPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                        worksheetPart.FeedData(updated);
+                    }
+                    finally
+                    {
+                        try { if (File.Exists(sheetXmlPath)) File.Delete(sheetXmlPath); } catch { /* pulizia best-effort */ }
+                    }
+
+                    if (tableRowToInclude is int tableRow) ExpandTablesToRow(worksheetPart, tableRow);
                 }
 
-                using var updated = new FileStream(tempPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-                worksheetPart.FeedData(updated);
+                ValidateWorkbook(workingCopy, sheetName);
+
+                // Sostituzione del file attivo. È il primo e unico momento in cui l'originale viene
+                // toccato, ed è una sovrascrittura: mai un Delete seguito da una Copy, che lascerebbe
+                // una finestra in cui il file non esiste da nessuna parte.
+                FileOperationRetry.Execute(
+                    () => File.Copy(workingCopy, filePath, overwrite: true),
+                    SafeSaveMaxAttempts, SafeSaveDelayMsSostitutivo);
+
+                if (!File.Exists(filePath) || new FileInfo(filePath).Length == 0)
+                {
+                    throw new IOException(
+                        $"La sostituzione del report non è andata a buon fine: '{filePath}' risulta assente o vuoto. " +
+                        $"La versione aggiornata è disponibile in '{workingCopy}'.");
+                }
+
+                replaced = true;
             }
             finally
             {
-                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* pulizia best-effort */ }
+                // Solo a sostituzione confermata: se è fallita, il temporaneo è l'unica copia che
+                // contiene la scrittura appena eseguita e va conservata.
+                if (replaced)
+                {
+                    try { File.Delete(workingCopy); } catch { /* pulizia best-effort */ }
+                }
             }
+        }
+
+        /// <summary>
+        /// Prefisso del file di lavoro per un dato report: <c>report_temp_&lt;nome del report&gt;</c>,
+        /// ripulito dai caratteri non ammessi e troncato, perché un nome di report reale è lungo e
+        /// contiene spazi e punti. Esposto ai test, che lo usano per ritrovare il file di lavoro del
+        /// proprio report senza inciampare in quelli delle suite che girano in parallelo.
+        /// </summary>
+        internal static string WorkingCopyPrefix(string filePath)
+        {
+            var name = new StringBuilder("report_temp_");
+            foreach (char character in Path.GetFileNameWithoutExtension(filePath))
+            {
+                name.Append(Array.IndexOf(Path.GetInvalidFileNameChars(), character) >= 0 ? '_' : character);
+            }
+
+            const int lunghezzaMassima = 80;
+            return name.Length > lunghezzaMassima ? name.ToString(0, lunghezzaMassima) : name.ToString();
+        }
+
+        /// <summary>
+        /// Rilegge il file appena prodotto come pacchetto OpenXML e verifica che contenga ancora il
+        /// foglio di destinazione con il suo <c>&lt;sheetData&gt;</c>. È la barriera fra "ho scritto
+        /// qualcosa" e "posso sostituire il report aziendale": un pacchetto troncato o senza il foglio
+        /// non deve mai arrivare sulla cartella sincronizzata.
+        /// </summary>
+        private static void ValidateWorkbook(string filePath, string sheetName)
+        {
+            if (!File.Exists(filePath))
+            {
+                throw new IOException($"Il file di lavoro '{filePath}' non è stato prodotto.");
+            }
+
+            if (new FileInfo(filePath).Length == 0)
+            {
+                throw new IOException($"Il file di lavoro '{filePath}' è vuoto: scrittura non valida.");
+            }
+
+            using var document = SpreadsheetDocument.Open(filePath, isEditable: false);
+            var workbookPart = document.WorkbookPart
+                ?? throw new IOException($"Il file di lavoro '{filePath}' non è un pacchetto OpenXML valido.");
+
+            var worksheetPart = GetWorksheetPartByName(workbookPart, sheetName);
+
+            using var stream = worksheetPart.GetStream(FileMode.Open, FileAccess.Read);
+            using var reader = XmlReader.Create(stream, new XmlReaderSettings { CloseInput = false });
+
+            while (reader.Read())
+            {
+                if (reader.NodeType == XmlNodeType.Element && reader.LocalName == "sheetData" && reader.NamespaceURI == Ns)
+                {
+                    return;
+                }
+            }
+
+            throw new IOException($"Il foglio '{sheetName}' del file di lavoro '{filePath}' è privo di <sheetData>.");
+        }
+
+        /// <summary>
+        /// Estende l'intervallo delle tabelle strutturate (ListObject) del foglio fino a includere la
+        /// riga <paramref name="rowNumber"/> appena scritta. Senza questo, una riga aggiunta appena sotto
+        /// una tabella resta fuori dal suo <c>ref</c>: Excel la mostra come riga libera, le formule
+        /// strutturate e i filtri della tabella la ignorano, e in alcuni casi il file viene segnalato come
+        /// da riparare.
+        ///
+        /// <para>
+        /// <b>Cosa viene aggiornato e cosa no.</b> Si aggiornano <c>ref</c> della tabella e <c>ref</c>
+        /// del suo <c>&lt;autoFilter&gt;</c>, che sono intervalli e quindi dipendono dal numero di righe.
+        /// <b>Non</b> si tocca <c>&lt;tableColumns count&gt;</c>: quel contatore conta le <i>colonne</i>,
+        /// non le righe — incrementarlo a ogni riga aggiunta lo porterebbe a divergere dal numero di
+        /// <c>&lt;tableColumn&gt;</c> effettivi, ed è esattamente ciò che fa dichiarare il file
+        /// danneggiato a Excel.
+        /// </para>
+        ///
+        /// <para>
+        /// Nessuno dei quattro Report Interventi aziendali usa oggi una tabella strutturata (verificato
+        /// sui file reali: zero <c>TableDefinitionPart</c>). Questo percorso esiste perché la struttura
+        /// dei report cambia nel tempo senza preavviso, e una riga scritta fuori tabella è un difetto
+        /// silenzioso: meglio gestirlo ora che scoprirlo su un report reale.
+        /// </para>
+        /// </summary>
+        private static void ExpandTablesToRow(WorksheetPart worksheetPart, int rowNumber)
+        {
+            foreach (var tablePart in worksheetPart.TableDefinitionParts)
+            {
+                // XML grezzo e non <c>tablePart.Table</c>: il solo accesso a quella proprietà carica il
+                // DOM e l'SDK **riscrive la parte alla chiusura del documento**, anche senza modifiche.
+                // Sarebbe lo stesso effetto collaterale già scoperto su workbook.xml (§6.1-vicies-quater),
+                // e qui l'ha intercettato di nuovo la suite di integrità: una tabella non toccata deve
+                // restare byte per byte identica.
+                XDocument document;
+                using (var stream = tablePart.GetStream(FileMode.Open, FileAccess.Read))
+                {
+                    document = XDocument.Load(stream);
+                }
+
+                var root = document.Root;
+                if (root?.Attribute("ref")?.Value is not { } reference) continue;
+                if (!TryParseRowSpan(reference, out int firstRow, out int lastRow)) continue;
+                if (rowNumber <= lastRow || rowNumber < firstRow) continue;
+
+                root.SetAttributeValue("ref", ReplaceLastRow(reference, rowNumber));
+
+                var autoFilter = root.Element(S + "autoFilter");
+                if (autoFilter?.Attribute("ref")?.Value is { } filterReference &&
+                    TryParseRowSpan(filterReference, out _, out int filterLastRow) &&
+                    rowNumber > filterLastRow)
+                {
+                    autoFilter.SetAttributeValue("ref", ReplaceLastRow(filterReference, rowNumber));
+                }
+
+                // Una definizione di tabella sta in pochi KB: qui il MemoryStream è appropriato, a
+                // differenza del foglio (decine di MB, §6.1-sexies).
+                using var buffer = new MemoryStream();
+                using (var writer = XmlWriter.Create(buffer, new XmlWriterSettings
+                {
+                    CloseOutput = false,
+                    Indent = false,
+                    Encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)
+                }))
+                {
+                    document.Save(writer);
+                }
+
+                buffer.Position = 0;
+                tablePart.FeedData(buffer);
+            }
+        }
+
+        /// <summary>Prima e ultima riga di un riferimento tipo <c>"A1:N100"</c>.</summary>
+        private static bool TryParseRowSpan(string reference, out int firstRow, out int lastRow)
+        {
+            firstRow = 0;
+            lastRow = 0;
+
+            string[] ends = reference.Split(':');
+            if (ends.Length != 2) return false;
+
+            firstRow = ParseRowIndex(new string(ends[0].SkipWhile(char.IsLetter).ToArray()));
+            lastRow = ParseRowIndex(new string(ends[1].SkipWhile(char.IsLetter).ToArray()));
+            return firstRow > 0 && lastRow > 0;
+        }
+
+        /// <summary>Sostituisce la riga finale di un riferimento: <c>"A1:N100"</c> + 101 → <c>"A1:N101"</c>.</summary>
+        private static string ReplaceLastRow(string reference, int lastRow)
+        {
+            string[] ends = reference.Split(':');
+            string columns = new(ends[1].TakeWhile(char.IsLetter).ToArray());
+            return $"{ends[0]}:{columns}{lastRow.ToString(CultureInfo.InvariantCulture)}";
         }
 
         private static void WriteRowCore(XmlReader reader, XmlWriter writer, int rowNumber, Dictionary<int, string> values)
@@ -475,20 +988,9 @@ namespace PersonalAutomationTool.Modules.Excel
             cell.Elements().Remove();
             cell.Attribute("t")?.Remove();
 
-            if (DateTime.TryParseExact(rawValue, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
+            if (TryGetNumericStoredValue(rawValue, out string numericStored))
             {
-                // Numero seriale OADate: la rappresentazione nativa delle date in Excel. Il formato
-                // di visualizzazione viene dallo stile ereditato, come per le righe già presenti.
-                cell.Add(new XElement(S + "v", parsedDate.ToOADate().ToString(CultureInfo.InvariantCulture)));
-                return;
-            }
-
-            if (double.TryParse(rawValue, NumberStyles.Any, CultureInfo.InvariantCulture, out double numericValue)
-                && rawValue.Trim() == numericValue.ToString(CultureInfo.InvariantCulture))
-            {
-                // Solo se la stringa è esattamente la forma canonica del numero: così un valore come
-                // "007" o "1.2.3" resta testo e non viene alterato nella conversione.
-                cell.Add(new XElement(S + "v", numericValue.ToString(CultureInfo.InvariantCulture)));
+                cell.Add(new XElement(S + "v", numericStored));
                 return;
             }
 
@@ -507,6 +1009,42 @@ namespace PersonalAutomationTool.Modules.Excel
             }
 
             cell.Add(new XElement(S + "is", text));
+        }
+
+        /// <summary>
+        /// La forma **realmente memorizzata** nella cella per <paramref name="rawValue"/>: seriale
+        /// OADate per una data <c>dd/MM/yyyy</c>, forma canonica per un numero, la stringa stessa
+        /// altrimenti. È il termine di paragone della verifica dopo la scrittura: confrontare con il
+        /// valore digitato dal tecnico darebbe falsi allarmi su ogni data e su ogni numero.
+        /// </summary>
+        internal static string ToStoredValue(string rawValue) =>
+            TryGetNumericStoredValue(rawValue, out string stored) ? stored : rawValue;
+
+        /// <summary>
+        /// Vero se il valore va scritto come numero (data seriale o numero canonico), con la forma da
+        /// mettere in <c>&lt;v&gt;</c>. Falso per tutto il resto, che resta testo.
+        /// </summary>
+        private static bool TryGetNumericStoredValue(string rawValue, out string stored)
+        {
+            if (DateTime.TryParseExact(rawValue, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
+            {
+                // Numero seriale OADate: la rappresentazione nativa delle date in Excel. Il formato
+                // di visualizzazione viene dallo stile ereditato, come per le righe già presenti.
+                stored = parsedDate.ToOADate().ToString(CultureInfo.InvariantCulture);
+                return true;
+            }
+
+            if (double.TryParse(rawValue, NumberStyles.Any, CultureInfo.InvariantCulture, out double numericValue)
+                && rawValue.Trim() == numericValue.ToString(CultureInfo.InvariantCulture))
+            {
+                // Solo se la stringa è esattamente la forma canonica del numero: così un valore come
+                // "007" o "1.2.3" resta testo e non viene alterato nella conversione.
+                stored = numericValue.ToString(CultureInfo.InvariantCulture);
+                return true;
+            }
+
+            stored = rawValue;
+            return false;
         }
 
         // ---------------------------------------------------------------------------------------
@@ -646,6 +1184,40 @@ namespace PersonalAutomationTool.Modules.Excel
                 else break;
             }
             return result;
+        }
+    }
+
+    /// <summary>
+    /// Esito <b>verificato</b> di una scrittura di riga: cosa conteneva la riga di destinazione prima,
+    /// e cosa risulta riletto dal file attivo dopo. Serve a rendere diagnosticabile dal campo il difetto
+    /// più insidioso di questo modulo — l'applicazione che annuncia "salvato alla riga N" mentre il
+    /// foglio non è cambiato (§6.1-tricies-septies).
+    /// </summary>
+    /// <param name="SheetName">Foglio su cui la scrittura è avvenuta davvero.</param>
+    /// <param name="RowNumber">Riga di destinazione, 1-based.</param>
+    /// <param name="ValuesBefore">Contenuto delle colonne scritte prima della scrittura (vuoto se la riga era libera).</param>
+    /// <param name="ValuesAfter">Contenuto delle stesse colonne riletto dal file attivo dopo la sostituzione.</param>
+    public sealed record ReportRowWriteResult(
+        string SheetName,
+        int RowNumber,
+        IReadOnlyDictionary<int, string> ValuesBefore,
+        IReadOnlyDictionary<int, string> ValuesAfter)
+    {
+        /// <summary>Vero se la riga di destinazione conteneva già qualcosa nelle colonne scritte.</summary>
+        public bool RowWasOccupied => ValuesBefore.Any(entry => !string.IsNullOrWhiteSpace(entry.Value));
+
+        /// <summary>Riga singola per il log diagnostico, con i valori prima e dopo per colonna.</summary>
+        public string ToLogEntry()
+        {
+            static string Format(IReadOnlyDictionary<int, string> values) =>
+                values.Count == 0
+                    ? "(nessuna colonna)"
+                    : string.Join(", ", values.OrderBy(entry => entry.Key)
+                        .Select(entry => $"{ReportInterventiWriter.GetColumnName(entry.Key)}='{entry.Value}'"));
+
+            return $"foglio '{SheetName}', riga {RowNumber}, riga già occupata: {(RowWasOccupied ? "SÌ" : "no")}" +
+                   $"{Environment.NewLine}  prima: {Format(ValuesBefore)}" +
+                   $"{Environment.NewLine}  dopo : {Format(ValuesAfter)}";
         }
     }
 }

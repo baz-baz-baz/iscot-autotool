@@ -206,8 +206,15 @@ namespace PersonalAutomationTool.Modules.Excel
                         // sincronizzata, dove il client di sync può agganciare il file per brevi
                         // istanti. Variante sincrona perché siamo già dentro un Task.Run.
                         string source = originalFile;
+
+                        // L'archivio in OLD è una COPIA: il file attivo resta al suo posto finché lo
+                        // spostamento vero e proprio non è concluso.
                         Core.FileOperationRetry.Execute(() => File.Copy(source, copyDestination, true));
-                        Core.FileOperationRetry.Execute(() => File.Move(source, movedFile, true));
+
+                        // Copia + verifica + eliminazione, mai File.Move: fra la cartella SharePoint e
+                        // LOG & DUMP non deve esistere un istante in cui il report non sta da nessuna
+                        // parte (§6.1-tricies-septies).
+                        Core.FileOperationRetry.MoveSafely(source, movedFile);
                     }
                 });
 
@@ -1244,22 +1251,30 @@ namespace PersonalAutomationTool.Modules.Excel
                 // NB: nessun ConfigureAwait(false) su questa await. La continuazione tocca IsLoading e
                 // apre una MessageBox: deve tornare sul thread della UI. Ciò che serve alla reattività
                 // — tenere l'I/O fuori dal dispatcher — è già garantito dal Task.Run.
-                int targetRow = await Task.Run(() =>
+                var esito = await Task.Run(() =>
                 {
-                    // Colonne chiave che qualificano una riga come compilata: Data (B), Sito (C),
-                    // Ticket (D), Loco (G) — le stesse su cui si basava la scansione precedente.
+                    // Colonne chiave che qualificano una riga come compilata: Data chiamata (B), Sito (C),
+                    // Ticket (D), Data intervento (G). La riga conta come occupata solo se una di queste
+                    // ha un valore VERO — non basta che la cella esista, vedi ReportInterventiWriter.
                     int lastFilled = ReportInterventiWriter.FindLastFilledRow(reportPath, sheetName, [2, 3, 4, 7]);
 
                     // Con il foglio privo di dati si riparte dalla riga 2, sotto le intestazioni.
                     int row = Math.Max(lastFilled, 1) + 1;
 
-                    ReportInterventiWriter.WriteRow(reportPath, sheetName, row, valuesByColumn);
-                    return row;
+                    // WriteRow rilegge la riga dal file salvato e fallisce se non contiene ciò che
+                    // doveva: da qui in poi "salvato" significa "verificato".
+                    return ReportInterventiWriter.WriteRow(reportPath, sheetName, row, valuesByColumn);
                 });
+
+                // Traccia in crash.log: foglio, riga, contenuto prima e dopo. Senza questa, un
+                // "ha scritto nel posto sbagliato" dal campo non è ricostruibile (§6.1-tricies-septies).
+                Core.CrashReporter.RegistraDiagnostica(
+                    $"EXCEL / Scrivi report — flotta '{SelectedTrain}', file '{reportPath}'{Environment.NewLine}{esito.ToLogEntry()}");
 
                 IsLoading = false;
                 await Task.Delay(100);
-                MessageBox.Show($"Report salvato con successo alla riga {targetRow}.", "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"Report salvato e verificato nel foglio «{esito.SheetName}», riga {esito.RowNumber}.",
+                    "Successo", MessageBoxButton.OK, MessageBoxImage.Information);
                     
                 // (I campi non vengono puliti automaticamente qui per permettere il 'Riporta Report')
             }
@@ -1380,8 +1395,12 @@ namespace PersonalAutomationTool.Modules.Excel
                 IProgress<(int Attempt, int DelayMs)> retryProgress = new Progress<(int Attempt, int DelayMs)>(p =>
                     LoadingMessage = $"File temporaneamente in uso, nuovo tentativo {p.Attempt + 1} di {Core.FileOperationRetry.DefaultMaxAttempts}...");
 
-                await Core.FileOperationRetry.ExecuteAsync(
-                    () => File.Move(sourcePath, destinationPath, true),
+                // Copia + verifica + eliminazione dell'origine, mai File.Move: con overwrite:true il
+                // Move rimuove l'origine come parte dell'operazione, e se la scrittura sulla cartella
+                // sincronizzata fallisce a metà il report non è più né in LOG & DUMP né su SharePoint.
+                // È il "file scomparso" segnalato dal committente (§6.1-tricies-septies).
+                await Core.FileOperationRetry.MoveSafelyAsync(
+                    sourcePath, destinationPath,
                     onRetry: (attempt, delayMs) => retryProgress.Report((attempt, delayMs)));
 
                 IsLoading = false;

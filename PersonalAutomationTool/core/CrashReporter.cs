@@ -98,6 +98,17 @@ namespace PersonalAutomationTool.Core
         public static void RegistraAnomalia(string contesto, Exception? eccezione = null) =>
             Registra("ANOMALIA GESTITA", contesto, eccezione);
 
+        /// <summary>
+        /// Registra una traccia diagnostica di un'operazione **riuscita**, senza avviso a video: serve
+        /// quando ciò che conta non è l'errore ma poter ricostruire a posteriori *cosa* è stato scritto
+        /// e *dove*. Introdotta per il Report Interventi (§6.1-tricies-septies): il difetto segnalato dal
+        /// committente — "dice di aver scritto alla riga N, ma nel foglio non c'è niente" — era
+        /// indiagnosticabile dal campo, perché l'unica traccia era una MessageBox che riportava un
+        /// numero di riga senza dire su quale foglio né con quali valori.
+        /// </summary>
+        public static void RegistraDiagnostica(string contesto) =>
+            Registra("DIAGNOSTICA", contesto, null);
+
         private static void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
             // Gestita: l'operazione in corso è persa, l'applicazione no. Unica eccezione: un errore

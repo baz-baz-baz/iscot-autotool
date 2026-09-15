@@ -82,6 +82,37 @@ namespace PersonalAutomationTool.Core
         public static string DatabaseFolder => Path.Combine(DataFolder, SottocartellaDatabase);
 
         /// <summary>
+        /// Cartella di lavoro per i file temporanei delle scritture transazionali
+        /// (<c>%LOCALAPPDATA%\iscot-autotool\temp</c>): è qui che
+        /// <c>ReportInterventiWriter</c> costruisce la nuova versione del Report Interventi prima di
+        /// sostituire l'originale, così il file attivo su SharePoint non viene mai toccato finché la
+        /// nuova versione non è completa e validata (§6.1-tricies-septies).
+        ///
+        /// <para>
+        /// <b>Deliberatamente sotto la cartella dati e non in <see cref="Path.GetTempPath"/></b>: il
+        /// temporaneo di sistema viene ripulito da Windows anche mentre un'operazione è in corso, e su
+        /// alcune macchine d'officina sta su un volume diverso — una copia cross-volume è più lenta e,
+        /// soprattutto, non è mai una rinomina atomica. Qui invece il temporaneo è sullo stesso volume
+        /// dei dati applicativi e sopravvive al riavvio, così un salvataggio interrotto lascia una
+        /// copia recuperabile invece di sparire.
+        /// </para>
+        /// </summary>
+        public static string TempFolder =>
+            Path.Combine(string.IsNullOrEmpty(DataFolder) ? CartellaDatiPredefinita : DataFolder, "temp");
+
+        /// <summary>
+        /// Percorso di un file dentro <see cref="TempFolder"/>, creando la cartella se manca. Non
+        /// richiede che <see cref="Initialize"/> sia già stato chiamato: ricade su
+        /// <see cref="CartellaDatiPredefinita"/>, che è calcolata e non dipende dall'inizializzazione.
+        /// </summary>
+        public static string TempFile(string nomeFile)
+        {
+            string cartella = TempFolder;
+            Directory.CreateDirectory(cartella);
+            return Path.Combine(cartella, nomeFile);
+        }
+
+        /// <summary>
         /// Cartella da cui l'applicazione è stata avviata. In single-file è la cartella temporanea di
         /// estrazione del bundle: va bene per <b>leggere</b> i file distribuiti con l'applicazione,
         /// mai per scrivere.
