@@ -4526,6 +4526,61 @@ salvato, e la scrittura successiva andrebbe alla riga dopo.
 > comportamento che con due turni sovrapposti può far lavorare due persone su copie diverse dello stesso
 > report. Vale una decisione esplicita (§6.4).
 
+### 6.1-tricies-octies Sprint 35 — Release di produzione 2.0.4: pubblicate le due correzioni critiche del Report Interventi ⭐
+
+**Richiesta.** Il committente ha chiesto di rilasciare subito le correzioni di §6.1-tricies-septies
+("rilascia questa versione corretta"), senza attendere la verifica in officina: le due anomalie sono
+bloccanti e la 2.0.3 in campo contiene ancora il percorso di salvataggio che può far sparire il file.
+
+#### Procedura seguita (identica a §6.1-tricies-quater e §6.1-tricies-sexies)
+
+Correzioni committate per prime (`a996b3f`, otto file: i due moduli `core` toccati, `ExcelViewModel`,
+`ReportInterventiWriter`, le due classi di test nuove e questo documento), poi `<Version>` allineata a
+**2.0.4** nel `.csproj` con un commit separato (`c7392a2`, "Update 2.0.4") — così il
+`ProductVersion` dell'eseguibile punta al commit delle correzioni e non al bump.
+
+`dotnet clean` + `dotnet test` → **618/618**, 0 errori, 0 warning. Pubblicazione:
+
+```bash
+dotnet publish PersonalAutomationTool/PersonalAutomationTool.csproj -c Release -r win-x64 \
+  --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true \
+  -p:IncludeAllContentForSelfExtract=true -o ./Release_Dist
+```
+
+`.pdb` rimosso prima della consegna. Risultato: `PersonalAutomationTool.exe`, **85 194 047 byte
+(81,2 MB)**, `FileVersion 2.0.4.0`, `ProductVersion 2.0.4+a996b3f…`. `RELEASE_NOTES.md` riscritto sulle
+quattro novità utente di questo sprint.
+
+```
+git tag -a v2.0.4 -m "Personal Automation Tool 2.0.4"
+git push origin main && git push origin v2.0.4
+gh release create v2.0.4 Release_Dist/PersonalAutomationTool.exe --target main \
+  --title "Personal Automation Tool 2.0.4" --notes-file Release_Dist/RELEASE_NOTES.md
+```
+
+#### Inciampo da ricordare: `dotnet clean` e il progetto temporaneo WPF
+
+Il primo `dotnet test` dopo il `clean` è fallito con una cinquantina di `CS0103`
+(`InitializeComponent`, `LoadingOverlay`, `ItemsControlCards` "non esistono nel contesto corrente") su
+un progetto `PersonalAutomationTool_<hash>_wpftmp.csproj`. **Non è una regressione del codice**: è il
+progetto temporaneo che l'SDK WPF genera per compilare lo XAML, che dopo un `clean` può partire prima
+che i `.g.cs` siano rigenerati. Un `dotnet build` successivo, senza toccare nulla, è andato a buon fine
+con 0 errori e 0 warning, e i test sono passati. Se ricapita in una release futura: **ricompilare, non
+indagare** — a meno che l'errore non si ripresenti anche al secondo tentativo.
+
+#### Verifica dall'API pubblica non autenticata
+
+`tag_name` `v2.0.4`, `target_commitish` `main`, `draft: false`, `prerelease: false` → compare in
+`/releases/latest`, l'endpoint interrogato da `AutoUpdateService`. Un solo asset `.exe`,
+**85 194 047 byte**, identico al file locale. Richiesta HTTP diretta senza token all'URL di download →
+**302 poi 200**. Chi ha già installato una versione precedente riceve l'aggiornamento al prossimo avvio.
+
+> ⚠️ **Non verificabile da questo ambiente, e questa volta pesa più del solito:** le due correzioni
+> riguardano il comportamento reale del client OneDrive/SharePoint e l'apertura dei file in Excel, che
+> qui non esistono. Il rilascio è stato fatto **prima** della verifica in officina, su richiesta
+> esplicita: la checklist 40 (§7) va eseguita al primo turno utile, in particolare il punto (c) —
+> "Scrivi report" mentre OneDrive sincronizza — che è l'unica prova sul campo del difetto ETR500.
+
 ### 6.2 Le 4 macro-aree della roadmap strategica
 
 Elaborata come risposta alla domanda "se fossi il Lead Architect, cosa faresti dopo l'audit
