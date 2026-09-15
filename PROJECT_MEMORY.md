@@ -4331,6 +4331,72 @@ personalizzazione del tecnico (valore diverso da vecchio e nuovo) non viene tocc
 ETR1001FH restano invariate anche quando sono ancora al vecchio valore condiviso con ETR1000. `dotnet
 build` → 0 errori, 0 warning. `dotnet test` → **601/601** (595 → 601, +6).
 
+### 6.1-tricies-sexies Sprint 34 — Release di produzione 2.0.3: pubblicati il fix ETR500 e l'aggiornamento destinatari ⭐
+
+**Richiesta.** Il committente, dopo aver ricevuto i fix di §6.1-tricies-quinquies (bug critico
+"Scrivi report" su ETR500, indirizzo `mario.arcini@hitachirail.com` in Rubrica, nuovi destinatari
+"Passaggio di consegne" per E404P/ETR700/ETR1000), ha chiesto di pubblicarli ("rilascia questi
+aggiornamenti") — stessa scelta già fatta in §6.1-tricies-quater per 2.0.2.
+
+#### Stato del repository all'ingresso in questo sprint
+
+A differenza delle release precedenti, questa sessione ha trovato il lavoro di §6.1-tricies-quinquies
+**già committato e già pushato** su `origin/main` (commit `0a639b3`, messaggio "Update", autore
+`AlessioBassetto` — presumibilmente da un client Git esterno a questa sessione, non da qui): `git
+status` risultava pulito all'apertura di questo sprint. Nessuna azione necessaria oltre a verificarlo.
+
+#### Procedura seguita (identica a §6.1-tricies e §6.1-tricies-quater)
+
+`<Version>` allineata a **2.0.3** nel `.csproj`. `dotnet clean` + `dotnet test` → **601/601**, 0
+errori, 0 warning. Pubblicazione:
+
+```bash
+dotnet publish PersonalAutomationTool/PersonalAutomationTool.csproj -c Release -r win-x64 \
+  --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true \
+  -p:IncludeAllContentForSelfExtract=true -o ./Release_Dist
+```
+
+`.pdb` rimosso prima della consegna. Risultato: `PersonalAutomationTool.exe`, **85 165 179 byte
+(81,2 MB)**, `FileVersion 2.0.3.0`, `ProductVersion 2.0.3+b423934…` (il commit del bump di versione).
+`RELEASE_NOTES.md` di `Release_Dist` (non versionato, rigenerato a ogni release) riscritto per
+elencare le tre novità utente di questo sprint invece di quelle di 2.0.2, che vi erano rimaste da
+`§6.1-tricies-quater`.
+
+Bump di versione committato (`git commit -m "Update 2.0.3"`, un solo file: il `.csproj`), poi:
+
+```
+git tag -a v2.0.3 -m "Personal Automation Tool 2.0.3"
+git push origin main
+git push origin v2.0.3
+gh release create v2.0.3 Release_Dist/PersonalAutomationTool.exe --target main \
+  --title "Personal Automation Tool 2.0.3" --notes-file Release_Dist/RELEASE_NOTES.md
+```
+
+`gh auth status` era già autenticato (account `AlessioBassetto`, scope `repo` presente) come nella
+sessione di §6.1-tricies-quater, non come nella prima release (§6.1-tricies) — coerente con
+l'osservazione già annotata lì, che la differenza non fosse più riproducibile.
+
+#### Verifica dall'API pubblica non autenticata
+
+Stesso controllo di §6.1-tricies-quater, l'unico che conta perché è l'endpoint interrogato da
+`AutoUpdateService`: `tag_name` `v2.0.3`, `target_commitish` `main`, `draft: false`, `prerelease:
+false` → compare in `/releases/latest`. Un solo asset `.exe`, **85 165 179 byte**, identico al file
+locale pubblicato. Richiesta HTTP diretta (senza token) all'URL di download → **redirect 302 poi
+200**, `Content-Disposition` con il nome file atteso. Chi ha già installato una versione precedente
+riceve l'aggiornamento in automatico al prossimo avvio.
+
+#### Verifica
+
+`dotnet clean` → `dotnet test` → **601/601**, 0 errori, 0 warning. Pubblicazione completata, release
+pubblicata e ricontrollata dall'API pubblica non autenticata (tag, target, asset, dimensione, download
+HTTP 200).
+
+> ⚠️ **Non verificabile da questo ambiente:** lo smoke test sulla cartella dati reale (§6.1-tricies-quater)
+> non è stato ripetuto qui — questa release non tocca `DatabaseSeedSyncService` né la struttura dei
+> database, solo dati (`indirizzi_email`) e una migrazione JSON (`destinatari.json`) già coperte dai
+> rispettivi test unitari in §6.1-tricies-quinquies — e l'apertura in Excel del file ETR500 reale dopo
+> "Scrivi report" (stessa riserva già annotata lì): entrambe da fare al prossimo turno in officina.
+
 ### 6.2 Le 4 macro-aree della roadmap strategica
 
 Elaborata come risposta alla domanda "se fossi il Lead Architect, cosa faresti dopo l'audit
