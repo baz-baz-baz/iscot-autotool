@@ -4749,6 +4749,60 @@ che la scansione multi-radice funziona sull'ambiente vero, non solo su cartelle 
 > `AntonioTodde`: dopo l'aggiornamento, "Verifica Percorsi Hitachi" deve mostrare tutte le righe **OK**
 > con il percorso `C:\Users\AntonioTodde\Desktop\Hitachi Group\...`.
 
+### 6.1-quadragies-semel Sprint 37 (seguito) — Release di produzione 2.0.5: "Reset a fabbrica" e risoluzione dinamica Hitachi Group
+
+**Richiesta.** "Distribuisci una nuova versione" — pubblicare i due interventi di questo sprint
+(§6.1-tricies-nonies, §6.1-quadragies): nessuna correzione aggiuntiva richiesta rispetto a quanto già
+implementato e testato.
+
+#### Stato del repository all'ingresso
+
+`git status` puliito, `git log origin/main..HEAD` vuoto: il lavoro di entrambi gli interventi risultava
+**già committato e pushato** su `origin/main` (commit `62a7b20`, messaggio "Update", autore
+`AlessioBassetto" — stesso schema già annotato per la 2.0.3, presumibilmente da un client Git esterno a
+questa sessione). Nessuna azione di allineamento necessaria oltre a verificarlo con `git fetch`.
+
+#### Procedura (identica a §6.1-tricies-quater/-sexies)
+
+`<Version>` allineata a **2.0.5** nel `.csproj`. `dotnet clean` + `dotnet test` → **650/650**, 0 errori,
+0 warning. Pubblicazione:
+
+```bash
+dotnet publish PersonalAutomationTool/PersonalAutomationTool.csproj -c Release -r win-x64 \
+  --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true \
+  -p:IncludeAllContentForSelfExtract=true -o ./Release_Dist
+```
+
+`.pdb` rimosso prima della consegna. Risultato: `PersonalAutomationTool.exe`, **85 199 555 byte
+(81,2 MB)**, `FileVersion 2.0.5.0`. `RELEASE_NOTES.md` riscritto per le due novità di questo sprint
+(Reset a fabbrica, individuazione dinamica di Hitachi Group).
+
+Bump di versione committato (`git commit -m "Update 2.0.5"`, un solo file: il `.csproj`), poi:
+
+```
+git push origin main
+git tag -a v2.0.5 -m "Personal Automation Tool 2.0.5"
+git push origin v2.0.5
+gh release create v2.0.5 Release_Dist/PersonalAutomationTool.exe --target main \
+  --title "Personal Automation Tool 2.0.5" --notes-file Release_Dist/RELEASE_NOTES.md
+```
+
+`gh auth status` già autenticato (account `AlessioBassetto`, scope `repo` presente).
+
+#### Verifica dall'API pubblica non autenticata
+
+`tag_name` `v2.0.5`, `target_commitish` `main`, `draft: false`, `prerelease: false` → compare in
+`/releases/latest`. Un solo asset `.exe`, **85 199 555 byte**, identico al file locale pubblicato.
+Richiesta HTTP diretta (senza token) all'URL di download → **redirect 302 poi** URL firmato di
+`release-assets.githubusercontent.com` con `Content-Disposition: attachment; filename=PersonalAutomationTool.exe`.
+Chi ha già installato una versione precedente riceve l'aggiornamento in automatico al prossimo avvio.
+
+> ⚠️ **Non verificabile da questo ambiente**, e riguarda entrambi gli interventi di questo sprint:
+> checklist 41 (Reset a fabbrica, il giro completo pulsante → riavvio) e checklist 42 (radice Hitachi
+> Group su Desktop, verificabile solo sulla macchina di Antonio Todde) restano da eseguire al primo
+> turno utile in officina — il rilascio è stato fatto prima di quella verifica, su richiesta esplicita,
+> stesso schema già seguito per la 2.0.3 (§6.1-tricies-sexies).
+
 ### 6.2 Le 4 macro-aree della roadmap strategica
 
 Elaborata come risposta alla domanda "se fossi il Lead Architect, cosa faresti dopo l'audit
