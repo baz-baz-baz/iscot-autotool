@@ -34,6 +34,12 @@
                     Padding="16,10" Background="#EFF6FF" Foreground="#1D4ED8" BorderBrush="#BFDBFE" BorderThickness="1"
                     FontWeight="SemiBold" FontSize="14"
                     ToolTip="Controlla in sola lettura lo stato delle cartelle Hitachi/SharePoint/OneDrive e di LOG &amp; DUMP: nessuna cartella o file viene creato."/>
+
+            <Button Content="Reset a fabbrica" Command="{Binding ResetFabbricaCommand}"
+                    Style="{x:Null}" Cursor="Hand" VerticalAlignment="Center" Margin="12,0,0,0"
+                    Padding="16,10" Background="#FEF2F2" Foreground="#B91C1C" BorderBrush="#FECACA" BorderThickness="1"
+                    FontWeight="SemiBold" FontSize="14"
+                    ToolTip="Rimuove i dati locali (destinatari, percorsi, database, storico rinomine) e riavvia l'applicazione come al primo avvio su un PC nuovo. La cartella attuale resta come copia di sicurezza."/>
         </StackPanel>
 
         <!-- Sezione Manutenzioni in sospeso -->

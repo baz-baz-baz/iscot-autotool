@@ -4581,6 +4581,174 @@ indagare** — a meno che l'errore non si ripresenti anche al secondo tentativo.
 > esplicita: la checklist 40 (§7) va eseguita al primo turno utile, in particolare il punto (c) —
 > "Scrivi report" mentre OneDrive sincronizza — che è l'unica prova sul campo del difetto ETR500.
 
+### 6.1-tricies-nonies Sprint 36 — "Reset a fabbrica" in HOME: la via d'uscita quando l'allineamento incrementale non basta ⭐⭐
+
+**Richiesta.** Due segnalazioni, arrivate insieme: **(1)** l'avviso di sicurezza MAPI di Outlook alla
+generazione dell'email, **(2)** su **un** PC la 2.0.4 non ha aggiornato la pagina Destinatari Mail,
+mentre su tutti gli altri sì. La richiesta iniziale prescriveva un intervento preciso su
+`EmailService.cs` (togliere `Recipients.Add`/`ResolveAll`) e la costruzione di un meccanismo di
+sincronizzazione forzata del database per versione.
+
+#### Entrambe le correzioni richieste erano già in produzione: verificato prima di scrivere codice
+
+Ricerca su tutto il repository di `Recipients.Add`, `Recipients.Resolve`, `ResolveAll`, `AddressEntry`,
+`Session.CurrentUser`, `Session.AddressLists`, `mailItem.Send()`: **zero occorrenze**.
+`EmailService.SetRecipients` assegna già le stringhe dirette (`mailItem.To` / `mailItem.CC`) e usa solo
+`Display(false)` — esattamente lo standard chiesto — e lo stesso vale per
+`PassaggioConsegneEmailService`. Il punto (2) era già stato diagnosticato e risolto nello Sprint 34
+(§6.1-tricies-quinquies): `DatabaseSeedSyncService` per le tabelle SQLite master e
+`DestinatariManager.ApplyKnownRecipientUpdates` per `destinatari.json`. **Nessuna riscrittura**: il
+ticket descriveva un codebase che non è questo.
+
+> **Sull'avviso di Outlook**, confermato ancora riproducibile sulla 2.0.4: non è eliminabile da
+> `EmailService.cs`, perché non c'è più nulla da togliere. L'Object Model Guard scatta su qualunque
+> client di automazione COM quando il Trust Center non riconosce un antivirus "Outlook-compliant"
+> attivo, indipendentemente dalle proprietà toccate. Le vie reali sono tre — chiavi
+> `PromptOOMAddressBookAccess`/`PromptOOMSend` sotto `HKCU\…\Outlook\Security` (scritte dall'app o
+> distribuite via GPO), la libreria Redemption, o la migrazione a Microsoft Graph. **Decisione
+> rimandata dal committente**, nessuna delle tre implementata.
+
+#### Il difetto strutturale che resta, ed è ciò che questo sprint affronta
+
+I due meccanismi di allineamento incrementale funzionano **solo nei casi previsti**, e falliscono in
+silenzio fuori da quelli:
+
+| Meccanismo | Aggiorna se… | Non aggiorna mai se… |
+|---|---|---|
+| `DatabaseSeedSyncService` | `PRAGMA user_version` locale < seed | il seed non è stato ribumpato al cambio dati |
+| `ApplyKnownRecipientUpdates` | il valore coincide **esattamente** col vecchio default noto | il valore diverge anche di un carattere |
+
+Il secondo caso spiega il PC segnalato: un `destinatari.json` divergente — una personalizzazione
+dimenticata, un default mai censito, un aggiornamento saltato — viene scambiato per una scelta
+consapevole del tecnico e **non verrà più toccato**, per sempre, senza alcun segnale. Serviva una via
+d'uscita che non richieda di collegarsi alla macchina.
+
+#### `FactoryResetService.cs` — sposta, non cancella; e non dimentica la cartella legacy
+
+Nuovo `core/FactoryResetService.cs`, più il pulsante **"Reset a fabbrica"** in HOME accanto a "Verifica
+Percorsi Hitachi" (`ResetFabbricaCommand` in `HomeViewModel`, conferma esplicita con `MessageBoxResult.No`
+come default). Tre decisioni che vale la pena ricordare:
+
+1. **Helper `.cmd` esterno**, stesso schema di `AutoUpdateService.ScriptHotSwap` e per la stessa
+   ragione: finché il processo vive tiene aperti gli handle SQLite e il log di `CrashReporter`. Lo
+   script attende la fine del PID, poi agisce. Lo script vive in `Path.GetTempPath()` e **non** in
+   `AppPaths.TempFile`, che sta dentro la cartella dati: si sposterebbe via da solo mentre gira.
+2. **`move`, mai `rmdir /s /q`.** La cartella viene rinominata in `iscot-autotool-backup-<timestamp>`:
+   per l'utente l'effetto è identico (all'avvio dopo, la cartella dati non esiste e viene ricreata dai
+   seed), ma è istantaneo e recuperabile. Se lo spostamento non riesce nemmeno dopo i tentativi
+   previsti, l'app riparte con i dati intatti — il fallimento peggiore è "il reset non è avvenuto",
+   mai "i dati sono spariti a metà". Un test dedicato verifica che nello script non compaia `rmdir`.
+3. **Va spostata anche `%APPDATA%\PersonalAutomationTool`** (la cartella dati della 2.0.0,
+   `AppPaths.LegacyDataFolder`). Senza questo passo il reset sarebbe **inefficace proprio sulle
+   macchine che lo richiedono**: `AppPaths.Prepara` tratta quella cartella come prima origine di
+   migrazione a *ogni* avvio, quindi ricopierebbe il vecchio `destinatari.json` e i vecchi `.db` nella
+   cartella dati appena azzerata, al posto dei seed di questa release. Fatto in-process (è solo
+   un'origine di lettura, nessun handle aperto), best-effort.
+
+La guardia `CartellaResettabile` accetta il percorso solo se assoluto e con ultimo segmento uguale a
+quello di `AppPaths.CartellaDatiPredefinita`: è ciò che impedisce, in qualunque scenario di percorso non
+risolto (la stringa vuota di `GetFolderPath`, il difetto dello Sprint 29), di passare all'helper una
+cartella qualsiasi o una radice di volume.
+
+#### Verifica
+
+14 test nuovi in `PersonalAutomationTool.Tests\Core\FactoryResetServiceTests.cs`: guardia sul percorso
+(vuoto, relativo, nome diverso, radice), backup fuori dalla cartella di partenza — `move` di una
+cartella dentro sé stessa fallirebbe — timestamp che non collide fra due reset, e ordine delle tre
+righe portanti dello script (attesa del processo → spostamento → riavvio). `dotnet build` → **0 errori,
+0 warning**; `dotnet test` → **632/632**.
+
+In più, **una prova end-to-end reale dell'helper** (file temporaneo, rimosso dopo l'esecuzione e non
+lasciato in suite perché avvia processi e dipende dai tempi del sistema operativo): cartella
+`iscot-autotool` finta con dentro un `destinatari.json`, script lanciato con un PID inesistente → la
+cartella risulta spostata, il backup contiene il file con il contenuto originale, e lo script si è
+auto-cancellato. È la parte che i test unitari non potevano coprire.
+
+> ⚠️ **Non verificabile da questo ambiente:** il giro completo dal pulsante — conferma, chiusura,
+> riavvio automatico, applicazione che riparte con i dati predefiniti — perché premerlo qui
+> cancellerebbe la cartella dati reale di questa macchina. Checklist 41 (§7), da eseguire su un PC di
+> prova prima di distribuire la release.
+
+### 6.1-quadragies Sprint 37 — risoluzione dinamica della radice "Hitachi Group": non più fissa sotto `%USERPROFILE%` ⭐⭐
+
+**Richiesta e caso reale.** Segnalato con due screenshot: "Verifica Percorsi Hitachi" segnalava
+**ERRORE** su ogni riga per l'utente `AntonioTodde`, mentre la cartella `Hitachi Group` esisteva
+davvero e conteneva le quattro sottocartelle attese (`SSB_SST - Interventi ETR500/ETR1000`,
+`SSB_SST - INTERVENTI ETR700 ELO BL3`, `SSB_SST - LOG_DUMP_per_Reale`) — ma sotto
+`C:\Users\AntonioTodde\Desktop\Hitachi Group`, non sotto `C:\Users\AntonioTodde\Hitachi Group` come
+tre punti del codice assumevano in modo fisso: `HitachiPathsManager.GetHitachiDir` (letto da EXCEL per
+Sposta/Riporta Report), `VerifichePathsManager.Combina` (letto da VERIFICHE), ed
+`HomeViewModel.GetLogDumpReteBasePath` (letto da "Log Dump in rete" — quest'ultima con una propria
+scansione multi-radice già esistente, ma limitata a `%USERPROFILE%` e alle varianti OneDrive, senza
+Desktop).
+
+#### `HitachiPathResolver.cs` — una sola scansione condivisa, non tre copie
+
+Nuovo `core/HitachiPathResolver.cs`. Cerca la cartella `"Hitachi Group"` in ordine di priorità:
+
+1. **Override manuale** in `paths_config.json` (`HitachiGroupRootOverride`), se il percorso indicato
+   esiste ancora — file letto, non gestito da alcun dialog: pensato per un intervento mirato di
+   supporto su una macchina eccezionale, senza aspettare una nuova release.
+2. **Desktop** dell'utente (`AppConfig.RisolviDesktop()`, riusata invece di duplicare la protezione già
+   presente lì contro il Desktop reindirizzato non risolvibile) — priorità più alta perché è il caso
+   reale che ha motivato l'intervento.
+3. **`%USERPROFILE%`**, poi **`%USERPROFILE%\Desktop`** esplicito (distinto dal Desktop speciale: utile
+   se un criterio aziendale reindirizza il secondo dopo che la sincronizzazione era già avvenuto nel
+   primo).
+4. Variabili d'ambiente **`OneDriveCommercial`**, **`OneDrive`**, **`OneDriveConsumer`**.
+5. Qualunque cartella **`OneDrive*`** sotto `%USERPROFILE%` (copre `"OneDrive - NomeAzienda"`, il cui
+   suffisso non è prevedibile).
+
+**Vincolo rispettato per costruzione**: ogni metodo tocca il disco solo con `Directory.Exists`/
+`Directory.GetDirectories` in lettura — mai `Directory.CreateDirectory`. Un candidato assente viene
+scartato, mai creato; se nessuna posizione esiste, `ResolveRoot()` restituisce `null` e il chiamante
+mostra "percorso non trovato" esattamente come prima, non una cartella nuova.
+
+**`hitachi_paths.json`/`verifiche_paths.json` non cambiano schema**: continuano a iniziare con il
+segmento letterale `"Hitachi Group"`. `HitachiPathResolver.CombinaSottoPercorso` riconosce quel primo
+segmento e lo sostituisce con la radice risolta, tenendo i segmenti successivi invariati; se la radice
+non è stata trovata da nessuna parte, o il primo segmento non è quello atteso, il fallback è
+**identico** al comportamento precedente (`Path.Combine(userProfile, tutti i segmenti)`) — nessuna
+configurazione già scritta sui PC dei tecnici va toccata o reinterpretata in modo incompatibile.
+
+`HomeViewModel.GetLogDumpReteBasePath` ora chiama `HitachiPathResolver.CandidateBaseRoots()` per le
+radici, invece di riscansionare da sé le stesse variabili OneDrive: uniche righe rimaste proprie sono
+le due varianti di sotto-percorso (con/senza `"Hitachi Group"` in mezzo), perché `ResolveRoot()`
+conosce solo la prima forma. Effetto collaterale positivo, non richiesto ma coerente: anche "Log Dump
+in rete" ora cerca su Desktop, cosa che prima non faceva.
+
+`PathHealthCheckService.cs` **non è stato toccato**: legge già `HitachiPathsManager`/
+`VerifichePathsManager`/`GetLogDumpReteBasePath`, quindi eredita la risoluzione dinamica senza alcuna
+modifica — unica fonte di verità, come da nota originale di quella classe sul non duplicare l'elenco
+dei percorsi.
+
+#### Verifica
+
+18 test nuovi in `PersonalAutomationTool.Tests\Core\HitachiPathResolverTests.cs`, sui tre livelli già
+in uso nel resto della suite: `ComponiRadiciCandidate` pura (ordine, dedup, scarto dei percorsi non
+qualificati — il caso `GetFolderPath` vuoto dello Sprint 29); `TrovaRadiceFraCandidate` e
+`CombinaSottoPercorso` su cartelle temporanee vere (Tier 2, stesso schema di `AppPathsTests`), incluso
+un test dedicato che verifica che un candidato assente **non venga mai creato**; `LeggiOverrideManuale`
+sul file reale sotto `AppPaths.DataFolder` (stessa collection `SharedAppDataState` di
+`HitachiPathsManagerTests`, per lo stesso motivo di serializzazione). `ResolveRoot()` stesso resta non
+testato direttamente — legge il Desktop e il profilo reali della macchina che esegue i test, non
+deterministici in CI, stesso trattamento già riservato a `GetLogDumpReteBasePath` prima di
+questo intervento.
+
+**Verificato anche a mano, sull'ambiente reale di questa sessione** (test temporaneo, rimosso dopo
+l'esecuzione): `CandidateBaseRoots()` produce, in ordine, Desktop → profilo → le due cartelle
+`OneDrive*` presenti su questa macchina, e `ResolveRoot()` risolve correttamente
+`C:\Users\<utente>\Hitachi Group`, che su questa macchina esiste realmente in quella posizione — prova
+che la scansione multi-radice funziona sull'ambiente vero, non solo su cartelle sintetiche.
+
+`dotnet build` → **0 errori, 0 warning**. `dotnet test` → **650/650** (632 → 650, +18).
+
+> ⚠️ **Non verificabile da questo ambiente:** il caso che ha motivato l'intervento — Desktop come
+> effettiva radice sincronizzata — su questa macchina la cartella sta invece sotto `%USERPROFILE%`
+> direttamente. Da confermare al prossimo turno in officina, o chiedendo conferma al tecnico
+> `AntonioTodde`: dopo l'aggiornamento, "Verifica Percorsi Hitachi" deve mostrare tutte le righe **OK**
+> con il percorso `C:\Users\AntonioTodde\Desktop\Hitachi Group\...`.
+
 ### 6.2 Le 4 macro-aree della roadmap strategica
 
 Elaborata come risposta alla domanda "se fossi il Lead Architect, cosa faresti dopo l'audit
@@ -5253,3 +5421,35 @@ non può proteggerle. Ogni modifica al parsing va verificata su casi reali presi
     **(f) "Riporta report"** su ETR500: al termine il file deve trovarsi nella cartella Hitachi **e non
     più** in LOG & DUMP. Se compare il messaggio "copiato correttamente ma non è stato possibile
     rimuovere la copia di partenza", il report è comunque salvo: va solo eliminata a mano la copia locale.
+41. **HOME / "Reset a fabbrica"** (§6.1-tricies-nonies) ⭐⭐ *da fare su un PC di prova — o su una
+    macchina di cui si accetta l'azzeramento — **prima** di distribuire la release: il giro completo qui
+    non è verificabile perché premere il pulsante cancella la cartella dati della macchina di sviluppo.*
+    **(a)** Premere "Reset a fabbrica" in HOME e poi **No** alla richiesta di conferma: non deve
+    succedere assolutamente nulla, l'applicazione resta aperta e i dati intatti.
+    **(b)** Premere di nuovo e confermare con **Sì**: l'applicazione deve chiudersi da sola e
+    **riaprirsi** entro qualche secondo. Alla riapertura, la pagina Destinatari Mail deve mostrare i
+    valori predefiniti di questa versione, e la Rubrica/DATABASE i dati del seed incorporato.
+    **(c)** In `%LOCALAPPDATA%` devono esserci **due** cartelle: `iscot-autotool` nuova, e
+    `iscot-autotool-backup-<data e ora>` con dentro i dati di prima — nulla deve essere stato cancellato.
+    **(d)** Se sulla macchina esisteva ancora `%APPDATA%\PersonalAutomationTool` (installazioni che
+    vengono dalla 2.0.0), verificare che sia stata spostata anch'essa in
+    `PersonalAutomationTool-backup-<data e ora>`: **è il punto che conta di più**, perché se resta al suo
+    posto l'avvio successivo ne ricopia i vecchi dati e il reset risulta senza effetto.
+    **(e)** Ripetere il reset una seconda volta di seguito: i due backup devono convivere (timestamp
+    diversi), senza errori né sovrascritture.
+    **(f)** Con l'eseguibile pubblicato (non `dotnet run`): verificare che il riavvio automatico riapra
+    **lo stesso** `.exe` da cui si è partiti, e che l'istanza singola non blocchi la riapertura
+    ("l'applicazione è già in esecuzione" non deve comparire).
+42. **HOME / risoluzione dinamica di "Hitachi Group"** (§6.1-quadragies) ⭐⭐ *da fare sulla macchina del
+    tecnico `AntonioTodde` (o su un PC con SharePoint sincronizzato sul Desktop): è il caso reale che ha
+    motivato l'intervento e questo ambiente non lo riproduce.*
+    **(a)** "Verifica Percorsi Hitachi" deve mostrare **OK** su tutte le righe Report/Verifiche/Log Dump,
+    col percorso effettivo sotto `Desktop\Hitachi Group\...` nel dettaglio.
+    **(b)** Su una macchina dove `Hitachi Group` sta invece sotto `%USERPROFILE%` direttamente (il caso
+    di tutti gli altri PC), ripetere lo stesso controllo: nessuna regressione, stesso esito di prima.
+    **(c)** "Sposta Report"/"Riporta Report" (EXCEL) e "Verifica Eseguita" (VERIFICHE) sulla macchina con
+    `Hitachi Group` su Desktop: i file devono finire nella cartella giusta, non in un percorso mai
+    creato per errore (il resolver non crea mai nulla: un errore di risoluzione deve dare "cartella non
+    trovata", mai una scrittura nel posto sbagliato).
+    **(d)** "Log Dump in rete" sulla stessa macchina: deve trovare `SSB_SST - LOG_DUMP_per_Reale` sotto
+    Desktop\Hitachi Group senza bisogno di alcuna configurazione manuale.

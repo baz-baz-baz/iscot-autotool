@@ -128,10 +128,13 @@ namespace PersonalAutomationTool.Core
             var match = config.FirstOrDefault(c => c.Train.Equals(train, StringComparison.Ordinal));
             if (match == null || match.RelativePath.Count == 0) return null;
 
-            var segments = new string[match.RelativePath.Count + 1];
-            segments[0] = userProfile;
-            match.RelativePath.CopyTo(segments, 1);
-            return Path.Combine(segments);
+            // La radice "Hitachi Group" non è più assunta fissa sotto userProfile: HitachiPathResolver
+            // la cerca anche su Desktop e nelle varianti OneDrive (§6.1-quadragies di
+            // PROJECT_MEMORY.md). RelativePath in hitachi_paths.json resta invariato — inizia sempre
+            // con "Hitachi Group" — così le configurazioni già scritte sui PC dei tecnici continuano a
+            // funzionare senza modifiche.
+            string? radiceRisolta = HitachiPathResolver.ResolveRoot();
+            return HitachiPathResolver.CombinaSottoPercorso(userProfile, radiceRisolta, match.RelativePath);
         }
 
         /// <summary>

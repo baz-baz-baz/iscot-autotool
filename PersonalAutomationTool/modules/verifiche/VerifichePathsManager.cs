@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using PersonalAutomationTool.Core;
 
 namespace PersonalAutomationTool.Modules.Verifiche
 {
@@ -116,10 +117,12 @@ namespace PersonalAutomationTool.Modules.Verifiche
 
         private static string Combina(string userProfile, List<string> segmenti)
         {
-            var parti = new string[segmenti.Count + 1];
-            parti[0] = userProfile;
-            segmenti.CopyTo(parti, 1);
-            return Path.Combine(parti);
+            // Stessa risoluzione dinamica della radice "Hitachi Group" di HitachiPathsManager
+            // (§6.1-quadragies di PROJECT_MEMORY.md): i segmenti restano quelli già scritti in
+            // verifiche_paths.json, solo la radice iniziale può ora provenire da Desktop o da una
+            // variante OneDrive invece che sempre da userProfile.
+            string? radiceRisolta = HitachiPathResolver.ResolveRoot();
+            return HitachiPathResolver.CombinaSottoPercorso(userProfile, radiceRisolta, segmenti);
         }
 
         private static string? ReadConfigJson(string path)

@@ -84,6 +84,7 @@ namespace PersonalAutomationTool.Modules.Home
         public ICommand AggiornaDataCommand { get; }
         public ICommand AnnullaRinominaCommand { get; }
         public ICommand VerificaPercorsiCommand { get; }
+        public ICommand ResetFabbricaCommand { get; }
 
         public HomeViewModel()
         {
@@ -102,6 +103,7 @@ namespace PersonalAutomationTool.Modules.Home
             AggiornaDataCommand = new RelayCommand(OnAggiornaData);
             AnnullaRinominaCommand = new RelayCommand(OnAnnullaRinomina);
             VerificaPercorsiCommand = new RelayCommand(OnVerificaPercorsi);
+            ResetFabbricaCommand = new RelayCommand(OnResetFabbrica);
 
             _ = LoadPendingItemsAsync();
 
@@ -612,6 +614,53 @@ namespace PersonalAutomationTool.Modules.Home
             dialog.ShowDialog();
         }
 
+        /// <summary>
+        /// Reset a fabbrica: conferma esplicita, poi <see cref="FactoryResetService.AvviaReset"/> e
+        /// chiusura immediata dell'applicazione — l'helper esterno attende la fine di questo processo
+        /// prima di spostare la cartella dati e riavviare l'eseguibile.
+        ///
+        /// <para>
+        /// Nessuna scrittura né altro dialog dopo <c>AvviaReset</c>: da quel momento l'helper è già in
+        /// attesa, e qualunque cosa toccasse ancora la cartella dati rischierebbe di tenerne occupato un
+        /// file proprio mentre va spostata.
+        /// </para>
+        /// </summary>
+        private void OnResetFabbrica(object? parameter)
+        {
+            var conferma = System.Windows.MessageBox.Show(
+                "Verranno rimossi tutti i dati locali di questa applicazione:\n\n" +
+                "• destinatari mail configurati\n" +
+                "• scorciatoie, percorsi Hitachi e Verifiche\n" +
+                "• database locali (flotte, rubrica)\n" +
+                "• storico delle rinomine\n\n" +
+                "L'applicazione si chiuderà e si riaprirà come al primo avvio su un PC nuovo, con i dati " +
+                "predefiniti di questa versione.\n\n" +
+                "La cartella attuale non viene cancellata: resta come copia di sicurezza datata, accanto a quella dati.\n\n" +
+                "Procedere?",
+                "Reset a fabbrica",
+                System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Warning,
+                System.Windows.MessageBoxResult.No);
+
+            if (conferma != System.Windows.MessageBoxResult.Yes) return;
+
+            try
+            {
+                FactoryResetService.AvviaReset();
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(
+                    $"Reset a fabbrica non eseguito:\n{ex.Message}\n\nNessun dato è stato modificato.",
+                    "Errore",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Error);
+                return;
+            }
+
+            System.Windows.Application.Current?.Shutdown();
+        }
+
         private static string? FindExistingLocoFolder(string trainTypePath, string loco, string rawTrainType, string fileTrainType)
         {
             if (!Directory.Exists(trainTypePath))
@@ -682,8 +731,17 @@ namespace PersonalAutomationTool.Modules.Home
         /// <summary>
         /// <c>internal</c> (era <c>private</c>) solo perché <see cref="PathHealthCheckService"/> la
         /// riusa per verificare la stessa cartella di rete invece di duplicarne la logica di
-        /// risoluzione multi-radice (variabili d'ambiente OneDrive, cartelle <c>OneDrive*</c>): nessun
-        /// altro cambiamento di comportamento o di superficie pubblica.
+        /// risoluzione multi-radice.
+        ///
+        /// <para>
+        /// La scansione delle radici candidate (Desktop, userProfile, variabili d'ambiente OneDrive,
+        /// cartelle <c>OneDrive*</c>) è delegata a <see cref="Core.HitachiPathResolver.CandidateBaseRoots"/>
+        /// invece di restare duplicata qui (§6.1-quadragies di PROJECT_MEMORY.md: la stessa logica
+        /// serviva anche a <c>HitachiPathsManager</c> e <c>VerifichePathsManager</c>, con il rischio già
+        /// visto altrove in questo file di farle divergere in silenzio). Restano proprie di questo
+        /// metodo solo le due varianti di sotto-percorso — con e senza <c>"Hitachi Group"</c> in mezzo —
+        /// perché <c>HitachiPathResolver.ResolveRoot</c> conosce solo la prima forma.
+        /// </para>
         /// </summary>
         internal static string GetLogDumpReteBasePath()
         {
@@ -693,31 +751,7 @@ namespace PersonalAutomationTool.Modules.Home
                 "SSB_SST - LOG_DUMP_per_Reale"
             ];
 
-            var searchRoots = new System.Collections.Generic.List<string> { userProfile };
-
-            string[] envVars = [ "OneDriveCommercial", "OneDrive", "OneDriveConsumer", "USERPROFILE" ];
-            foreach (var envVar in envVars)
-            {
-                string? val = Environment.GetEnvironmentVariable(envVar);
-                if (!string.IsNullOrEmpty(val) && Directory.Exists(val))
-                {
-                    searchRoots.Add(val);
-                }
-            }
-
-            if (Directory.Exists(userProfile))
-            {
-                try
-                {
-                    foreach (var dir in Directory.GetDirectories(userProfile, "OneDrive*"))
-                    {
-                        searchRoots.Add(dir);
-                    }
-                }
-                catch { }
-            }
-
-            foreach (var root in searchRoots.Distinct())
+            foreach (var root in Core.HitachiPathResolver.CandidateBaseRoots())
             {
                 foreach (var sub in subPaths)
                 {
