@@ -5082,6 +5082,42 @@ gh release create v2.0.6 Release_Dist/PersonalAutomationTool.exe --target main \
 `/releases/latest`. Un solo asset `.exe`, **85 205 708 byte**, identico al file locale pubblicato.
 Chi ha già installato una versione precedente riceve l'aggiornamento in automatico al prossimo avvio.
 
+### 6.1-quadragies-septies Sprint 42 — bug segnalato dal committente: dettaglio diagnostico tagliato in "Verifica Percorsi Hitachi", e Release di produzione 2.0.7
+
+**Richiesta.** Nella build 2.0.6 appena distribuita, la colonna "Dettaglio / Diagnostica" del dialog
+mostrava i nuovi messaggi (nome file, dimensione, data, avviso OneDrive di
+§6.1-quadragies-quinquies) tagliati a metà — confermato da uno screenshot del committente.
+
+#### Causa: altezza riga fissa, non il contenuto del messaggio
+
+`HealthCheckPathsDialog.xaml` impostava `DataGrid.RowHeight="42"` — un vincolo **fisso**, non un
+minimo. La colonna Dettaglio ha sempre avuto `TextWrapping="Wrap"`, ma finché i messaggi erano corti
+("Cartella raggiungibile.") una riga a 42px bastava; i messaggi più lunghi introdotti in
+§6.1-quadragies-quinquies vanno quasi sempre su due righe, e con l'altezza bloccata la seconda riga
+veniva ritagliata invece di essere mostrata.
+
+#### Correzione
+
+`RowHeight="42"` → `MinRowHeight="42"`: le righe crescono quanto serve al contenuto, invece di
+restare fisse. Di conseguenza il badge di stato (un `Border` colorato) avrebbe potuto stirarsi in
+verticale insieme alla riga più alta — aggiunto `VerticalAlignment="Center"` per tenerlo compatto.
+Colonna "Dettaglio / Diagnostica" allargata (`2*` → `2.8*`) e "Percorso Configurato" ridotta (`2.2*`
+→ `1.8*`, ha comunque il tooltip col percorso integrale) perché i nuovi messaggi diagnostici sono
+strutturalmente più lunghi di quelli originali. Nessuna modifica a `PathHealthCheckService.cs`: il
+contenuto dei messaggi era già corretto, il problema era solo di presentazione.
+
+Verifica visiva fatta direttamente dal committente (impossibile da qui: nessuna finestra WPF nativa
+apribile da questa sessione) — confermato funzionante prima della pubblicazione.
+
+#### Release 2.0.7
+
+Stessa procedura delle precedenti. `<Version>` a **2.0.7**, `dotnet clean` + `dotnet test` →
+**670/670**, 0 errori, 0 warning (nessun test nuovo: modifica solo di layout XAML, nessuna logica
+C# toccata). Pubblicato `PersonalAutomationTool.exe`, **85 205 729 byte**, `.pdb` rimosso. Push,
+tag `v2.0.7`, `gh release create` — riuscito al primo tentativo, diversamente dalla 2.0.6
+(§6.1-quadragies-sexies). Verificato dall'API pubblica: asset identico al file locale,
+`draft: false`, `prerelease: false`.
+
 ### 6.2 Le 4 macro-aree della roadmap strategica
 
 Elaborata come risposta alla domanda "se fossi il Lead Architect, cosa faresti dopo l'audit
