@@ -230,11 +230,178 @@ namespace PersonalAutomationTool.Tests.Modules.Home
         }
 
         // ------------------------------------------------------------------
-        // StatoTesto — le tre diciture del badge
+        // CheckExcelFolder / CheckExcelFile / TrovaFilePiuRecente — pipeline profonda anti-falsi-
+        // positivi (PROJECT_MEMORY.md §6.1-quadragies-quinquies): non basta più che la cartella
+        // esista, serve trovare ed effettivamente leggere un file Excel attivo.
+        // ------------------------------------------------------------------
+
+        private static readonly byte[] FirmaZipValida = [0x50, 0x4B, 0x03, 0x04, 0x14, 0x00];
+
+        [Fact]
+        public void CheckExcelFolder_CartellaEsistenteMaSenzaFileExcel_NonERestituisceOk()
+        {
+            // Il falso positivo esatto segnalato dal committente: la cartella c'è, ma dentro non c'è
+            // nulla da leggere. Deve essere AVVISO, non OK e non ERRORE (il percorso di per sé è
+            // corretto).
+            var item = PathHealthCheckService.CheckExcelFolder("Test", _cartella, "*Verifiche*.xlsx", recursive: true);
+
+            Assert.Equal(PathHealthStatus.Avviso, item.Stato);
+            Assert.Equal("AVVISO", item.StatoTesto);
+            Assert.Contains("nessun file Excel attivo", item.Dettaglio);
+        }
+
+        [Fact]
+        public void CheckExcelFolder_SoloFileDiLockExcel_NonLoContaComeFileReale()
+        {
+            // "~$Verifiche ETR500.xlsx" risponde al pattern glob (contiene "Verifiche", finisce per
+            // ".xlsx") ma è il lucchetto che Excel crea mentre il foglio è aperto altrove, non il
+            // foglio stesso: deve essere scartato, lasciando la cartella "senza file attivi".
+            File.WriteAllBytes(Path.Combine(_cartella, "~$Verifiche ETR500.xlsx"), FirmaZipValida);
+
+            var item = PathHealthCheckService.CheckExcelFolder("Test", _cartella, "*Verifiche*.xlsx", recursive: true);
+
+            Assert.Equal(PathHealthStatus.Avviso, item.Stato);
+            Assert.Contains("nessun file Excel attivo", item.Dettaglio);
+        }
+
+        [Fact]
+        public void CheckExcelFolder_ConFileValido_RestituisceOkConNomeDimensioneEData()
+        {
+            string file = Path.Combine(_cartella, "Verifiche ETR500.xlsx");
+            File.WriteAllBytes(file, FirmaZipValida);
+
+            var item = PathHealthCheckService.CheckExcelFolder("Test", _cartella, "*Verifiche*.xlsx", recursive: true);
+
+            Assert.Equal(PathHealthStatus.Ok, item.Stato);
+            Assert.Equal("OK", item.StatoTesto);
+            Assert.Contains("Verifiche ETR500.xlsx", item.Dettaglio);
+            Assert.Contains("KB", item.Dettaglio);
+            Assert.Contains("modificato il", item.Dettaglio);
+        }
+
+        [Fact]
+        public void CheckExcelFolder_ConPiuFile_SceglieIlPiuRecente()
+        {
+            string vecchio = Path.Combine(_cartella, "Verifiche ETR500 vecchio.xlsx");
+            string nuovo = Path.Combine(_cartella, "Verifiche ETR500 nuovo.xlsx");
+            File.WriteAllBytes(vecchio, FirmaZipValida);
+            File.SetLastWriteTime(vecchio, DateTime.Now.AddDays(-2));
+            File.WriteAllBytes(nuovo, FirmaZipValida);
+            File.SetLastWriteTime(nuovo, DateTime.Now);
+
+            var item = PathHealthCheckService.CheckExcelFolder("Test", _cartella, "*Verifiche*.xlsx", recursive: true);
+
+            Assert.Equal(PathHealthStatus.Ok, item.Stato);
+            Assert.Contains("nuovo.xlsx", item.Dettaglio);
+            Assert.DoesNotContain("vecchio.xlsx", item.Dettaglio);
+        }
+
+        [Fact]
+        public void CheckExcelFolder_CartellaInesistente_RestituisceErroreSenzaCrearla()
+        {
+            // Vincolo critico invariato: nemmeno la pipeline profonda deve mai materializzare la
+            // cartella che sta segnalando come mancante.
+            string percorsoInesistente = Path.Combine(_cartella, "non_esiste");
+
+            var item = PathHealthCheckService.CheckExcelFolder("Test", percorsoInesistente, "*Verifiche*.xlsx", recursive: true);
+
+            Assert.Equal(PathHealthStatus.Errore, item.Stato);
+            Assert.False(Directory.Exists(percorsoInesistente));
+        }
+
+        [Fact]
+        public void CheckExcelFile_HeaderZipValido_RestituisceOkConMetadatiNelDettaglio()
+        {
+            string file = Path.Combine(_cartella, "Verifiche ETR700.xlsx");
+            File.WriteAllBytes(file, FirmaZipValida);
+
+            var item = PathHealthCheckService.CheckExcelFile("Test", file);
+
+            Assert.Equal(PathHealthStatus.Ok, item.Stato);
+            Assert.Contains("Verifiche ETR700.xlsx", item.Dettaglio);
+        }
+
+        [Fact]
+        public void CheckExcelFile_FileVuoto_RestituisceErrore()
+        {
+            string file = Path.Combine(_cartella, "vuoto.xlsx");
+            File.WriteAllBytes(file, []);
+
+            var item = PathHealthCheckService.CheckExcelFile("Test", file);
+
+            Assert.Equal(PathHealthStatus.Errore, item.Stato);
+            Assert.Contains("non è un file .xlsx valido", item.Dettaglio);
+        }
+
+        [Fact]
+        public void CheckExcelFile_HeaderNonZip_RestituisceErrore()
+        {
+            // Quattro byte reali ma non la firma ZIP: un file rinominato per errore, o un .xls
+            // legacy (formato OLE, non ZIP) salvato con estensione .xlsx.
+            string file = Path.Combine(_cartella, "corrotto.xlsx");
+            File.WriteAllBytes(file, [0x00, 0x01, 0x02, 0x03]);
+
+            var item = PathHealthCheckService.CheckExcelFile("Test", file);
+
+            Assert.Equal(PathHealthStatus.Errore, item.Stato);
+        }
+
+        [Fact]
+        public void CheckExcelFile_AttributoOffline_RestituisceAvvisoInvecediErrore()
+        {
+            // Il segnaposto cloud OneDrive non è un file corrotto: è un file non ancora scaricato.
+            // Deve essere AVVISO (recuperabile aspettando la sincronizzazione), non ERRORE.
+            string file = Path.Combine(_cartella, "cloud.xlsx");
+            File.WriteAllBytes(file, FirmaZipValida);
+            File.SetAttributes(file, File.GetAttributes(file) | FileAttributes.Offline);
+
+            try
+            {
+                var item = PathHealthCheckService.CheckExcelFile("Test", file);
+
+                Assert.Equal(PathHealthStatus.Avviso, item.Stato);
+                Assert.Contains("OneDrive", item.Dettaglio);
+                Assert.Contains("non scaricato", item.Dettaglio);
+            }
+            finally
+            {
+                File.SetAttributes(file, FileAttributes.Normal);
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // TrovaFilePiuRecente
+        // ------------------------------------------------------------------
+
+        [Fact]
+        public void TrovaFilePiuRecente_EscludeSempreIFileDiLock()
+        {
+            File.WriteAllBytes(Path.Combine(_cartella, "~$Verifiche ETR500.xlsx"), FirmaZipValida);
+            string reale = Path.Combine(_cartella, "Verifiche ETR500.xlsx");
+            File.WriteAllBytes(reale, FirmaZipValida);
+
+            string? trovato = PathHealthCheckService.TrovaFilePiuRecente(_cartella, "*Verifiche*.xlsx", recursive: true);
+
+            Assert.Equal(reale, trovato);
+        }
+
+        [Fact]
+        public void TrovaFilePiuRecente_NessunFileCorrispondente_RestituisceNull()
+        {
+            File.WriteAllText(Path.Combine(_cartella, "altro.txt"), "contenuto");
+
+            string? trovato = PathHealthCheckService.TrovaFilePiuRecente(_cartella, "*Verifiche*.xlsx", recursive: true);
+
+            Assert.Null(trovato);
+        }
+
+        // ------------------------------------------------------------------
+        // StatoTesto — le quattro diciture del badge
         // ------------------------------------------------------------------
 
         [Theory]
         [InlineData(PathHealthStatus.Ok, "OK")]
+        [InlineData(PathHealthStatus.Avviso, "AVVISO")]
         [InlineData(PathHealthStatus.Errore, "ERRORE")]
         [InlineData(PathHealthStatus.AccessoNegato, "ACCESSO NEGATO")]
         public void StatoTesto_RestituisceLaDicituraCorrettaPerOgniStato(PathHealthStatus stato, string atteso)

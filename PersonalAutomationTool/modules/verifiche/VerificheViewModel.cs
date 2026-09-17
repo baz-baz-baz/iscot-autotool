@@ -22,6 +22,10 @@ namespace PersonalAutomationTool.Modules.Verifiche
         /// <summary>0 = nessuna scansione in corso, 1 = scansione in corso (guardia anti-rientranza).</summary>
         private int _isScanningFiles;
 
+        // Segmenti relativi a "Hitachi Group", non a %USERPROFILE%: il primo segmento è sempre
+        // "Hitachi Group" stesso, così RisolviPercorso può farlo seguire dalla radice trovata da
+        // HitachiPathResolver (Desktop, profilo utente o una variante OneDrive) invece di assumere
+        // sempre %USERPROFILE% (§6.1-quadragies-ter di PROJECT_MEMORY.md).
         private static readonly string[] PollingRelativePaths = [
             @"Hitachi Group\SSB_SST - Interventi ETR500",
             @"Hitachi Group\SSB_SST - INTERVENTI ETR700 ELO BL3",
@@ -239,7 +243,7 @@ namespace PersonalAutomationTool.Modules.Verifiche
 
             foreach (var rel in WatcherRelativePaths)
             {
-                string path = Path.Combine(userProfile, rel);
+                string path = RisolviPercorso(userProfile, rel);
                 if (Directory.Exists(path))
                 {
                     try
@@ -323,7 +327,7 @@ namespace PersonalAutomationTool.Modules.Verifiche
             bool hasChanges = false;
             foreach (var rel in PollingRelativePaths)
             {
-                string folderPath = Path.Combine(userProfile, rel);
+                string folderPath = RisolviPercorso(userProfile, rel);
                 if (Directory.Exists(folderPath))
                 {
                     try
@@ -355,34 +359,73 @@ namespace PersonalAutomationTool.Modules.Verifiche
                             }
                         }
                     }
-                    catch { }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                    {
+                        // Non interrompe le altre radici: una cartella OneDrive momentaneamente non
+                        // raggiungibile non deve bloccare il polling delle altre due flotte. Registrato
+                        // (invece del `catch { }` silenzioso di prima) perché un errore ricorrente qui
+                        // è indistinguibile, per l'operatore, da "nessuna verifica da fare".
+                        CrashReporter.RegistraAnomalia(
+                            $"VERIFICHE: scansione di '{folderPath}' non riuscita durante il polling di backstop", ex);
+                    }
                 }
             }
 
             return hasChanges;
         }
 
+        /// <summary>
+        /// Combina il profilo utente con un percorso relativo che inizia per <c>"Hitachi Group"</c>,
+        /// facendo passare la radice da <see cref="HitachiPathResolver"/> invece di assumere sempre
+        /// <c>%USERPROFILE%</c> (§6.1-quadragies-ter di PROJECT_MEMORY.md).
+        ///
+        /// <para>
+        /// <b>Il bug che questo corregge.</b> Questo modulo aveva una propria risoluzione dei percorsi,
+        /// indipendente da quella condivisa introdotta nello Sprint 37 per <c>HitachiPathsManager</c> e
+        /// <c>VerifichePathsManager</c> — le sole due usate da "Verifica Percorsi Hitachi" e da
+        /// "Verifica Eseguita". Funzionava solo quando "Hitachi Group" sincronizzava direttamente
+        /// sotto il profilo utente: se finiva sotto Desktop (o sotto una cartella OneDrive), l'health
+        /// check e l'archiviazione lo trovavano correttamente, ma <see cref="LoadDataForFleet"/>,
+        /// <see cref="SetupWatchers"/> e <see cref="ScanForFileUpdates"/> cercavano ancora nel posto
+        /// sbagliato — cartella inesistente, <c>Directory.Exists</c> falso, tabelle vuote, nessun
+        /// errore visibile.
+        /// </para>
+        /// </summary>
+        private static string RisolviPercorso(string userProfile, string relativePath) =>
+            CombinaConRadice(userProfile, HitachiPathResolver.ResolveRoot(), relativePath);
+
+        /// <summary>
+        /// Parte pura di <see cref="RisolviPercorso"/>, con la radice già risolta passata come
+        /// parametro invece che letta da <see cref="HitachiPathResolver.ResolveRoot"/>: quest'ultima
+        /// legge il Desktop e il profilo <b>reali</b> della macchina, quindi non è controllabile in
+        /// modo deterministico dai test (stesso motivo per cui <c>HitachiPathResolverTests</c> non
+        /// testa <c>ResolveRoot()</c> direttamente). Separata per poter verificare con una radice
+        /// sintetica che i tre percorsi di VERIFICHE seguano davvero la radice risolta.
+        /// </summary>
+        internal static string CombinaConRadice(string userProfile, string? radiceRisolta, string relativePath) =>
+            HitachiPathResolver.CombinaSottoPercorso(userProfile, radiceRisolta, relativePath.Split(Path.DirectorySeparatorChar));
+
         private static void LoadDataForFleet(string relativePath, string fleetIdentifier, List<VerificheModel> collection)
         {
             try
             {
                 string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                var folderPaths = new List<string> { Path.Combine(userProfile, relativePath) };
+                var folderPaths = new List<string> { RisolviPercorso(userProfile, relativePath) };
 
                 if (fleetIdentifier == "1000")
                 {
-                    folderPaths.Add(Path.Combine(userProfile, @"Hitachi Group\SSB_SST - Interventi ETR1000FH"));
-                    folderPaths.Add(Path.Combine(userProfile, @"Hitachi Group\SSB_SST - Interventi ETR1000 FH"));
-                    folderPaths.Add(Path.Combine(userProfile, @"Hitachi Group\SSB_SST - Interventi ETR1000IF"));
+                    folderPaths.Add(RisolviPercorso(userProfile, @"Hitachi Group\SSB_SST - Interventi ETR1000FH"));
+                    folderPaths.Add(RisolviPercorso(userProfile, @"Hitachi Group\SSB_SST - Interventi ETR1000 FH"));
+                    folderPaths.Add(RisolviPercorso(userProfile, @"Hitachi Group\SSB_SST - Interventi ETR1000IF"));
                 }
                 else if (fleetIdentifier == "700")
                 {
-                    folderPaths.Add(Path.Combine(userProfile, @"Hitachi Group\SSB_SST - INTERVENTI ETR700 ELO BL3"));
-                    folderPaths.Add(Path.Combine(userProfile, @"Hitachi Group\SSB_SST - Interventi ETR700"));
+                    folderPaths.Add(RisolviPercorso(userProfile, @"Hitachi Group\SSB_SST - INTERVENTI ETR700 ELO BL3"));
+                    folderPaths.Add(RisolviPercorso(userProfile, @"Hitachi Group\SSB_SST - Interventi ETR700"));
                 }
                 else if (fleetIdentifier == "500")
                 {
-                    folderPaths.Add(Path.Combine(userProfile, @"Hitachi Group\SSB_SST - Interventi ETR500"));
+                    folderPaths.Add(RisolviPercorso(userProfile, @"Hitachi Group\SSB_SST - Interventi ETR500"));
                 }
 
                 foreach (var folder in RemoveNestedRoots(folderPaths.Distinct()))
@@ -429,7 +472,15 @@ namespace PersonalAutomationTool.Modules.Verifiche
                             }
                         }
                     }
-                    catch { }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                    {
+                        // Non interrompe le altre radici della stessa flotta (RemoveNestedRoots può
+                        // lasciarne più di una): registrato invece di ignorato silenziosamente, perché
+                        // altrimenti una cartella diventata irraggiungibile è indistinguibile, per
+                        // l'operatore, da "nessuna verifica per questa flotta".
+                        CrashReporter.RegistraAnomalia(
+                            $"VERIFICHE {fleetIdentifier}: scansione di '{folder}' non riuscita", ex);
+                    }
 
                     if (mostRecentFile != null)
                     {
@@ -439,7 +490,7 @@ namespace PersonalAutomationTool.Modules.Verifiche
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Errore caricamento Verifiche {fleetIdentifier}: {ex.Message}");
+                CrashReporter.RegistraAnomalia($"VERIFICHE {fleetIdentifier}: caricamento fallito", ex);
             }
         }
 

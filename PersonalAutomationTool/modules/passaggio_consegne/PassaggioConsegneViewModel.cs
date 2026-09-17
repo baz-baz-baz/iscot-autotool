@@ -291,7 +291,16 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
                 return;
             }
 
-            var r = RapportinoSelezionato;
+            SvuotaRapportino(RapportinoSelezionato);
+        }
+
+        /// <summary>
+        /// Azzera nome, cognome, data, turno e tutte le righe del rapportino indicato. Condivisa fra
+        /// <see cref="Reset"/> (dietro conferma dell'operatore) e <see cref="GeneraMailAsync"/> (in
+        /// automatico, a invio riuscito — vedi il commento lì per il motivo).
+        /// </summary>
+        private static void SvuotaRapportino(RapportinoTurno r)
+        {
             r.Nome = string.Empty;
             r.Cognome = string.Empty;
             r.Data = DateTime.Today;
@@ -326,6 +335,20 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
         /// modificando, e nessuna proprietà del ViewModel viene alterata per il solo scopo di
         /// "preparare" la stampa — che era l'origine dello sfarfallio del vecchio modulo
         /// (§6.1-undecies).
+        /// </para>
+        ///
+        /// <para>
+        /// <b>Il rapportino si svuota da solo subito dopo che la bozza è stata aperta con successo.</b>
+        /// Il modulo non ha persistenza e resta in memoria per tutta la sessione (§2.3): se l'app non
+        /// viene chiusa fra un turno e il successivo — schermo non bloccato, postazione condivisa di
+        /// fatto anche quando è "intestata" a un solo tecnico — un secondo "Genera Mail" premuto ore
+        /// dopo, senza che i campi siano stati aggiornati, riprodurrebbe silenziosamente lo stesso
+        /// identico rapportino (stesso nome, stessa data, stesse tabelle) con solo il saluto diverso
+        /// perché calcolato sull'ora corrente. Svuotare i campi a invio riuscito rende quell'errore
+        /// visibile subito, non nella casella di posta: chi generasse una seconda mail senza prima
+        /// compilare i propri dati si troverebbe un rapportino vuoto, non quello del collega smontante.
+        /// Se invece l'esportazione del PDF o l'apertura della bozza falliscono, i dati restano intatti
+        /// (l'operatore deve poter riprovare senza ridigitare tutto).
         /// </para>
         /// </summary>
         internal async Task GeneraMailAsync()
@@ -364,11 +387,14 @@ namespace PersonalAutomationTool.Modules.PassaggioConsegne
             catch (Exception ex)
             {
                 // Il PDF esiste comunque: il percorso viene comunicato, così il turno non è perso
-                // anche se Outlook non è disponibile.
+                // anche se Outlook non è disponibile. I dati restano compilati per poter riprovare.
                 _notifica.Errore(
                     $"{ex.Message}\n\nIl PDF del rapportino è disponibile in:\n{percorsoPdf}",
                     "Genera Mail");
+                return;
             }
+
+            SvuotaRapportino(rapportino);
         }
     }
 }

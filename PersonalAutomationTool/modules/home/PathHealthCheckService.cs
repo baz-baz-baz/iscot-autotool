@@ -10,17 +10,30 @@ namespace PersonalAutomationTool.Modules.Home
     /// <summary>Esito della verifica in sola lettura di un singolo percorso.</summary>
     public enum PathHealthStatus
     {
-        /// <summary>Percorso esistente e leggibile.</summary>
+        /// <summary>Percorso (e, dove applicabile, file target) esistente, individuato e leggibile al 100%.</summary>
         Ok,
 
         /// <summary>
+        /// Non bloccante: la cartella è raggiungibile ma qualcosa nel suo contenuto richiede
+        /// attenzione senza essere un guasto — nessun file Excel attivo trovato, oppure il file
+        /// trovato è un segnaposto cloud OneDrive non ancora scaricato in locale. In entrambi i casi
+        /// il percorso di per sé è corretto: non è quindi lo stesso "ERRORE" di un percorso
+        /// inesistente o inaccessibile.
+        /// </summary>
+        Avviso,
+
+        /// <summary>
         /// Percorso non trovato/non raggiungibile, oppure un errore di I/O generico (percorso troppo
-        /// lungo, guasto del volume, …). Un solo stato "rosso" per entrambi, come da specifica: non
-        /// interessa distinguerli nel badge a schermo — il messaggio in <see cref="PathHealthCheckItem.Dettaglio"/> sì.
+        /// lungo, guasto del volume, file corrotto o vuoto, …). Un solo stato "rosso" per tutti questi
+        /// casi, come da specifica: non interessa distinguerli nel badge a schermo — il messaggio in
+        /// <see cref="PathHealthCheckItem.Dettaglio"/> sì.
         /// </summary>
         Errore,
 
-        /// <summary>Percorso trovato ma senza permessi di lettura sufficienti.</summary>
+        /// <summary>
+        /// Percorso trovato ma senza permessi di lettura sufficienti — bloccante quanto
+        /// <see cref="Errore"/> (badge rosso), distinto solo per il messaggio diagnostico.
+        /// </summary>
         AccessoNegato
     }
 
@@ -36,6 +49,7 @@ namespace PersonalAutomationTool.Modules.Home
         public string StatoTesto => Stato switch
         {
             PathHealthStatus.Ok => "OK",
+            PathHealthStatus.Avviso => "AVVISO",
             PathHealthStatus.AccessoNegato => "ACCESSO NEGATO",
             _ => "ERRORE"
         };
@@ -139,6 +153,142 @@ namespace PersonalAutomationTool.Modules.Home
         }
 
         /// <summary>
+        /// Verifica una cartella che dovrebbe ospitare un foglio Excel <b>attivo</b> — VERIFICHE e
+        /// Report Interventi, non le cartelle di archivio (OLD), dove restare vuote è normale (una
+        /// cartella "vecchi report" può legittimamente non avere ancora nulla dentro nei primi giorni
+        /// di un anno, come già annotato per <see cref="EseguiControllo"/>).
+        ///
+        /// <para>
+        /// <b>Il falso positivo che questo corregge.</b> <see cref="CheckDirectory"/> segna "OK" non
+        /// appena la cartella esiste: se manca il file, se contiene solo un lucchetto Excel
+        /// (<c>~$*.xlsx</c>) o se il file più recente è in realtà un segnaposto cloud OneDrive mai
+        /// scaricato, il badge restava verde mentre VERIFICHE (o Report Interventi) falliva davvero.
+        /// Qui la cartella non basta: serve trovare, fra i file che rispondono a
+        /// <paramref name="searchPattern"/>, quello più recente — stessa selezione già usata da
+        /// <c>VerificheViewModel.LoadDataForFleet</c> per VERIFICHE e da
+        /// <c>ExcelViewModel</c> (pattern <c>"Report Interventi*.xls*"</c>, non ricorsivo) per Report
+        /// Interventi — e sottoporlo a <see cref="CheckExcelFile"/>.
+        /// </para>
+        /// </summary>
+        /// <param name="recursive">
+        /// <see langword="true"/> per VERIFICHE (il file può stare in una sottocartella, come
+        /// <c>LoadDataForFleet</c>), <see langword="false"/> per Report Interventi (cercato solo al
+        /// primo livello, come <c>ExcelViewModel</c>).
+        /// </param>
+        internal static PathHealthCheckItem CheckExcelFolder(string funzione, string percorso, string searchPattern, bool recursive)
+        {
+            if (string.IsNullOrWhiteSpace(percorso))
+                return new PathHealthCheckItem(funzione, percorso, PathHealthStatus.Errore, "Percorso non configurato.");
+
+            try
+            {
+                if (!Directory.Exists(percorso))
+                {
+                    return new PathHealthCheckItem(funzione, percorso, PathHealthStatus.Errore,
+                        "Percorso inesistente - verificare sincronizzazione OneDrive/SharePoint.");
+                }
+
+                string? fileTarget = TrovaFilePiuRecente(percorso, searchPattern, recursive);
+
+                if (fileTarget == null)
+                {
+                    return new PathHealthCheckItem(funzione, percorso, PathHealthStatus.Avviso,
+                        "Cartella raggiungibile, ma nessun file Excel attivo trovato.");
+                }
+
+                return CheckExcelFile(funzione, fileTarget);
+            }
+            catch (Exception ex)
+            {
+                var (stato, dettaglio) = MappaEccezione(ex);
+                return new PathHealthCheckItem(funzione, percorso, stato, dettaglio);
+            }
+        }
+
+        /// <summary>
+        /// Fra i file di <paramref name="cartella"/> che rispondono a <paramref name="searchPattern"/>,
+        /// il più recente per data di ultima modifica — scartando sempre i lucchetti Excel
+        /// (<c>~$*.xlsx</c>), che esistono solo mentre qualcuno ha il foglio aperto e non sono mai il
+        /// file da verificare. <see langword="null"/> se nessun file risponde al pattern.
+        /// </summary>
+        internal static string? TrovaFilePiuRecente(string cartella, string searchPattern, bool recursive)
+        {
+            var opzioni = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
+
+            string? fileTarget = null;
+            DateTime ultimaScrittura = DateTime.MinValue;
+
+            foreach (var file in Directory.EnumerateFiles(cartella, searchPattern, opzioni))
+            {
+                if (Path.GetFileName(file).StartsWith("~$", StringComparison.Ordinal)) continue;
+
+                var scrittura = File.GetLastWriteTime(file);
+                if (fileTarget == null || scrittura > ultimaScrittura)
+                {
+                    fileTarget = file;
+                    ultimaScrittura = scrittura;
+                }
+            }
+
+            return fileTarget;
+        }
+
+        /// <summary>
+        /// Verifica di basso livello su un file Excel già individuato, in tre passi: attributi cloud
+        /// (OneDrive Files On-Demand, senza mai forzarne il download — il controllo degli attributi
+        /// avviene <b>prima</b> di aprire lo stream, apposta), apertura reale in sola lettura, firma
+        /// ZIP/OpenXML dei primi 4 byte (<c>0x50 0x4B 0x03 0x04</c>, la stessa di qualunque .xlsx: è
+        /// un pacchetto ZIP). Un file bloccato da un altro processo senza condivisione, o con permessi
+        /// insufficienti, arriva al chiamante come eccezione — non intercettata qui apposta, stesso
+        /// schema di <see cref="CheckFile"/>, che lascia la classificazione a <see cref="MappaEccezione"/>.
+        /// </summary>
+        /// <summary>
+        /// <c>FILE_ATTRIBUTE_RECALL_ON_OPEN</c> (0x00040000) e <c>FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS</c>
+        /// (0x00400000): i due flag Win32 con cui OneDrive marca un segnaposto "Files On-Demand" non
+        /// ancora scaricato, a seconda della versione del client. <see cref="FileAttributes"/> non li
+        /// espone come membri nominati (solo <see cref="FileAttributes.Offline"/> lo è) — da qui la
+        /// necessità di questi due valori grezzi, uniti in OR bit a bit come qualunque altro flag
+        /// dell'enum.
+        /// </summary>
+        private const FileAttributes RecallOnOpen = (FileAttributes)0x00040000;
+        private const FileAttributes RecallOnDataAccess = (FileAttributes)0x00400000;
+
+        internal static PathHealthCheckItem CheckExcelFile(string funzione, string filePath)
+        {
+            var attributi = File.GetAttributes(filePath);
+            if ((attributi & (FileAttributes.Offline | RecallOnOpen | RecallOnDataAccess)) != 0)
+            {
+                return new PathHealthCheckItem(funzione, filePath, PathHealthStatus.Avviso,
+                    $"'{Path.GetFileName(filePath)}' è presente su OneDrive ma non scaricato in locale " +
+                    "(richiede \"Conserva sempre su questo dispositivo\").");
+            }
+
+            using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            byte[] header = new byte[4];
+            int bytesRead = stream.Read(header, 0, 4);
+
+            bool firmaZipValida = bytesRead == 4 &&
+                header[0] == 0x50 && header[1] == 0x4B && header[2] == 0x03 && header[3] == 0x04;
+
+            if (!firmaZipValida)
+            {
+                return new PathHealthCheckItem(funzione, filePath, PathHealthStatus.Errore,
+                    $"'{Path.GetFileName(filePath)}' non è un file .xlsx valido (intestazione ZIP/OpenXML assente o file vuoto).");
+            }
+
+            var info = new FileInfo(filePath);
+            string dettaglio = $"File attivo: '{info.Name}' — {FormattaDimensione(info.Length)}, " +
+                $"modificato il {info.LastWriteTime:dd/MM/yyyy HH:mm}.";
+
+            return new PathHealthCheckItem(funzione, filePath, PathHealthStatus.Ok, dettaglio);
+        }
+
+        private static string FormattaDimensione(long byteCount) =>
+            byteCount < 1024 * 1024
+                ? $"{byteCount / 1024.0:0.#} KB"
+                : $"{byteCount / (1024.0 * 1024.0):0.##} MB";
+
+        /// <summary>
         /// Esegue la scansione completa: cartelle Hitachi di EXCEL (una per treno configurato),
         /// cartelle VERIFICHE principale e OLD (una coppia per flotta), la radice locale di
         /// <c>LOG &amp; DUMP</c> e la sua controparte di rete. Pensata per girare su thread pool: ogni
@@ -153,8 +303,11 @@ namespace PersonalAutomationTool.Modules.Home
             int annoCorrente = DateTime.Now.Year;
             foreach (var cfg in HitachiPathsManager.LoadConfig())
             {
+                // Cartella "attiva": deve contenere il file master, non solo esistere (stesso pattern
+                // non ricorsivo "Report Interventi*.xls*" già usato da ExecuteSpostaReport/RiportaReport
+                // in ExcelViewModel, riletto qui invece di indovinato).
                 string percorso = HitachiPathsManager.GetHitachiDir(userProfile, cfg.Train) ?? string.Empty;
-                risultati.Add(CheckDirectory($"Report Interventi {cfg.Train}", percorso));
+                risultati.Add(CheckExcelFolder($"Report Interventi {cfg.Train}", percorso, "Report Interventi*.xls*", recursive: false));
 
                 // Cartella "vecchi report" dove "Sposta Report" archivia il file sostituito (ETR700 e
                 // E404P la nominano con l'anno corrente: può legittimamente non esistere ancora nei
@@ -172,7 +325,9 @@ namespace PersonalAutomationTool.Modules.Home
                 var risolto = VerifichePathsManager.Risolvi(userProfile, cfg.Fleet);
                 if (risolto == null) continue;
 
-                risultati.Add(CheckDirectory(cfg.FilePrefix, risolto.CartellaPrincipale));
+                // Idem: la cartella principale deve contenere un file "Verifiche" attivo, non solo
+                // esistere — stesso pattern ricorsivo già usato da VerificheViewModel.LoadDataForFleet.
+                risultati.Add(CheckExcelFolder(cfg.FilePrefix, risolto.CartellaPrincipale, "*Verifiche*.xlsx", recursive: true));
                 if (risolto.CartellaOld != null)
                 {
                     risultati.Add(CheckDirectory($"{cfg.FilePrefix} (OLD)", risolto.CartellaOld));

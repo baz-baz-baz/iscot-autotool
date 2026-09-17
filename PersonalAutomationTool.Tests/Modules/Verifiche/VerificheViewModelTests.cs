@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using PersonalAutomationTool.Modules.Verifiche;
 using Xunit;
@@ -157,6 +159,89 @@ namespace PersonalAutomationTool.Tests.Modules.Verifiche
             var result = VerificheViewModel.RemoveNestedRoots(roots);
 
             Assert.Equal([@"C:\Radice\A"], result);
+        }
+
+        // ------------------------------------------------------------------
+        // CombinaConRadice — bug segnalato dal committente: con "Hitachi Group" sincronizzato sotto
+        // Desktop, "Verifica Percorsi Hitachi" (che passa da HitachiPathsManager/VerifichePathsManager,
+        // già dinamici dallo Sprint 37) risultava verde, ma le tabelle di VERIFICHE restavano vuote
+        // perché questo modulo cercava ancora, indipendentemente, sotto %USERPROFILE% — vedi
+        // PROJECT_MEMORY.md §6.1-quadragies-ter.
+        // ------------------------------------------------------------------
+
+        [Theory]
+        [InlineData(@"Hitachi Group\SSB_SST - Interventi ETR500\Censimento ETR500\Verifiche ETR500")]
+        [InlineData(@"Hitachi Group\SSB_SST - INTERVENTI ETR700 ELO BL3")]
+        [InlineData(@"Hitachi Group\SSB_SST - Interventi ETR1000")]
+        public void CombinaConRadice_ConRadiceSottoDesktop_PuntaAlDesktopENonAlProfiloStandard(string relativePath)
+        {
+            const string userProfile = @"C:\Users\tecnico";
+            const string radiceSuDesktop = @"C:\Users\tecnico\Desktop\Hitachi Group";
+
+            string risultato = VerificheViewModel.CombinaConRadice(userProfile, radiceSuDesktop, relativePath);
+
+            // Deve seguire la radice trovata sul Desktop...
+            Assert.StartsWith(radiceSuDesktop, risultato, StringComparison.OrdinalIgnoreCase);
+            // ...e non il percorso che il vecchio codice avrebbe prodotto ("%USERPROFILE%\Hitachi Group\...",
+            // inesistente su questa macchina e quindi causa delle tabelle vuote).
+            string percorsoVecchioBug = Path.Combine(userProfile, relativePath);
+            Assert.NotEqual(percorsoVecchioBug, risultato, StringComparer.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public void CombinaConRadice_Etr500_ProduceIlPercorsoEsattoSottoDesktop()
+        {
+            string risultato = VerificheViewModel.CombinaConRadice(
+                userProfile: @"C:\Users\tecnico",
+                radiceRisolta: @"C:\Users\tecnico\Desktop\Hitachi Group",
+                relativePath: @"Hitachi Group\SSB_SST - Interventi ETR500\Censimento ETR500\Verifiche ETR500");
+
+            Assert.Equal(
+                @"C:\Users\tecnico\Desktop\Hitachi Group\SSB_SST - Interventi ETR500\Censimento ETR500\Verifiche ETR500",
+                risultato);
+        }
+
+        [Fact]
+        public void CombinaConRadice_Etr700_ProduceIlPercorsoEsattoSottoDesktop()
+        {
+            string risultato = VerificheViewModel.CombinaConRadice(
+                userProfile: @"C:\Users\tecnico",
+                radiceRisolta: @"C:\Users\tecnico\Desktop\Hitachi Group",
+                relativePath: @"Hitachi Group\SSB_SST - INTERVENTI ETR700 ELO BL3");
+
+            Assert.Equal(
+                @"C:\Users\tecnico\Desktop\Hitachi Group\SSB_SST - INTERVENTI ETR700 ELO BL3",
+                risultato);
+        }
+
+        [Fact]
+        public void CombinaConRadice_Etr1000_ProduceIlPercorsoEsattoSottoDesktop()
+        {
+            string risultato = VerificheViewModel.CombinaConRadice(
+                userProfile: @"C:\Users\tecnico",
+                radiceRisolta: @"C:\Users\tecnico\Desktop\Hitachi Group",
+                relativePath: @"Hitachi Group\SSB_SST - Interventi ETR1000");
+
+            Assert.Equal(
+                @"C:\Users\tecnico\Desktop\Hitachi Group\SSB_SST - Interventi ETR1000",
+                risultato);
+        }
+
+        [Fact]
+        public void CombinaConRadice_SenzaRadiceRisolta_TornaAlComportamentoStorico()
+        {
+            // Nessuna posizione candidata trovata da nessuna parte (macchina senza "Hitachi Group" in
+            // alcuna posizione nota): stesso esito di sempre, "%USERPROFILE%\Hitachi Group\...", non
+            // un percorso nullo o vuoto — l'health-check deve poter mostrare comunque un percorso
+            // plausibile invece di "non configurato".
+            string risultato = VerificheViewModel.CombinaConRadice(
+                userProfile: @"C:\Users\tecnico",
+                radiceRisolta: null,
+                relativePath: @"Hitachi Group\SSB_SST - Interventi ETR500\Censimento ETR500\Verifiche ETR500");
+
+            Assert.Equal(
+                @"C:\Users\tecnico\Hitachi Group\SSB_SST - Interventi ETR500\Censimento ETR500\Verifiche ETR500",
+                risultato);
         }
     }
 }

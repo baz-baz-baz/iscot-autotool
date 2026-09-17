@@ -4803,6 +4803,229 @@ Chi ha già installato una versione precedente riceve l'aggiornamento in automat
 > turno utile in officina — il rilascio è stato fatto prima di quella verifica, su richiesta esplicita,
 > stesso schema già seguito per la 2.0.3 (§6.1-tricies-sexies).
 
+### 6.1-quadragies-ter Sprint 38 — EMERGENZA segnalata dal committente: "Passaggio Consegne" reinviato ore dopo, con i dati del tecnico smontante ⭐⭐⭐
+
+**Richiesta.** Segnalazione critica: la mail di PASSAGGIO CONSEGNE risultava "inviata più volte a
+intervalli regolari, anche a distanza di ore, senza alcun comando dell'utente" — sospettati un
+`DispatcherTimer`/`Timer` legato al cambio turno, un `FileSystemWatcher` sui PDF/report, o una
+sottoscrizione a evento mai rilasciata (schema già noto e chiuso, criticità **D** di §6.4).
+
+#### Il sospetto iniziale era infondato
+
+Audit esaustivo (`grep` su tutto il repository) di ogni possibile innesco automatico:
+- **Nessun `Timer`/`DispatcherTimer`/`FileSystemWatcher`** è collegato in alcun modo a
+  `GeneraMailCommand` o `ApriBozza`. Gli unici presenti nell'app (orologio di `HomeViewModel`,
+  polling di `VerificheViewModel`, `AppWatcher` su LOG & DUMP) non toccano il modulo.
+- `PassaggioConsegneViewModel` **non si sottoscrive** a `VerificheViewModel.OnVerificheDataUpdated` —
+  la criticità D era già stata chiusa per costruzione nella riscrittura del Sprint 12
+  (§6.1-quaterdecies) e resta chiusa: nessuna regressione.
+- `GeneraMailCommand` è raggiungibile da un **unico punto** in tutto il codice:
+  `PassaggioConsegneView.xaml`, il pulsante "Genera Mail". Nessun altro chiamante.
+- **L'app non chiama mai `.Send()`** — né qui né nel modulo EMAIL generico — solo `Display(false)`
+  (`PassaggioConsegneEmailService.cs`, `EmailService.cs`): l'invio resta sempre un click manuale
+  dentro Outlook, invariante §5.5 mai violata.
+
+571+ test verdi confermavano il flusso "Genera Mail" manuale e one-shot. **Nessuna di queste piste
+spiegava il fenomeno**, ed è stato necessario un confronto diretto con le email reali coinvolte
+invece di fermarsi all'assenza di un colpevole ovvio nel codice.
+
+#### Causa radice reale, trovata dal confronto di due email "gemelle"
+
+Il committente ha fornito due coppie di email realmente inviate (stesso ETR, ore di distanza,
+mittenti diversi da caso a caso). Il dettaglio decisivo: **il saluto cambia in modo coerente con
+l'ora reale di invio** (`DetermineSaluto(DateTime.Now)`, calcolato dentro `ApriBozza` al momento
+della generazione, non salvato in una bozza già scritta). Questo esclude sia un mail-loop lato
+Exchange sia una bozza rimasta aperta e poi inviata più tardi: **il codice C# ha davvero eseguito
+`GeneraMailAsync` una seconda volta**, ore dopo la prima.
+
+Il secondo dettaglio, altrettanto decisivo: **il PDF allegato alla seconda mail era identico
+byte-per-byte al primo** (stesso nome del tecnico, stessi dati). Il modulo non ha alcuna
+persistenza su disco (dichiarato esplicitamente nel commento di classe di
+`PassaggioConsegneViewModel`: "il modulo riparte vuoto a ogni avvio") — quindi un PDF identico non
+può derivare dalla rilettura di dati salvati. L'unica spiegazione compatibile è che i dati del
+rapportino **in memoria non fossero cambiati** tra le due generazioni: la stessa istanza del
+ViewModel, mai chiusa né azzerata, con lo stesso `Nome`/`Cognome`/tabelle ancora compilati dal
+turno precedente.
+
+Messo insieme al fatto — confermato dal committente — che il tecnico intestatario della mail era
+**fisicamente a casa** al momento del secondo invio, il quadro è completo: **l'app non ha mai
+inviato nulla in autonomia.** È stato un secondo click reale, umano, sulla stessa sessione
+Windows/Outlook lasciata aperta e non bloccata a fine turno (nessuna policy uniforme di blocco
+schermo confermata) — verosimilmente un collega del turno successivo che ha premuto "Genera Mail"
+senza prima aggiornare i campi, magari pensando "tanto non è cambiato niente". Il risultato: una
+mail del tutto legittima nella meccanica, ma con il nome del tecnico smontante anziché di chi era
+davvero in servizio.
+
+**Nessun timer, watcher o sottoscrizione andava quindi rimosso — non ce n'erano.** Il difetto reale
+non era "invio ricorrente automatico" ma l'**assenza di un azzeramento del form dopo un invio
+riuscito**, che permetteva a un secondo "Genera Mail" eseguito su dati non aggiornati di riprodurre
+silenziosamente lo stesso identico rapportino.
+
+#### Correzione: azzeramento automatico e silenzioso a invio riuscito
+
+`PassaggioConsegneViewModel.cs`: estratta da `Reset()` la logica di svuotamento campi in
+`SvuotaRapportino(RapportinoTurno)` (privato, statico), condivisa fra:
+- `Reset()` — invariato: dietro conferma esplicita dell'operatore (`ResetCommand`), come prima.
+- `GeneraMailAsync()` — **nuovo**: chiamato in automatico, senza alcuna conferma, subito dopo che
+  `ApriBozza` ha aperto la bozza con successo. Se l'esportazione del PDF **o** l'apertura della
+  bozza falliscono, i dati **non** vengono toccati (`return` prima dello svuotamento nel ramo
+  `catch` di Outlook): l'operatore deve poter riprovare "Genera Mail" senza aver perso quanto già
+  compilato.
+
+Un secondo "Genera Mail" premuto su una sessione lasciata aperta trova ora il modulo vuoto, non il
+rapportino del collega smontante: l'errore diventa visibile subito sullo schermo (form vuoto da
+compilare), non nella casella di posta del destinatario ore dopo.
+
+#### Verifica
+
+`dotnet build` sull'intera `.sln` → **0 errori, 0 warning**. `dotnet test` → **651/651**, di cui
+122 sul modulo PASSAGGIO CONSEGNE (121 → 122): sostituito `GeneraMail_NonModificaLoStatoDelRapportino`
+(asseriva l'esatto comportamento ora superato) con `GeneraMail_DopoInvioRiuscito_SvuotaIlRapportino`
+(nome, cognome, turno e tabelle azzerati dopo un `ApriBozza` riuscito) e aggiunto
+`GeneraMail_SeOutlookFallisce_IlRapportinoNonVieneSvuotato` (i dati restano intatti se la bozza non
+si apre). Non toccati i test sullo snapshot (`GeneraMail_LoSnapshotRiflettteIDatiCompilati` e
+affini): lo snapshot è catturato **prima** dello svuotamento e ne resta indipendente per
+costruzione.
+
+> ⚠️ **Non risolve la causa di infrastruttura.** Lo svuotamento rende l'errore visibile invece che
+> silenzioso, ma non impedisce l'uso della sessione altrui. Resta da valutare, fuori dal codice di
+> questa applicazione, una policy di blocco schermo automatico a fine turno sulle postazioni dei
+> tecnici (Group Policy Windows) — segnalato al committente come azione organizzativa separata.
+
+### 6.1-quadragies-quater Sprint 39 — bug segnalato dal committente: tabelle VERIFICHE vuote con "Hitachi Group" sincronizzato sotto Desktop ⭐⭐
+
+**Richiesta.** Con la cartella sincronizzata su `Desktop\Hitachi Group\` invece che direttamente sotto
+il profilo utente, "Verifica Percorsi Hitachi" segnala tutto **verde** e Report Interventi funziona
+regolarmente, ma il modulo **VERIFICHE** carica tabelle **completamente vuote**.
+
+#### Causa radice: due risoluzioni dei percorsi indipendenti nello stesso modulo
+
+Lo Sprint 37 (§6.1-quadragies) aveva introdotto `HitachiPathResolver` per risolvere dinamicamente la
+radice "Hitachi Group" (Desktop, profilo utente o una variante OneDrive), collegandolo a **tre**
+consumatori: `HitachiPathsManager` (Report Interventi), `VerifichePathsManager` (usato da "Verifica
+Eseguita" e — tramite `PathHealthCheckService.EseguiControllo()` — da "Verifica Percorsi Hitachi") e
+`HomeViewModel.GetLogDumpReteBasePath`. **Il caricamento reale delle tabelle di VERIFICHE non era fra
+questi tre.** `VerificheViewModel.cs` ha una propria pipeline di lettura, separata e mai toccata da
+quell'intervento: `GetVerificheForFleetStatic`, `ReloadAllDataAsync`, `LoadDataForFleet`,
+`SetupWatchers` e `ScanForFileUpdates` costruivano tutte i percorsi con
+`Path.Combine(Environment.GetFolderPath(SpecialFolder.UserProfile), "Hitachi Group\...")` — la stessa
+assunzione fissa che lo Sprint 37 aveva eliminato altrove.
+
+Risultato: l'health-check (che passa da `VerifichePathsManager.Risolvi`, già dinamico) trova
+correttamente `Desktop\Hitachi Group\...` e segnala verde; il caricamento delle tabelle (che non ci
+passa) continua a cercare in `%USERPROFILE%\Hitachi Group\...`, che su questa macchina non esiste —
+`Directory.Exists` restituisce falso, la cartella viene scartata senza errore, la tabella resta vuota.
+Nessuna eccezione, nessun log: il sintomo è indistinguibile da "nessuna verifica da fare".
+
+Il pattern di ricerca file (`*Verifiche*.xlsx`, esclusione `~$*`/OLD/VECCH/ARCHIV, selezione del più
+recente per `LastWriteTime`) era invece già corretto — **non richiedeva alcuna modifica**: verificato
+leggendo `LoadDataForFleet` e confermato dai 21 `VerificheExcelReaderTests` esistenti (equivalenza SAX
+↔ ClosedXML) e dai 9 test di `RemoveNestedRoots` (§6.1-quindecies-adiacente), tutti tuttora verdi.
+
+#### Correzione
+
+`VerificheViewModel.cs`: aggiunto `RisolviPercorso(userProfile, relativePath)`, che passa sempre da
+`HitachiPathResolver.ResolveRoot()` + `HitachiPathResolver.CombinaSottoPercorso` — la stessa funzione
+condivisa già usata da `VerifichePathsManager` e `HitachiPathsManager`, non una quarta reimplementazione.
+Sostituiti tutti i `Path.Combine(userProfile, rel)` diretti in `LoadDataForFleet` (percorso principale e
+i tre/due fallback per flotta), `SetupWatchers` e `ScanForFileUpdates`. La parte pura — combinare una
+radice già risolta con un percorso relativo — è stata estratta in `CombinaConRadice(userProfile,
+radiceRisolta, relativePath)`, `internal` e testabile con una radice sintetica: `ResolveRoot()` stesso
+resta non testabile direttamente (legge il Desktop e il profilo *reali* della macchina, come già
+annotato per `HitachiPathResolverTests` — nessuna novità di questo intervento).
+
+Rimossi anche i due `catch { }` silenziosi rimasti nella scansione file di `ScanForFileUpdates` e
+`LoadDataForFleet` (un problema di enumerazione su una cartella OneDrive temporaneamente irraggiungibile
+spariva senza traccia) e il `Debug.WriteLine` di `LoadDataForFleet` — invisibile fuori da un debugger
+in produzione — sostituiti da `CrashReporter.RegistraAnomalia`, stesso pattern già in uso in
+`AppWatcher` e in `HitachiPathResolver.TrovaCartelleOneDriveWildcard`. Non aggiunto un banner UI per
+"cartella trovata ma senza file validi": andrebbe deciso col committente dove e come mostrarlo, e non
+è la causa di questo bug (qui la cartella non veniva proprio trovata).
+
+#### Verifica
+
+`dotnet build` sull'intera `.sln` → **0 errori, 0 warning**. `dotnet test` → **658/658** (651 → 658,
++7 in `VerificheViewModelTests`): `CombinaConRadice` con radice sintetica sotto Desktop produce
+esattamente `Desktop\Hitachi Group\SSB_SST - Interventi ETR500\Censimento ETR500\Verifiche ETR500` (e
+gli equivalenti per ETR700/ETR1000), mai il percorso `%USERPROFILE%\Hitachi Group\...` che causava le
+tabelle vuote; con radice non risolta (nessuna posizione candidata sulla macchina) il comportamento
+resta quello storico, `%USERPROFILE%\Hitachi Group\...`, non un percorso nullo o vuoto — l'health-check
+deve poter continuare a mostrare un percorso plausibile invece di "non configurato". Nessuna modifica a
+`VerificheExcelReader.cs`: il pattern di ricerca e lettura file era già corretto.
+
+### 6.1-quadragies-quinquies Sprint 40 — richiesta del committente: eliminare i falsi positivi di "Verifica Percorsi Hitachi" ⭐⭐
+
+**Richiesta.** Il badge VERDE indicava solo che la cartella **genitore** esisteva
+(`Directory.Exists`): non garantiva che dentro ci fosse un file Excel attivo, né che quel file fosse
+davvero leggibile (segnaposto cloud OneDrive mai scaricato, file corrotto, cartella vuota). Regola
+inviolabile confermata dal committente: **sola lettura assoluta**, nessuna `Directory.CreateDirectory`
+né file fittizi, né in produzione né nei test di questo intervento.
+
+#### Perché non basta più `CheckDirectory`
+
+`CheckDirectory` (invariato, resta in uso per LOG & DUMP e per le cartelle OLD/archivio — vedi sotto)
+verificava l'esistenza più una sonda di leggibilità passiva
+(`Directory.EnumerateFileSystemEntries().FirstOrDefault()`), che non guarda **cosa** c'è dentro. Una
+cartella VERIFICHE o Report Interventi vuota, o con solo un lucchetto Excel (`~$*.xlsx`), risultava
+comunque "OK": esattamente il falso positivo segnalato.
+
+#### Pipeline a tre livelli — `PathHealthCheckService.cs`
+
+Nuovo `CheckExcelFolder(funzione, percorso, searchPattern, recursive)`, usato **solo** per le cartelle
+che ospitano un foglio attivo (VERIFICHE principale per flotta, Report Interventi per treno — non le
+loro controparti OLD, dove restare vuote è normale, come già annotato per "Report Interventi OLD"):
+
+1. **Cartella**: invariato, `Directory.Exists` — se manca, ERRORE, come prima.
+2. **File target**: `TrovaFilePiuRecente` enumera con lo **stesso pattern e la stessa modalità
+   (ricorsiva o no) già usati dal codice reale che consuma quella cartella** — non un pattern
+   indovinato per l'occasione: `"*Verifiche*.xlsx"` ricorsivo per VERIFICHE
+   (`VerificheViewModel.LoadDataForFleet`), `"Report Interventi*.xls*"` non ricorsivo per Report
+   Interventi (`ExcelViewModel.ExecuteSpostaReport`/`RiportaReport`) — sempre scartando `~$*.xlsx`.
+   Cartella raggiungibile ma nessun file trovato → **AVVISO** (nuovo stato), non più OK.
+3. **Lettura reale del file** (`CheckExcelFile`): attributi cloud **prima** di aprire lo stream (mai
+   forzare un download solo per un health-check) — `FileAttributes.Offline` più i due flag Win32 non
+   esposti come membri nominati in .NET, `FILE_ATTRIBUTE_RECALL_ON_OPEN` (0x00040000) e
+   `FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS` (0x00400000), dichiarati come costanti `(FileAttributes)`
+   con il valore grezzo → segnaposto non scaricato, **AVVISO**, non ERRORE (è recuperabile aspettando
+   la sincronizzazione, non un guasto). Altrimenti apertura reale (`FileShare.ReadWrite |
+   FileShare.Delete`, stessa condivisione di `CheckFile`/`VerificheExcelReader`, per non far fallire
+   una sostituzione OneDrive in corso) e lettura dei primi 4 byte: firma ZIP `0x50 0x4B 0x03 0x04`
+   assente o file da 0 byte → **ERRORE** (bloccante: è un guasto reale, non "aspetta la sync"). Un
+   file bloccato in esclusiva da un altro processo, o senza permessi, arriva come eccezione al
+   `catch` di `CheckExcelFolder`, classificata da `MappaEccezione` come sempre.
+4. Successo: **OK**, con `Dettaglio` che riporta nome file, dimensione (KB/MB) e data/ora
+   dell'ultima modifica, come richiesto.
+
+#### Nuovo stato `PathHealthStatus.Avviso` — e riclassificazione di `AccessoNegato`
+
+Aggiunto `Avviso` (badge "AVVISO", colore ambra `#E69500` in `HealthCheckPathsDialog.xaml`): copre sia
+"cartella raggiungibile ma senza file attivo" sia "file presente ma solo su OneDrive" — entrambi non
+bloccanti, il percorso di per sé è corretto. **`AccessoNegato` passa da ambra a rosso** in XAML (resta
+un'eccezione di stato per il messaggio, ma condivide ora il colore di default con `Errore`): la
+specifica di questo intervento lo classifica esplicitamente come "ROSSO — bloccante", non più un
+avviso intermedio. Nessuna modifica al testo del badge ("ACCESSO NEGATO" resta invariato) né ai test
+già esistenti su quella dicitura.
+
+#### Cosa non è cambiato
+
+`CheckDirectory`/`CheckFile` restano usati, invariati, per LOG & DUMP e per le cartelle OLD/archivio —
+non ospitano un "file attivo" nel senso di questa verifica, e pretendere un file lì reintrodurrebbe un
+falso *negativo* simmetrico (cartella vuota legittima segnalata come problema). Non aggiunto un
+"master file pattern" per Report Interventi indovinato ad hoc: riletto da `ExcelViewModel` per
+riusare quello vero.
+
+#### Verifica
+
+`dotnet build` sull'intera `.sln` → **0 errori, 0 warning**. `dotnet test` → **670/670** (658 → 670,
++12 in `PathHealthCheckServiceTests`): cartella vuota → AVVISO; cartella con solo `~$Verifiche
+ETR500.xlsx` → AVVISO (lucchetto non contato); file valido → OK con nome/dimensione/data nel
+dettaglio; due file, vince il più recente per `LastWriteTime`; cartella inesistente → ERRORE **senza
+mai crearla** (vincolo verificato esplicitamente, come già per `CheckDirectory`); file da 0 byte e
+file con intestazione non-ZIP → ERRORE; file con attributo `Offline` impostato davvero su disco (non
+simulato) → AVVISO con "OneDrive"/"non scaricato" nel messaggio, senza aprire lo stream;
+`TrovaFilePiuRecente` esclude sempre i lucchetti e restituisce `null` senza candidati. Le quattro
+diciture del badge (`OK`/`AVVISO`/`ERRORE`/`ACCESSO NEGATO`) verificate in `StatoTesto`.
+
 ### 6.2 Le 4 macro-aree della roadmap strategica
 
 Elaborata come risposta alla domanda "se fossi il Lead Architect, cosa faresti dopo l'audit

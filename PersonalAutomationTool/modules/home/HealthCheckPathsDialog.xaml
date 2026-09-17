@@ -43,13 +43,16 @@
                             <DataTemplate>
                                 <Border CornerRadius="4" Padding="8,4" HorizontalAlignment="Left">
                                     <Border.Style>
+                                        <!-- Rosso di default: copre sia ERRORE (percorso non trovato,
+                                             file corrotto/vuoto) sia ACCESSO NEGATO — entrambi
+                                             bloccanti, a differenza di AVVISO. -->
                                         <Style TargetType="Border">
                                             <Setter Property="Background" Value="#DC3545"/>
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding StatoTesto}" Value="OK">
                                                     <Setter Property="Background" Value="#28A745"/>
                                                 </DataTrigger>
-                                                <DataTrigger Binding="{Binding StatoTesto}" Value="ACCESSO NEGATO">
+                                                <DataTrigger Binding="{Binding StatoTesto}" Value="AVVISO">
                                                     <Setter Property="Background" Value="#E69500"/>
                                                 </DataTrigger>
                                             </Style.Triggers>

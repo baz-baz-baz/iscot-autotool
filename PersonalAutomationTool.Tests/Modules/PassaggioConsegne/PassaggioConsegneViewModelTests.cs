@@ -322,19 +322,45 @@ namespace PersonalAutomationTool.Tests.Modules.PassaggioConsegne
         }
 
         [Fact]
-        public async Task GeneraMail_NonModificaLoStatoDelRapportino()
+        public async Task GeneraMail_DopoInvioRiuscito_SvuotaIlRapportino()
         {
-            // Nessun flag "modalità esportazione" da attivare sulla UI: è la proprietà che rende
-            // impossibile lo sfarfallio inseguito nella prima versione del modulo (§6.1-undecies).
+            // Il modulo non ha persistenza e resta in memoria per tutta la sessione: se l'app non
+            // viene chiusa fra un turno e il successivo, un secondo "Genera Mail" premuto ore dopo
+            // senza aggiornare i campi riprodurrebbe silenziosamente lo stesso identico rapportino
+            // del collega smontante. Svuotare i dati a invio riuscito rende l'errore visibile subito
+            // (rapportino vuoto), non nella casella di posta (mail duplicata con nome sbagliato).
             var vm = CreaViewModel();
             var rapportino = vm.RapportinoSelezionato;
+            rapportino.Nome = "Alessio";
+            rapportino.Cognome = "Bassetto";
+            rapportino.TurnoSelezionato = TurnoPredefinito.Primo;
             rapportino.Interventi[0].TrenoLoco = "E404P 618";
             rapportino.Interventi[0].ChiusuraTicket = true;
 
             await vm.GeneraMailAsync();
 
+            Assert.Equal(string.Empty, rapportino.Nome);
+            Assert.Equal(string.Empty, rapportino.Cognome);
+            Assert.Null(rapportino.TurnoSelezionato);
+            Assert.Equal(string.Empty, rapportino.Interventi[0].TrenoLoco);
+            Assert.False(rapportino.Interventi[0].ChiusuraTicket);
+        }
+
+        [Fact]
+        public async Task GeneraMail_SeOutlookFallisce_IlRapportinoNonVieneSvuotato()
+        {
+            // Il turno non deve andare perso: se la bozza non si apre l'operatore deve poter
+            // riprovare "Genera Mail" senza aver perso i dati già compilati.
+            var posta = new MailServiceFinto { Eccezione = new InvalidOperationException("Outlook assente") };
+            var vm = CreaViewModel(mailService: posta);
+            var rapportino = vm.RapportinoSelezionato;
+            rapportino.Nome = "Alessio";
+            rapportino.Interventi[0].TrenoLoco = "E404P 618";
+
+            await vm.GeneraMailAsync();
+
+            Assert.Equal("Alessio", rapportino.Nome);
             Assert.Equal("E404P 618", rapportino.Interventi[0].TrenoLoco);
-            Assert.True(rapportino.Interventi[0].ChiusuraTicket);
         }
 
         // ------------------------------------------------------------------
