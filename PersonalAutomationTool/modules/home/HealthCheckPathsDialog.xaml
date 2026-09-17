@@ -21,27 +21,39 @@
             <DataGrid x:Name="ItemsGrid" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
                       HeadersVisibility="Column" Background="Transparent" BorderThickness="0"
                       GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#F1F5F9"
-                      RowHeight="42" FontSize="13">
+                      MinRowHeight="42" FontSize="13">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Funzione / Flotta" Binding="{Binding Funzione}" Width="1.3*"/>
+                    <DataGridTextColumn Header="Funzione / Flotta" Binding="{Binding Funzione}" Width="1.3*">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="Margin" Value="0,6"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
 
-                    <DataGridTextColumn Header="Percorso Configurato" Binding="{Binding Percorso}" Width="2.2*">
+                    <DataGridTextColumn Header="Percorso Configurato" Binding="{Binding Percorso}" Width="1.8*">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
                                 <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
                                 <Setter Property="ToolTip" Value="{Binding Percorso}"/>
                                 <Setter Property="Foreground" Value="#475569"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="Margin" Value="0,6"/>
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
 
                     <!-- Badge colorato: la colorazione vive interamente qui in XAML (trigger su
                          StatoTesto), cosi' PathHealthCheckItem resta un dato puro senza alcuna
-                         dipendenza da WPF (vedi PathHealthCheckService.cs). -->
+                         dipendenza da WPF (vedi PathHealthCheckService.cs). VerticalAlignment="Center"
+                         sul Border: da quando le righe si adattano al contenuto (MinRowHeight, non piu'
+                         RowHeight fisso) una riga puo' crescere per via del testo lungo in "Dettaglio" -
+                         senza questo il badge si sarebbe stirato in verticale insieme alla riga. -->
                     <DataGridTemplateColumn Header="Stato" Width="140">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Border CornerRadius="4" Padding="8,4" HorizontalAlignment="Left">
+                                <Border CornerRadius="4" Padding="8,4" HorizontalAlignment="Left" VerticalAlignment="Center">
                                     <Border.Style>
                                         <!-- Rosso di default: copre sia ERRORE (percorso non trovato,
                                              file corrotto/vuoto) sia ACCESSO NEGATO — entrambi
@@ -65,11 +77,17 @@
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
 
-                    <DataGridTextColumn Header="Dettaglio / Diagnostica" Binding="{Binding Dettaglio}" Width="2*">
+                    <!-- Larghezza aumentata (da 2* a 2.8*, a scapito di "Percorso Configurato" che ha
+                         gia' il tooltip per il testo integrale) e "Percorso Configurato" ridotto a 1.8*:
+                         i messaggi diagnostici con nome file/dimensione/data sono piu' lunghi di quelli
+                         originali ("Cartella raggiungibile.") e vanno quasi sempre su due righe. -->
+                    <DataGridTextColumn Header="Dettaglio / Diagnostica" Binding="{Binding Dettaglio}" Width="2.8*">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
                                 <Setter Property="TextWrapping" Value="Wrap"/>
                                 <Setter Property="Foreground" Value="#475569"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="Margin" Value="0,6"/>
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
