@@ -5026,6 +5026,62 @@ simulato) → AVVISO con "OneDrive"/"non scaricato" nel messaggio, senza aprire 
 `TrovaFilePiuRecente` esclude sempre i lucchetti e restituisce `null` senza candidati. Le quattro
 diciture del badge (`OK`/`AVVISO`/`ERRORE`/`ACCESSO NEGATO`) verificate in `StatoTesto`.
 
+### 6.1-quadragies-sexies Sprint 41 — Release di produzione 2.0.6: pubblicati i tre fix di questa sessione
+
+**Richiesta.** "Pubblica l'aggiornamento" — distribuire i tre interventi già implementati e testati in
+questa sessione: lo svuotamento automatico del rapportino di PASSAGGIO CONSEGNE a invio riuscito
+(§6.1-quadragies-ter), la risoluzione dinamica dei percorsi nel caricamento tabelle di VERIFICHE
+(§6.1-quadragies-quater) e la pipeline profonda anti-falsi-positivi di "Verifica Percorsi Hitachi"
+(§6.1-quadragies-quinquies).
+
+#### Stato del repository all'ingresso
+
+`git status` puliito ma **1 commit locale non ancora pushato** (`c5e9fb3`, messaggio "Update", autore
+`AlessioBassetto") contenente esattamente le modifiche degli otto file dei tre interventi — stesso
+schema già annotato per le release precedenti: un commit arrivato da un client Git esterno a questa
+sessione, non da qui.
+
+#### Procedura (identica a §6.1-tricies-quater/-sexies/§6.1-quadragies-semel)
+
+`<Version>` allineata a **2.0.6** nel `.csproj`. `dotnet clean` + `dotnet test` → **670/670**, 0 errori,
+0 warning. Pubblicazione:
+
+```bash
+dotnet publish PersonalAutomationTool/PersonalAutomationTool.csproj -c Release -r win-x64 \
+  --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true \
+  -p:IncludeAllContentForSelfExtract=true -o ./Release_Dist
+```
+
+`.pdb` rimosso prima della consegna. Risultato: `PersonalAutomationTool.exe`, **85 205 708 byte
+(81,3 MB)**, `FileVersion 2.0.6.0`. `RELEASE_NOTES.md` riscritto per i tre fix di questa sessione.
+
+Bump di versione committato (`git commit -m "Update 2.0.6"`, un solo file: il `.csproj`), poi:
+
+```
+git push origin main
+git tag -a v2.0.6 -m "Personal Automation Tool 2.0.6"
+git push origin v2.0.6
+gh release create v2.0.6 Release_Dist/PersonalAutomationTool.exe --target main \
+  --title "Personal Automation Tool 2.0.6" --notes-file Release_Dist/RELEASE_NOTES.md
+```
+
+`gh auth status` già autenticato (account `AlessioBassetto`, scope `repo` presente).
+
+> ⚠️ **Primo tentativo di `gh release create` fallito**: `HTTP 500: Error saving asset` durante
+> l'upload dell'eseguibile (85 MB) — errore transitorio lato GitHub, non di questa procedura. Il
+> comando ripulisce la release parzialmente creata in caso di fallimento dell'asset (`gh release view
+> v2.0.6` → "release not found" subito dopo, pur con il **tag già pushato con successo** in un passo
+> separato precedente). Il secondo tentativo dello stesso comando, senza ripetere push o tag, è
+> andato a buon fine. Da tenere presente per le prossime release: un fallimento di
+> `gh release create` sull'upload dell'asset non richiede di rifare tag/push, solo di ripetere la
+> creazione della release.
+
+#### Verifica dall'API pubblica non autenticata
+
+`tag_name` `v2.0.6`, `target_commitish` `main`, `draft: false`, `prerelease: false` → compare in
+`/releases/latest`. Un solo asset `.exe`, **85 205 708 byte**, identico al file locale pubblicato.
+Chi ha già installato una versione precedente riceve l'aggiornamento in automatico al prossimo avvio.
+
 ### 6.2 Le 4 macro-aree della roadmap strategica
 
 Elaborata come risposta alla domanda "se fossi il Lead Architect, cosa faresti dopo l'audit
